@@ -1,0 +1,25 @@
+.header {
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.inner {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0.8rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.brand {
+  font-weight: 800;
+  color: #1d4ed8;
+}
+
+.nav {
+  display: flex;
+  gap: 0.9rem;
+  font-size: 0.95rem;
+}

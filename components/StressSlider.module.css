@@ -1,0 +1,19 @@
+.wrapper {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.label {
+  font-weight: 600;
+}
+
+.slider {
+  width: 100%;
+}
+
+.scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #6b7280;
+}
