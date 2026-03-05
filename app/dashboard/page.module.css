@@ -10,6 +10,14 @@
   margin: 0;
 }
 
+.error {
+  color: #dc2626;
+  padding: 1rem;
+  background: #fee2e2;
+  border-radius: 8px;
+  margin: 0;
+}
+
 .grid {
   display: grid;
   gap: 0.8rem;

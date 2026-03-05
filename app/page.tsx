@@ -1,16 +1,27 @@
+'use client';
+
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import SummaryCard from '@/components/SummaryCard';
+import { useAnalytics } from '@/lib/mockQueryClient';
 import styles from './page.module.css';
 
-const summary = {
-  confrontationRate: 62,
-  avgStress7Days: 3.1,
-  streakDays: 4,
-};
-
 export default function HomePage() {
+  const { data } = useAnalytics();
+
+  const summary = data
+    ? {
+        confrontationRate: data.confrontationRate,
+        avgStress7Days: data.avgStress7Days,
+        streakDays: data.streakDays,
+      }
+    : {
+        confrontationRate: 0,
+        avgStress7Days: 0,
+        streakDays: 0,
+      };
+
   return (
     <>
       <Header />

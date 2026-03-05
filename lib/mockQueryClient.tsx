@@ -87,3 +87,37 @@ export function useExperiences() {
     queryFn: fetchExperiences,
   });
 }
+
+interface AnalyticsData {
+  confrontationRate: number;
+  avgStress7Days: number;
+  stressTrend: number[];
+  streakDays: number;
+  recentExperiences: Array<{
+    id: string;
+    date: string;
+    description: string;
+    stressLevel: number;
+    actionResult: string;
+    domain: string;
+  }>;
+}
+
+async function fetchAnalytics(): Promise<AnalyticsData> {
+  const response = await fetch('/api/analytics');
+
+  if (!response.ok) {
+    const json = await response.json();
+    const errorMessage = (json as { message?: string }).message || '分析データの取得に失敗しました';
+    throw new Error(errorMessage);
+  }
+
+  return (await response.json()) as AnalyticsData;
+}
+
+export function useAnalytics() {
+  return useQuery({
+    queryKey: ['analytics'],
+    queryFn: fetchAnalytics,
+  });
+}

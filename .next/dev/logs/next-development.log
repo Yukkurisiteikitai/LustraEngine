@@ -1,7 +1,5 @@
-[00:00:00.955] Server  WARN    ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
-[00:00:01.038] Server  LOG     ✓ Ready in 788ms
-[00:00:13.788] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:00:51.359] Server  LOG     [API/logs] Inserting experiences for user: "7ec098b1-f2fa-414c-853b-2adb38e848df" "count:" 1
-[00:00:52.237] Server  LOG     [API/logs] Success: {}
-[00:04:26.616] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:04:55.113] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:00:01.025] Server  WARN    ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+[00:00:01.125] Server  LOG     ✓ Ready in 836ms
+[00:00:11.910] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:01:45.020] Server  LOG     [API/logs] Inserting experiences for user: "7ec098b1-f2fa-414c-853b-2adb38e848df" "count:" 1
+[00:01:45.868] Server  LOG     [API/logs] Success: {}
