@@ -20,6 +20,21 @@
 
 .nav {
   display: flex;
+  align-items: center;
   gap: 0.9rem;
   font-size: 0.95rem;
+}
+
+.logoutBtn {
+  background: none;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: #6b7280;
+}
+
+.logoutBtn:hover {
+  background: #f3f4f6;
 }

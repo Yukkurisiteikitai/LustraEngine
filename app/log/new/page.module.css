@@ -74,6 +74,11 @@
 .liveRegion {
   min-height: 1.25rem;
   margin: 0;
-  color: #1d4ed8;
   font-size: 0.95rem;
+  padding: 0.5rem;
+  border-radius: 6px;
+}
+
+.liveRegion:empty {
+  display: none;
 }

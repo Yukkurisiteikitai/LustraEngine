@@ -1,0 +1,28 @@
+# Supabase Project Configuration
+project_id = "archksbnwonqkmzbbahj"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+max_rows = 1000
+
+[db]
+port = 5432
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+email.enable_signup = true
+external.apple.enabled = false
+external.google.enabled = false
+external.github.enabled = false
+external.gitlab.enabled = false
+
+[analytics]
+enabled = false
+

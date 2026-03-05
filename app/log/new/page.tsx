@@ -41,6 +41,7 @@ export default function LogNewPage() {
   const [actionText, setActionText] = useState('');
   const [actionError, setActionError] = useState<string>('');
   const [statusMessage, setStatusMessage] = useState('');
+  const [messageType, setMessageType] = useState<'success' | 'error'>('success');
 
   const mutation = useSubmitLogMutation();
 
@@ -78,10 +79,22 @@ export default function LogNewPage() {
       },
       {
         onSuccess: (data) => {
+          setMessageType('success');
           setStatusMessage(`${data.message}（向き合い率: ${data.summary.confrontationRate}%）`);
+          // リセット
+          setTimeout(() => {
+            setStep(1);
+            setObstacle(null);
+            setActionResult('');
+            setActionText('');
+            setStatusMessage('');
+          }, 2000);
         },
-        onError: () => {
-          setStatusMessage('送信に失敗しました。時間を置いて再試行してください。');
+        onError: (error) => {
+          console.error('[LogNewPage] Mutation error:', error);
+          const errorMsg = error instanceof Error ? error.message : '不明なエラーが発生しました';
+          setMessageType('error');
+          setStatusMessage(`エラー: ${errorMsg}`);
         },
       },
     );
@@ -162,7 +175,14 @@ export default function LogNewPage() {
             </div>
           ) : null}
 
-          <p className={styles.liveRegion} aria-live="polite">
+          <p
+            className={styles.liveRegion}
+            aria-live="polite"
+            style={{
+              color: messageType === 'error' ? '#dc2626' : '#15803d',
+              backgroundColor: messageType === 'error' ? '#fee2e2' : '#dcfce7',
+            }}
+          >
             {statusMessage}
           </p>
         </section>

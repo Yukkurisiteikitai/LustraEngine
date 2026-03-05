@@ -1,17 +1,25 @@
+// --- Legacy domain type (Phase 3 で { id, name, description, color } に移行予定) ---
 export type Domain = 'WORK' | 'RELATIONSHIP' | 'HEALTH' | 'MONEY' | 'SELF';
 
 export type ActionResult = 'AVOIDED' | 'CONFRONTED';
 
-export interface ObstacleInput {
+// --- Experience input (Phase 1: Supabase 対応) ---
+export interface ExperienceInput {
   description: string;
   stressLevel: number;
   domain: Domain;
   actionResult: ActionResult;
+  actionMemo?: string;
+  // 構造化フィールド（任意）
+  goal?: string;
+  action?: string;
+  emotion?: string;
+  context?: string;
 }
 
 export interface LogPayload {
   date: string;
-  obstacles: ObstacleInput[];
+  obstacles: ExperienceInput[];
 }
 
 export interface LogResponse {
@@ -31,7 +39,13 @@ export interface DashboardSummary {
   streakDays: number;
 }
 
-export interface ObstacleRecord extends ObstacleInput {
+export interface ExperienceRecord extends ExperienceInput {
   id: string;
   date: string;
 }
+
+// --- Backward compatibility aliases ---
+/** @deprecated Use ExperienceInput */
+export type ObstacleInput = ExperienceInput;
+/** @deprecated Use ExperienceRecord */
+export type ObstacleRecord = ExperienceRecord;
