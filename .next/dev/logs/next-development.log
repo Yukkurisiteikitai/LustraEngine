@@ -1,5 +1,10 @@
-[00:00:01.025] Server  WARN    ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
-[00:00:01.125] Server  LOG     ✓ Ready in 836ms
-[00:00:11.910] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:01:45.020] Server  LOG     [API/logs] Inserting experiences for user: "7ec098b1-f2fa-414c-853b-2adb38e848df" "count:" 1
-[00:01:45.868] Server  LOG     [API/logs] Success: {}
+[00:00:01.887] Server  WARN    ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+[00:00:02.016] Server  LOG     ✓ Ready in 1767ms
+[00:00:08.413] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:07:13.582] Server  WARN    ⚠ Cross origin request detected from 24s1103264sanoyuuto.taila1161e.ts.net to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+[00:07:13.622] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:08:58.912] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:09:32.340] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:09:36.608] Browser LOG     StressChart - points: [0,0,0,0,0,2,0]
+[00:09:36.608] Browser LOG     StressChart - points: [0,0,0,0,0,2,0]

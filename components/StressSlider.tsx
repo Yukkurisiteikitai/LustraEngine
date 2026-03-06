@@ -1,5 +1,6 @@
 'use client';
 
+import { getStressLevelLabel, getStressColor } from '@/lib/stress';
 import styles from './StressSlider.module.css';
 
 interface StressSliderProps {
@@ -8,10 +9,13 @@ interface StressSliderProps {
 }
 
 export default function StressSlider({ value, onChange }: StressSliderProps) {
+  const description = getStressLevelLabel(value);
+  const color = getStressColor(value);
+
   return (
     <div className={styles.wrapper}>
       <label className={styles.label} htmlFor="stressLevel">
-        ストレスレベル: <strong>{value}</strong>
+        ストレスレベル: <strong style={{ color }}>{value}</strong>
       </label>
       <input
         id="stressLevel"
@@ -31,6 +35,7 @@ export default function StressSlider({ value, onChange }: StressSliderProps) {
         <span>4</span>
         <span>5</span>
       </div>
+      <p className={styles.description}>{description}</p>
     </div>
   );
 }

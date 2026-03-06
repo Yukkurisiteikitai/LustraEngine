@@ -1,3 +1,4 @@
+import { getStressColor } from '@/lib/stress';
 import styles from './StressChart.module.css';
 
 interface StressChartProps {
@@ -8,6 +9,11 @@ export default function StressChart({ points }: StressChartProps) {
   const normalized = points.length > 0 ? points : [3, 3, 3, 3, 3, 3, 3];
   const maxX = 260;
   const maxY = 80;
+
+  console.log('StressChart - points:', points);
+  // 最新のストレスレベルで色を決定
+  const latestPoint = normalized[normalized.length - 1] || 3;
+  const lineColor = getStressColor(latestPoint);
 
   const polylinePoints = normalized
     .map((point, index) => {
@@ -24,7 +30,7 @@ export default function StressChart({ points }: StressChartProps) {
         <line x1="20" y1="90" x2="280" y2="90" stroke="#d1d5db" strokeWidth="2" />
         <polyline
           fill="none"
-          stroke="#9333ea"
+          stroke={lineColor}
           strokeWidth="3"
           strokeLinecap="round"
           strokeLinejoin="round"
