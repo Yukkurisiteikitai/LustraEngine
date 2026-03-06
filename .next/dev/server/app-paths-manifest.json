@@ -1,6 +1,7 @@
 {
-  "/api/patterns/detect/route": "app/api/patterns/detect/route.js",
-  "/api/patterns/route": "app/api/patterns/route.js",
-  "/patterns/page": "app/patterns/page.js",
-  "/settings/page": "app/settings/page.js"
+  "/api/analytics/route": "app/api/analytics/route.js",
+  "/api/chat/route": "app/api/chat/route.js",
+  "/api/persona/route": "app/api/persona/route.js",
+  "/chat/page": "app/chat/page.js",
+  "/page": "app/page.js"
 }

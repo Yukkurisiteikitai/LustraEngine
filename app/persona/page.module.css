@@ -1,0 +1,151 @@
+.main {
+  min-height: calc(100vh - 4rem);
+  padding: 2rem 1rem;
+}
+
+.container {
+  max-width: 42rem;
+  margin: 0 auto;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  gap: 1rem;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text, #111827);
+  margin: 0;
+}
+
+.inferBtn {
+  padding: 0.5rem 1.25rem;
+  background: var(--accent, #6366f1);
+  color: #fff;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.inferBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.inferBtn:not(:disabled):hover {
+  opacity: 0.9;
+}
+
+.section {
+  margin-bottom: 2rem;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+}
+
+.sectionTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text, #111827);
+  margin: 0 0 1.25rem;
+}
+
+.traitList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.clusterList,
+.domainList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.clusterItem,
+.domainItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg, #f9fafb);
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+}
+
+.clusterName {
+  font-weight: 600;
+  color: var(--text, #111827);
+}
+
+.clusterCount,
+.domainCount {
+  color: var(--text-muted, #6b7280);
+}
+
+.snapshotDate {
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b7280);
+  text-align: right;
+  margin-top: 0.5rem;
+}
+
+.empty {
+  font-size: 0.875rem;
+  color: var(--text-muted, #6b7280);
+}
+
+.loading {
+  color: var(--text-muted, #6b7280);
+  font-size: 0.875rem;
+}
+
+.warningBox {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 0.5rem;
+  padding: 0.875rem 1rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+  color: #92400e;
+}
+
+.settingsLink {
+  color: #92400e;
+  font-weight: 600;
+  text-decoration: underline;
+  margin: 0 0.25rem;
+}
+
+.errorBox {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 0.5rem;
+  padding: 0.875rem 1rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+  color: #991b1b;
+}
+
+.successBox {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 0.5rem;
+  padding: 0.875rem 1rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+  color: #166534;
+}
