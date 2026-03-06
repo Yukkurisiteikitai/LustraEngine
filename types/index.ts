@@ -49,3 +49,89 @@ export interface ExperienceRecord extends ExperienceInput {
 export type ObstacleInput = ExperienceInput;
 /** @deprecated Use ExperienceRecord */
 export type ObstacleRecord = ExperienceRecord;
+
+// --- L3 Cognition Layer ---
+
+export type ClusterType =
+  | 'procrastination'
+  | 'social_avoidance'
+  | 'authority_anxiety'
+  | 'perfectionism';
+
+export interface EpisodeCluster {
+  id: string;
+  userId: string;
+  clusterType: ClusterType;
+  label: string;
+  description: string | null;
+  strength: number;
+  detectedCount: number;
+  lastDetectedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExperienceClusterMap {
+  id: string;
+  experienceId: string;
+  clusterId: string;
+  confidence: number | null;
+  reasoning: string | null;
+  createdAt: string;
+  // joined fields
+  clusterType?: ClusterType;
+  clusterLabel?: string;
+  experienceDescription?: string;
+}
+
+export interface ClusterEdge {
+  id: string;
+  userId: string;
+  sourceClusterId: string;
+  targetClusterId: string;
+  edgeType: 'leads_to' | 'triggers' | 'reinforces';
+  weight: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExperienceForClassification {
+  id: string;
+  description: string;
+  stressLevel: number;
+  actionResult: 'AVOIDED' | 'CONFRONTED';
+  goal?: string;
+  action?: string;
+  emotion?: string;
+  context?: string;
+}
+
+export interface ClusterAssignment {
+  clusterType: ClusterType;
+  label: string;
+  description: string;
+  confidence: number;
+  reasoning: string;
+}
+
+export interface ClassificationResult {
+  experienceId: string;
+  assignments: ClusterAssignment[];
+}
+
+export interface PatternsResponse {
+  clusters: EpisodeCluster[];
+  recentMappings: ExperienceClusterMap[];
+}
+
+// --- LM Config (stored in localStorage, never in DB) ---
+
+export type LMProvider = 'claude' | 'lmstudio';
+
+export interface LMConfig {
+  provider: LMProvider;
+  claudeApiKey?: string;
+  lmstudioEndpoint?: string;
+  lmstudioApiKey?: string;
+  lmstudioModel?: string;
+}

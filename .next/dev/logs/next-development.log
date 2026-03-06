@@ -1,10 +1,114 @@
-[00:00:01.076] Server  WARN    ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
-[00:00:01.208] Server  LOG     ✓ Ready in 955ms
-[00:00:08.198] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:15:01.893] Server  LOG     [API/logs] Inserting experiences for user: "7ec098b1-f2fa-414c-853b-2adb38e848df" "count:" 1
-[00:15:02.610] Server  LOG     [API/logs] Success: {}
-[00:15:11.122] Browser LOG     StressChart - points: [0,0,0,0,0,2,0]
-[00:15:11.122] Browser LOG     StressChart - points: [0,0,0,0,0,2,0]
-[00:15:14.861] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:15:15.830] Browser LOG     StressChart - points: [0,0,0,0,0,2,3]
-[00:15:15.831] Browser LOG     StressChart - points: [0,0,0,0,0,2,3]
+[00:00:00.900] Server  WARN    ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+[00:00:00.985] Server  LOG     ✓ Ready in 747ms
+[00:00:09.996] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:01:14.728] Browser LOG     StressChart - points: [0,0,0,0,0,2,3]
+[00:01:14.728] Browser LOG     StressChart - points: [0,0,0,0,0,2,3]
+[00:08:19.595] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:08:19.767] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <ScrollAndFocusHandler segmentPath={[...]}>
+      <InnerScrollAndFocusHandler segmentPath={[...]} focusAndScrollRef={{apply:false, ...}}>
+        <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+          <LoadingBoundary name="patterns/" loading={null}>
+            <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <InnerLayoutRouter url="/patterns" tree={[...]} params={{}} cacheNode={{rsc:<Fragment>, ...}} ...>
+                    <SegmentViewNode type="page" pagePath="patterns/p...">
+                      <SegmentTrieNode>
+                      <ClientPageRoot Component={function PatternsPage} serverProvidedParams={{...}}>
+                        <PatternsPage params={Promise} searchParams={Promise}>
+                          <Header>
+                          <main className="page-modul...">
+                            <div className="page-modul...">
+                              <div className="page-modul...">
+                                <h1>
+                                <button
+                                  type="button"
+                                  className="page-module__nYf6La__analyzeBtn"
+                                  onClick={function handleDetect}
++                                 disabled={false}
+-                                 disabled=""
++                                 title={undefined}
+-                                 title="まず設定ページでLMプロバイダーを設定してください"
+                                >
++                                 パターンを分析
++                             <p className="page-module__nYf6La__loading">
+-                             <div className="page-module__nYf6La__warningBox">
+                          ...
+                    ...
+                  ...
+        ...
+
+[00:10:03.737] Server  LOG     [API/logs] Inserting experiences for user: "7ec098b1-f2fa-414c-853b-2adb38e848df" "count:" 1
+[00:10:04.559] Server  LOG     [API/logs] Success: {}
+[00:10:08.032] Browser LOG     StressChart - points: [0,0,0,0,0,2,3]
+[00:10:08.033] Browser LOG     StressChart - points: [0,0,0,0,0,2,3]
+[00:10:09.160] Server  WARN    [API/patterns/detect] classifyExperience error for "6a11c052-3be5-493f-9c32-d4582fbf79bc" Error: Claude API error 400: {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."},"request_id":"req_011CYmPjm7anynrsyqRrGYdR"}
+[00:10:10.863] Server  WARN    [API/patterns/detect] classifyExperience error for "6a11c052-3be5-493f-9c32-d4582fbf79bc" Error: Claude API error 400: {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."},"request_id":"req_011CYmPju4KXAJ6BivYqNkb6"}
+[00:10:13.058] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:10:13.169] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <ScrollAndFocusHandler segmentPath={[...]}>
+      <InnerScrollAndFocusHandler segmentPath={[...]} focusAndScrollRef={{apply:false, ...}}>
+        <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+          <LoadingBoundary name="patterns/" loading={null}>
+            <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+              <RedirectBoundary>
+                <RedirectErrorBoundary router={{...}}>
+                  <InnerLayoutRouter url="/patterns" tree={[...]} params={{}} cacheNode={{rsc:<Fragment>, ...}} ...>
+                    <SegmentViewNode type="page" pagePath="patterns/p...">
+                      <SegmentTrieNode>
+                      <ClientPageRoot Component={function PatternsPage} serverProvidedParams={{...}}>
+                        <PatternsPage params={Promise} searchParams={Promise}>
+                          <Header>
+                          <main className="page-modul...">
+                            <div className="page-modul...">
+                              <div className="page-modul...">
+                                <h1>
+                                <button
+                                  type="button"
+                                  className="page-module__nYf6La__analyzeBtn"
+                                  onClick={function handleDetect}
++                                 disabled={false}
+-                                 disabled=""
++                                 title={undefined}
+-                                 title="まず設定ページでLMプロバイダーを設定してください"
+                                >
++                                 パターンを分析
++                             <p className="page-module__nYf6La__loading">
+-                             <div className="page-module__nYf6La__warningBox">
+                          ...
+                    ...
+                  ...
+        ...
+
+[00:10:19.755] Server  WARN    [API/patterns/detect] classifyExperience error for "6a11c052-3be5-493f-9c32-d4582fbf79bc" Error: Claude API error 400: {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."},"request_id":"req_011CYmPkYdmis2g7ayM29f3U"}
+[00:10:32.666] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:10:33.711] Browser LOG     StressChart - points: [0,0,0,0,0,2,3]
+[00:10:33.711] Browser LOG     StressChart - points: [0,0,0,0,0,2,3]
+[00:10:53.067] Server  WARN    [API/patterns/detect] classifyExperience error for "6a11c052-3be5-493f-9c32-d4582fbf79bc" Error: Claude API error 400: {"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."},"request_id":"req_011CYmPo1RPUqbq9sgd4izFS"}
+[00:12:41.113] Browser LOG     StressChart - points: [0,0,0,0,0,2,3]
+[00:12:41.113] Browser LOG     StressChart - points: [0,0,0,0,0,2,3]

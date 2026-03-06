@@ -1,8 +1,9 @@
 'use client';
 
-import { QueryClient, QueryClientProvider, useMutation, useQuery } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ReactNode, useState } from 'react';
-import type { ExperienceRecord, LogPayload, LogResponse } from '@/types';
+import type { ExperienceRecord, LogPayload, LogResponse, PatternsResponse } from '@/types';
+import { loadLMConfig } from '@/lib/lmConfig';
 
 export function MockQueryProvider({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -119,5 +120,51 @@ export function useAnalytics() {
   return useQuery({
     queryKey: ['analytics'],
     queryFn: fetchAnalytics,
+  });
+}
+
+async function fetchPatterns(): Promise<PatternsResponse> {
+  const response = await fetch('/api/patterns');
+
+  if (!response.ok) {
+    const json = await response.json();
+    const errorMessage = (json as { message?: string }).message || 'パターン取得に失敗しました';
+    throw new Error(errorMessage);
+  }
+
+  return (await response.json()) as PatternsResponse;
+}
+
+export function usePatterns() {
+  return useQuery({
+    queryKey: ['patterns'],
+    queryFn: fetchPatterns,
+  });
+}
+
+export function usePatternDetection() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const cfg = loadLMConfig();
+      if (!cfg) throw new Error('LM設定が見つかりません。設定ページでLMプロバイダーを設定してください。');
+
+      const response = await fetch('/api/patterns/detect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lmConfig: cfg }),
+      });
+
+      const json = await response.json();
+      if (!response.ok) {
+        const errorMessage = (json as { message?: string }).message || 'パターン検出に失敗しました';
+        throw new Error(errorMessage);
+      }
+      return json as { classified: number; message: string };
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['patterns'] });
+    },
   });
 }
