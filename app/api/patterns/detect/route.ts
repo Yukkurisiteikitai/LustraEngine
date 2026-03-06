@@ -72,6 +72,7 @@ export async function POST(req: Request) {
     }
 
     let classified = 0;
+    const errors: string[] = [];
 
     for (const exp of unclassified) {
       const expInput: ExperienceForClassification = {
@@ -89,7 +90,9 @@ export async function POST(req: Request) {
       try {
         result = await classifyExperience(expInput, lmConfig);
       } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
         console.warn('[API/patterns/detect] classifyExperience error for', exp.id, err);
+        errors.push(msg);
         continue;
       }
 
@@ -140,9 +143,17 @@ export async function POST(req: Request) {
       classified++;
     }
 
+    if (errors.length > 0 && classified === 0) {
+      return NextResponse.json(
+        { message: `分析に失敗しました: ${errors[0]}` },
+        { status: 500 },
+      );
+    }
+
     return NextResponse.json({
       classified,
       message: `${classified}件の記録を分析しました`,
+      ...(errors.length > 0 ? { warnings: errors } : {}),
     });
   } catch (err) {
     console.error('[API/patterns/detect] POST unhandled error:', err);

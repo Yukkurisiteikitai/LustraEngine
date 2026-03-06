@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -87,7 +88,10 @@ function MappingRow({ mapping }: { mapping: ExperienceClusterMap }) {
 export default function PatternsPage() {
   const { data, isLoading, error } = usePatterns();
   const detection = usePatternDetection();
-  const hasConfig = typeof window !== 'undefined' && loadLMConfig() !== null;
+  const [hasConfig, setHasConfig] = useState(false);
+  useEffect(() => {
+    setHasConfig(loadLMConfig() !== null);
+  }, []);
 
   function handleDetect() {
     detection.mutate();
