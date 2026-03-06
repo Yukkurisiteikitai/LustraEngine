@@ -10,6 +10,9 @@ export interface ObstacleDraft {
   description: string;
   domain?: Domain;
   stressLevel: number;
+  goal?: string;
+  emotion?: string;
+  context?: string;
 }
 
 interface ObstacleFormProps {
@@ -27,6 +30,9 @@ const DEFAULT_VALUE: ObstacleDraft = {
   description: '',
   domain: undefined,
   stressLevel: 3,
+  goal: '',
+  emotion: '',
+  context: '',
 };
 
 export default function ObstacleForm({
@@ -85,6 +91,51 @@ export default function ObstacleForm({
             {errors.description}
           </p>
         ) : null}
+      </div>
+
+      <div className={styles.group}>
+        <label className={styles.label} htmlFor="goal">
+          何をしようとしていたか（任意）
+        </label>
+        <textarea
+          id="goal"
+          name="goal"
+          rows={2}
+          value={form.goal ?? ''}
+          onChange={(event) => setForm((prev) => ({ ...prev, goal: event.target.value }))}
+          className={styles.input}
+          placeholder="例: 英語の勉強"
+        />
+      </div>
+
+      <div className={styles.group}>
+        <label className={styles.label} htmlFor="emotion">
+          感情（任意）
+        </label>
+        <textarea
+          id="emotion"
+          name="emotion"
+          rows={2}
+          value={form.emotion ?? ''}
+          onChange={(event) => setForm((prev) => ({ ...prev, emotion: event.target.value }))}
+          className={styles.input}
+          placeholder="例: 罪悪感、不安"
+        />
+      </div>
+
+      <div className={styles.group}>
+        <label className={styles.label} htmlFor="context">
+          状況（任意）
+        </label>
+        <textarea
+          id="context"
+          name="context"
+          rows={2}
+          value={form.context ?? ''}
+          onChange={(event) => setForm((prev) => ({ ...prev, context: event.target.value }))}
+          className={styles.input}
+          placeholder="例: 夜、一人で部屋にいた"
+        />
       </div>
 
       <div className={styles.group}>

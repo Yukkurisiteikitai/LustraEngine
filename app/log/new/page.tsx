@@ -15,6 +15,9 @@ type ConfirmObstacle = {
   description: string;
   domain: Domain;
   stressLevel: number;
+  goal?: string;
+  emotion?: string;
+  context?: string;
 };
 
 function domainToLabel(domain: Domain) {
@@ -38,6 +41,7 @@ export default function LogNewPage() {
   const [step, setStep] = useState<Step>(1);
   const [obstacle, setObstacle] = useState<ConfirmObstacle | null>(null);
   const [actionResult, setActionResult] = useState<ActionResult | ''>('');
+  const [actionBody, setActionBody] = useState('');
   const [actionText, setActionText] = useState('');
   const [actionError, setActionError] = useState<string>('');
   const [statusMessage, setStatusMessage] = useState('');
@@ -74,6 +78,11 @@ export default function LogNewPage() {
             domain: obstacle.domain,
             stressLevel: obstacle.stressLevel,
             actionResult,
+            actionMemo: actionText || undefined,
+            goal: obstacle.goal || undefined,
+            action: actionBody || undefined,
+            emotion: obstacle.emotion || undefined,
+            context: obstacle.context || undefined,
           },
         ],
       },
@@ -86,6 +95,7 @@ export default function LogNewPage() {
             setStep(1);
             setObstacle(null);
             setActionResult('');
+            setActionBody('');
             setActionText('');
             setStatusMessage('');
           }, 2000);
@@ -116,11 +126,13 @@ export default function LogNewPage() {
             <div className={styles.stepBlock}>
               <ActionSelector
                 value={actionResult}
+                action={actionBody}
                 actionText={actionText}
                 onChangeResult={(value) => {
                   setActionResult(value);
                   setActionError('');
                 }}
+                onChangeAction={setActionBody}
                 onChangeText={setActionText}
                 error={actionError}
               />
@@ -148,10 +160,14 @@ export default function LogNewPage() {
                 <p>
                   <strong>ストレス:</strong> {obstacle.stressLevel}
                 </p>
+                {obstacle.goal ? <p><strong>ゴール:</strong> {obstacle.goal}</p> : null}
+                {obstacle.emotion ? <p><strong>感情:</strong> {obstacle.emotion}</p> : null}
+                {obstacle.context ? <p><strong>状況:</strong> {obstacle.context}</p> : null}
                 <p>
                   <strong>行動:</strong>{' '}
                   {actionResult === 'CONFRONTED' ? '向き合った' : '回避した'}
                 </p>
+                {actionBody ? <p><strong>実際の行動:</strong> {actionBody}</p> : null}
                 {actionText ? (
                   <p>
                     <strong>メモ:</strong> {actionText}

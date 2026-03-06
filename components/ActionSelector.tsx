@@ -5,16 +5,20 @@ import type { ActionResult } from '@/types';
 
 interface ActionSelectorProps {
   value: ActionResult | '';
+  action: string;
   actionText: string;
   onChangeResult: (value: ActionResult) => void;
+  onChangeAction: (value: string) => void;
   onChangeText: (value: string) => void;
   error?: string;
 }
 
 export default function ActionSelector({
   value,
+  action,
   actionText,
   onChangeResult,
+  onChangeAction,
   onChangeText,
   error,
 }: ActionSelectorProps) {
@@ -51,6 +55,20 @@ export default function ActionSelector({
           {error}
         </p>
       ) : null}
+
+      <div className={styles.memo}>
+        <label className={styles.label} htmlFor="action">
+          実際にしたこと（任意）
+        </label>
+        <textarea
+          id="action"
+          value={action}
+          onChange={(event) => onChangeAction(event.target.value)}
+          rows={2}
+          className={styles.textarea}
+          placeholder="例: YouTubeを見た"
+        />
+      </div>
 
       <div className={styles.memo}>
         <label className={styles.label} htmlFor="actionText">

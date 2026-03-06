@@ -6,6 +6,14 @@ import type { Domain, ExperienceInput, LogPayload } from '@/types';
 const DOMAIN_SET = new Set<Domain>(['WORK', 'RELATIONSHIP', 'HEALTH', 'MONEY', 'SELF']);
 const ACTION_SET = new Set(['AVOIDED', 'CONFRONTED']);
 
+const DEFAULT_DOMAIN_NAMES: Record<Domain, string> = {
+  WORK: '仕事',
+  RELATIONSHIP: '人間関係',
+  HEALTH: '健康',
+  MONEY: 'お金',
+  SELF: '自分',
+};
+
 function isValidObstacle(obstacle: unknown): obstacle is ExperienceInput {
   if (typeof obstacle !== 'object' || obstacle === null) {
     return false;
@@ -24,6 +32,32 @@ function isValidObstacle(obstacle: unknown): obstacle is ExperienceInput {
     typeof candidate.actionResult === 'string' &&
     ACTION_SET.has(candidate.actionResult)
   );
+}
+
+async function ensureDefaultDomains(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+): Promise<Map<Domain, string>> {
+  const rows = (Object.entries(DEFAULT_DOMAIN_NAMES) as [Domain, string][]).map(
+    ([key, name]) => ({ user_id: userId, name, description: key }),
+  );
+
+  await supabase
+    .from('domains')
+    .upsert(rows, { onConflict: 'user_id,name', ignoreDuplicates: true });
+
+  const { data } = await supabase
+    .from('domains')
+    .select('id, description')
+    .eq('user_id', userId);
+
+  const map = new Map<Domain, string>();
+  for (const row of data ?? []) {
+    if (row.description && DOMAIN_SET.has(row.description as Domain)) {
+      map.set(row.description as Domain, row.id);
+    }
+  }
+  return map;
 }
 
 async function ensureUserProfile(
@@ -89,6 +123,7 @@ export async function POST(request: Request) {
 
     // auth.users に存在するユーザーと public.users を同期して FK 制約違反を防ぐ
     await ensureUserProfile(supabase, user);
+    const domainMap = await ensureDefaultDomains(supabase, user.id);
 
     let payload: LogPayload;
     try {
@@ -138,6 +173,7 @@ export async function POST(request: Request) {
       action: o.action ?? null,
       emotion: o.emotion ?? null,
       context: o.context ?? null,
+      domain_id: o.domain ? (domainMap.get(o.domain) ?? null) : null,
     }));
 
     console.log('[API/logs] Inserting experiences for user:', user.id, 'count:', rows.length);
