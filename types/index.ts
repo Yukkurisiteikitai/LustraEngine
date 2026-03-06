@@ -124,6 +124,43 @@ export interface PatternsResponse {
   recentMappings: ExperienceClusterMap[];
 }
 
+// --- L4 Persona Layer ---
+
+export type TraitName =
+  | 'introversion'
+  | 'discipline'
+  | 'curiosity'
+  | 'risk_tolerance'
+  | 'self_criticism'
+  | 'social_anxiety';
+
+export interface Trait {
+  id: string;
+  userId: string;
+  name: TraitName;
+  score: number; // 0-1
+  updatedAt: string;
+}
+
+export interface PersonaJson {
+  traits: Record<TraitName, number>;
+  dominantClusters: { type: ClusterType; detectedCount: number }[];
+  domainBreakdown: Record<string, number>;
+}
+
+export interface PersonaSnapshot {
+  id: string;
+  userId: string;
+  personaJson: PersonaJson;
+  createdAt: string;
+}
+
+// --- L5 Interaction Layer ---
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 // --- LM Config (stored in localStorage, never in DB) ---
 
 export type LMProvider = 'claude' | 'lmstudio';

@@ -2,7 +2,15 @@
 
 import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ReactNode, useState } from 'react';
-import type { ExperienceRecord, LogPayload, LogResponse, PatternsResponse } from '@/types';
+import type {
+  ChatMessage,
+  ExperienceRecord,
+  LogPayload,
+  LogResponse,
+  PatternsResponse,
+  PersonaSnapshot,
+  Trait,
+} from '@/types';
 import { loadLMConfig } from '@/lib/lmConfig';
 
 export function MockQueryProvider({ children }: { children: ReactNode }) {
@@ -165,6 +173,91 @@ export function usePatternDetection() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['patterns'] });
+    },
+  });
+}
+
+async function fetchTraits(): Promise<Trait[]> {
+  const response = await fetch('/api/traits');
+
+  if (!response.ok) {
+    const json = await response.json();
+    const errorMessage = (json as { message?: string }).message || 'トレイト取得に失敗しました';
+    throw new Error(errorMessage);
+  }
+
+  const json = (await response.json()) as { traits: Trait[] };
+  return json.traits;
+}
+
+export function useTraits() {
+  return useQuery({
+    queryKey: ['traits'],
+    queryFn: fetchTraits,
+  });
+}
+
+async function fetchPersona(): Promise<PersonaSnapshot | null> {
+  const response = await fetch('/api/persona');
+
+  if (!response.ok) {
+    const json = await response.json();
+    const errorMessage = (json as { message?: string }).message || 'ペルソナ取得に失敗しました';
+    throw new Error(errorMessage);
+  }
+
+  const json = (await response.json()) as { snapshot: PersonaSnapshot | null };
+  return json.snapshot;
+}
+
+export function usePersona() {
+  return useQuery({
+    queryKey: ['persona'],
+    queryFn: fetchPersona,
+  });
+}
+
+export function useTraitInferenceMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const cfg = loadLMConfig();
+      if (!cfg) throw new Error('LM設定が見つかりません。設定ページでLMプロバイダーを設定してください。');
+
+      const response = await fetch('/api/traits/infer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lmConfig: cfg }),
+      });
+
+      const json = await response.json();
+      if (!response.ok) {
+        const errorMessage = (json as { message?: string }).message || 'トレイト推論に失敗しました';
+        throw new Error(errorMessage);
+      }
+      return json as { message: string };
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['traits'] });
+      void queryClient.invalidateQueries({ queryKey: ['persona'] });
+    },
+  });
+}
+
+export function useChatMutation() {
+  return useMutation({
+    mutationFn: async ({ message, history }: { message: string; history: ChatMessage[] }) => {
+      const cfg = loadLMConfig();
+      if (!cfg) throw new Error('LM設定が見つかりません。設定ページで設定してください。');
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, history, lmConfig: cfg }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error((json as { message?: string }).message ?? 'チャットに失敗しました');
+      return json as { response: string };
     },
   });
 }

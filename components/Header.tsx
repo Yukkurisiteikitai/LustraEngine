@@ -25,6 +25,8 @@ export default function Header() {
           <Link href="/log/new">記録</Link>
           <Link href="/dashboard">ダッシュボード</Link>
           <Link href="/patterns">パターン</Link>
+          <Link href="/persona">ペルソナ</Link>
+          <Link href="/chat">チャット</Link>
           <Link href="/settings">設定</Link>
           {!loading && user && (
             <button type="button" className={styles.logoutBtn} onClick={handleLogout}>
