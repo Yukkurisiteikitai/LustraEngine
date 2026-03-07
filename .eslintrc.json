@@ -1,0 +1,26 @@
+{
+  "extends": ["next/core-web-vitals"],
+  "plugins": ["boundaries"],
+  "rules": {
+    "boundaries/element-types": [
+      "error",
+      {
+        "default": "disallow",
+        "rules": [
+          { "from": "core", "allow": ["core"] },
+          { "from": "application", "allow": ["core", "application"] },
+          { "from": "infrastructure", "allow": ["core", "application", "infrastructure"] },
+          { "from": "presentation", "allow": ["core", "application", "infrastructure", "presentation"] }
+        ]
+      }
+    ]
+  },
+  "settings": {
+    "boundaries/elements": [
+      { "type": "core", "pattern": "src/core/*" },
+      { "type": "application", "pattern": "src/application/*" },
+      { "type": "infrastructure", "pattern": "src/infrastructure/*" },
+      { "type": "presentation", "pattern": "app/*" }
+    ]
+  }
+}

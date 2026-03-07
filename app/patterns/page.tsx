@@ -1,11 +1,9 @@
-'use client';
-
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { usePatterns, usePatternDetection } from '@/lib/mockQueryClient';
-import { loadLMConfig } from '@/lib/lmConfig';
+import PatternDetectButton from './PatternDetectButton';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createRepositories } from '@/container/createRepositories';
 import type { ClusterType, EpisodeCluster, ExperienceClusterMap } from '@/types';
 import styles from './page.module.css';
 
@@ -73,29 +71,64 @@ function MappingRow({ mapping }: { mapping: ExperienceClusterMap }) {
               {mapping.clusterLabel}
             </span>
           )}
-          {confidence != null && (
-            <span className={styles.mappingConf}>{confidence}%</span>
-          )}
+          {confidence != null && <span className={styles.mappingConf}>{confidence}%</span>}
         </div>
       </div>
-      {mapping.reasoning && (
-        <p className={styles.mappingReasoning}>{mapping.reasoning}</p>
-      )}
+      {mapping.reasoning && <p className={styles.mappingReasoning}>{mapping.reasoning}</p>}
     </li>
   );
 }
 
-export default function PatternsPage() {
-  const { data, isLoading, error } = usePatterns();
-  const detection = usePatternDetection();
-  const [hasConfig, setHasConfig] = useState(false);
-  useEffect(() => {
-    setHasConfig(loadLMConfig() !== null);
-  }, []);
+export default async function PatternsPage() {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
 
-  function handleDetect() {
-    detection.mutate();
-  }
+  const { clusterQuery } = createRepositories(supabase);
+  const clusters = await clusterQuery.findByUser(user.id);
+
+  const { data: rawMappings } = await supabase
+    .from('experience_cluster_map')
+    .select(`
+      id, experience_id, cluster_id, confidence, reasoning, created_at,
+      episode_clusters ( cluster_type, label ),
+      experiences ( description )
+    `)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  const recentMappings: ExperienceClusterMap[] = (rawMappings ?? []).map((m) => {
+    const clusterJoin = (m.episode_clusters as unknown) as
+      | { cluster_type: string; label: string }
+      | null;
+    const expJoin = (m.experiences as unknown) as { description: string } | null;
+    return {
+      id: m.id as string,
+      experienceId: m.experience_id as string,
+      clusterId: m.cluster_id as string,
+      confidence: m.confidence as number | null,
+      reasoning: m.reasoning as string | null,
+      createdAt: m.created_at as string,
+      clusterType: clusterJoin?.cluster_type as ClusterType | undefined,
+      clusterLabel: clusterJoin?.label,
+      experienceDescription: expJoin?.description,
+    };
+  });
+
+  const episodeClusters: EpisodeCluster[] = clusters.map((c) => ({
+    id: c.id,
+    userId: c.userId,
+    clusterType: c.clusterType,
+    label: c.label,
+    description: c.description,
+    strength: c.strength,
+    detectedCount: c.detectedCount,
+    lastDetectedAt: c.lastDetectedAt,
+    createdAt: '',
+    updatedAt: '',
+  }));
 
   return (
     <>
@@ -104,76 +137,33 @@ export default function PatternsPage() {
         <div className={styles.container}>
           <div className={styles.pageHeader}>
             <h1 className={styles.title}>行動パターン</h1>
-            <button
-              type="button"
-              className={styles.analyzeBtn}
-              onClick={handleDetect}
-              disabled={detection.isPending || !hasConfig}
-              title={!hasConfig ? 'まず設定ページでLMプロバイダーを設定してください' : undefined}
-            >
-              {detection.isPending ? '分析中...' : 'パターンを分析'}
-            </button>
+            <PatternDetectButton />
           </div>
 
-          {!hasConfig && (
-            <div className={styles.warningBox}>
-              <p>
-                AIプロバイダーが設定されていません。
-                <Link href="/settings" className={styles.settingsLink}>
-                  設定ページ
-                </Link>
-                でLMプロバイダーを設定してください。
+          <section>
+            <h2 className={styles.sectionTitle}>検出されたクラスター</h2>
+            {episodeClusters.length === 0 ? (
+              <p className={styles.empty}>
+                まだパターンが検出されていません。記録を追加して分析を実行してください。
               </p>
-            </div>
-          )}
+            ) : (
+              <div className={styles.clusterGrid}>
+                {episodeClusters.map((cluster) => (
+                  <ClusterCard key={cluster.id} cluster={cluster} />
+                ))}
+              </div>
+            )}
+          </section>
 
-          {detection.error && (
-            <div className={styles.errorBox}>
-              {detection.error instanceof Error
-                ? detection.error.message
-                : '分析に失敗しました'}
-            </div>
-          )}
-
-          {detection.isSuccess && (
-            <div className={styles.successBox}>
-              {(detection.data as { message?: string }).message ?? '分析が完了しました'}
-            </div>
-          )}
-
-          {isLoading && <p className={styles.loading}>読み込み中...</p>}
-          {error && (
-            <p className={styles.errorBox}>
-              {error instanceof Error ? error.message : '読み込みに失敗しました'}
-            </p>
-          )}
-
-          {data && (
-            <>
-              <section>
-                <h2 className={styles.sectionTitle}>検出されたクラスター</h2>
-                {data.clusters.length === 0 ? (
-                  <p className={styles.empty}>まだパターンが検出されていません。記録を追加して分析を実行してください。</p>
-                ) : (
-                  <div className={styles.clusterGrid}>
-                    {data.clusters.map((cluster) => (
-                      <ClusterCard key={cluster.id} cluster={cluster} />
-                    ))}
-                  </div>
-                )}
-              </section>
-
-              {data.recentMappings.length > 0 && (
-                <section>
-                  <h2 className={styles.sectionTitle}>最近の分類結果</h2>
-                  <ul className={styles.mappingList}>
-                    {data.recentMappings.map((m) => (
-                      <MappingRow key={m.id} mapping={m} />
-                    ))}
-                  </ul>
-                </section>
-              )}
-            </>
+          {recentMappings.length > 0 && (
+            <section>
+              <h2 className={styles.sectionTitle}>最近の分類結果</h2>
+              <ul className={styles.mappingList}>
+                {recentMappings.map((m) => (
+                  <MappingRow key={m.id} mapping={m} />
+                ))}
+              </ul>
+            </section>
           )}
         </div>
       </main>
