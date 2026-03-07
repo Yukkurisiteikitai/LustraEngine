@@ -1,7 +1,0 @@
-{
-  "/api/analytics/route": "app/api/analytics/route.js",
-  "/api/chat/route": "app/api/chat/route.js",
-  "/api/persona/route": "app/api/persona/route.js",
-  "/chat/page": "app/chat/page.js",
-  "/page": "app/page.js"
-}
