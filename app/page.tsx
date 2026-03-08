@@ -1,26 +1,31 @@
-'use client';
-
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import SummaryCard from '@/components/SummaryCard';
-import { useAnalytics } from '@/lib/mockQueryClient';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createGetAnalyticsUseCase } from '@/container/createUseCases';
 import styles from './page.module.css';
 
-export default function HomePage() {
-  const { data } = useAnalytics();
+export default async function HomePage() {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const summary = data
-    ? {
+  let summary = { confrontationRate: 0, avgStress7Days: 0, streakDays: 0 };
+
+  if (user) {
+    try {
+      const data = await createGetAnalyticsUseCase(supabase).execute(user.id);
+      summary = {
         confrontationRate: data.confrontationRate,
         avgStress7Days: data.avgStress7Days,
         streakDays: data.streakDays,
-      }
-    : {
-        confrontationRate: 0,
-        avgStress7Days: 0,
-        streakDays: 0,
       };
+    } catch {
+      // Non-fatal: show zeros if analytics fail
+    }
+  }
 
   return (
     <>
@@ -29,16 +34,18 @@ export default function HomePage() {
         <section className={styles.hero}>
           <h1 className={styles.title}>今日の一歩を、明日の自信に。</h1>
           <p className={styles.subtitle}>60秒で、今日の障害と行動を記録できます。</p>
-          <Link href="/log/new" className={styles.cta}>
+          <Link href={user ? '/log/new' : '/login'} className={styles.cta}>
             今日を記録する
           </Link>
         </section>
 
-        <section className={styles.summary} aria-label="最近のサマリー">
-          <SummaryCard title="向き合い率" value={`${summary.confrontationRate}%`} note="直近7日" />
-          <SummaryCard title="平均ストレス" value={`${summary.avgStress7Days}`} note="直近7日" />
-          <SummaryCard title="連続記録" value={`${summary.streakDays}日`} note="継続中" />
-        </section>
+        {user && (
+          <section className={styles.summary} aria-label="最近のサマリー">
+            <SummaryCard title="向き合い率" value={`${summary.confrontationRate}%`} note="直近7日" />
+            <SummaryCard title="平均ストレス" value={`${summary.avgStress7Days}`} note="直近7日" />
+            <SummaryCard title="連続記録" value={`${summary.streakDays}日`} note="継続中" />
+          </section>
+        )}
       </main>
       <Footer />
     </>

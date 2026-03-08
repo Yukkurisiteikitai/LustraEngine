@@ -1,0 +1,31 @@
+{
+  "extends": ["next/core-web-vitals"],
+  "plugins": ["boundaries"],
+  "rules": {
+    "import/no-duplicates": "error",
+    "boundaries/element-types": [
+      "error",
+      {
+        "default": "disallow",
+        "rules": [
+          { "from": "core",           "allow": ["core", "shared"] },
+          { "from": "application",    "allow": ["core", "application", "shared"] },
+          { "from": "infrastructure", "allow": ["core", "application", "infrastructure", "shared"] },
+          { "from": "container",      "allow": ["core", "application", "infrastructure", "container", "shared"] },
+          { "from": "presentation",   "allow": ["core", "application", "infrastructure", "container", "presentation", "shared"] },
+          { "from": "shared",         "allow": ["shared"] }
+        ]
+      }
+    ]
+  },
+  "settings": {
+    "boundaries/elements": [
+      { "type": "core",           "pattern": "src/core/**" },
+      { "type": "application",    "pattern": "src/application/**" },
+      { "type": "infrastructure", "pattern": "src/infrastructure/**" },
+      { "type": "container",      "pattern": "src/container/**" },
+      { "type": "presentation",   "pattern": "app/**" },
+      { "type": "shared",         "pattern": ["types/**", "lib/**", "components/**"] }
+    ]
+  }
+}

@@ -1,12 +1,10 @@
-'use client';
-
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import TraitBar from '@/components/TraitBar';
-import { useTraits, usePersona, useTraitInferenceMutation } from '@/lib/mockQueryClient';
-import { loadLMConfig } from '@/lib/lmConfig';
+import TraitInferButton from './TraitInferButton';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createRepositories } from '@/container/createRepositories';
 import type { TraitName } from '@/types';
 import styles from './page.module.css';
 
@@ -43,19 +41,23 @@ const TRAIT_ORDER: TraitName[] = [
   'social_anxiety',
 ];
 
-export default function PersonaPage() {
-  const { data: traits, isLoading: traitsLoading, error: traitsError } = useTraits();
-  const { data: snapshot, isLoading: personaLoading } = usePersona();
-  const inference = useTraitInferenceMutation();
-  const [hasConfig, setHasConfig] = useState(false);
+export default async function PersonaPage() {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
 
-  useEffect(() => {
-    setHasConfig(loadLMConfig() !== null);
-  }, []);
+  const { trait, persona } = createRepositories(supabase);
+  const [traits, snapshot] = await Promise.all([
+    trait.findByUser(user.id),
+    persona.getLatest(user.id),
+  ]);
 
-  const traitMap = traits
-    ? Object.fromEntries(traits.map((t) => [t.name, t.score])) as Record<TraitName, number>
-    : null;
+  const traitMap =
+    traits.length > 0
+      ? (Object.fromEntries(traits.map((t) => [t.name, t.score])) as Record<TraitName, number>)
+      : null;
 
   return (
     <>
@@ -64,48 +66,8 @@ export default function PersonaPage() {
         <div className={styles.container}>
           <div className={styles.pageHeader}>
             <h1 className={styles.title}>ペルソナ</h1>
-            <button
-              type="button"
-              className={styles.inferBtn}
-              onClick={() => inference.mutate()}
-              disabled={inference.isPending || !hasConfig}
-              title={!hasConfig ? 'まず設定ページでLMプロバイダーを設定してください' : undefined}
-            >
-              {inference.isPending ? '推論中...' : 'トレイト推論を実行'}
-            </button>
+            <TraitInferButton />
           </div>
-
-          {!hasConfig && (
-            <div className={styles.warningBox}>
-              <p>
-                AIプロバイダーが設定されていません。
-                <Link href="/settings" className={styles.settingsLink}>
-                  設定ページ
-                </Link>
-                でLMプロバイダーを設定してください。
-              </p>
-            </div>
-          )}
-
-          {inference.error && (
-            <div className={styles.errorBox}>
-              {inference.error instanceof Error ? inference.error.message : '推論に失敗しました'}
-            </div>
-          )}
-
-          {inference.isSuccess && (
-            <div className={styles.successBox}>
-              {(inference.data as { message?: string }).message ?? '推論が完了しました'}
-            </div>
-          )}
-
-          {(traitsLoading || personaLoading) && <p className={styles.loading}>読み込み中...</p>}
-
-          {traitsError && (
-            <p className={styles.errorBox}>
-              {traitsError instanceof Error ? traitsError.message : '読み込みに失敗しました'}
-            </p>
-          )}
 
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>パーソナリティトレイト</h2>

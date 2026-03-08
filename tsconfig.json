@@ -35,6 +35,18 @@
       ],
       "@/lib/*": [
         "./lib/*"
+      ],
+      "@/core/*": [
+        "./src/core/*"
+      ],
+      "@/application/*": [
+        "./src/application/*"
+      ],
+      "@/infrastructure/*": [
+        "./src/infrastructure/*"
+      ],
+      "@/container/*": [
+        "./src/container/*"
       ]
     }
   },
