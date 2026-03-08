@@ -89,7 +89,7 @@ export default async function PatternsPage() {
   const { clusterQuery } = createRepositories(supabase);
   const clusters = await clusterQuery.findByUser(user.id);
 
-  const { data: rawMappings } = await supabase
+  const { data: rawMappings, error } = await supabase
     .from('experience_cluster_map')
     .select(`
       id, experience_id, cluster_id, confidence, reasoning, created_at,
@@ -98,6 +98,10 @@ export default async function PatternsPage() {
     `)
     .order('created_at', { ascending: false })
     .limit(20);
+
+  if (error) {
+    throw error;
+  }
 
   const recentMappings: ExperienceClusterMap[] = (rawMappings ?? []).map((m) => {
     const clusterJoin = (m.episode_clusters as unknown) as

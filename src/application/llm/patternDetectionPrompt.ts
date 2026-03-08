@@ -40,7 +40,7 @@ export function buildPatternUserMessage(experience: Experience): string {
   if (data.goal) parts.push(`Goal: ${data.goal}`);
   if (data.context) parts.push(`Context: ${data.context}`);
   if (data.action) parts.push(`Action taken: ${data.action}`);
-  parts.push(`Stress level: ${data.stressLevel}/10`);
+  parts.push(`Stress level: ${data.stressLevel}/5`);
   parts.push(`Outcome: ${data.actionResult === 'AVOIDED' ? 'Avoided' : 'Confronted'}`);
   return parts.join('\n');
 }

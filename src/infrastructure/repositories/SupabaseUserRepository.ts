@@ -29,9 +29,13 @@ export class SupabaseUserRepository implements IUserRepository {
       description: key,
     }));
 
-    await this.supabase
+    const { error: upsertError } = await this.supabase
       .from('domains')
       .upsert(rows, { onConflict: 'user_id,name', ignoreDuplicates: true });
+
+    if (upsertError) {
+      throw new InfrastructureError('domains:upsert failed', upsertError);
+    }
 
     const { data, error } = await this.supabase
       .from('domains')
