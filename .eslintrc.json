@@ -17,9 +17,9 @@
   },
   "settings": {
     "boundaries/elements": [
-      { "type": "core", "pattern": "src/core/*" },
-      { "type": "application", "pattern": "src/application/*" },
-      { "type": "infrastructure", "pattern": "src/infrastructure/*" },
+      { "type": "core", "pattern": "src/core/**" },
+      { "type": "application", "pattern": "src/application/**" },
+      { "type": "infrastructure", "pattern": "src/infrastructure/**" },
       { "type": "presentation", "pattern": "app/*" }
     ]
   }

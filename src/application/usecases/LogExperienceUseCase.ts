@@ -21,14 +21,16 @@ export class LogExperienceUseCase {
     user: UserMeta,
     dto: CreateExperienceDTO[],
     date: string,
-    lmConfig: LMConfig,
+    lmConfig: LMConfig | undefined,
   ) {
     await this.userRepo.ensureProfile(userId, user.displayName);
     const domainMap = await this.userRepo.ensureDefaultDomains(userId);
     const saved = await this.expRepo.save(userId, dto, date, domainMap);
 
     // 非同期 job enqueue (HTTP response を blocking しない)
-    await this.jobQueue.enqueue(DETECT_PATTERNS_JOB, { userId, lmConfig });
+    if (lmConfig) {
+      await this.jobQueue.enqueue(DETECT_PATTERNS_JOB, { userId, lmConfig });
+    }
 
     return { savedIds: saved.map((e) => e.id) };
   }

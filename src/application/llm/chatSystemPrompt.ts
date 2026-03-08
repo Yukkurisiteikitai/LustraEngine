@@ -85,7 +85,7 @@ export function buildChatSystemPrompt(
     );
   }
   if ((traits.introversion ?? 0) >= 0.6) {
-    styleGuidelines.push('- introvertionが高いため、静かで思慮深いトーンを保ってください');
+    styleGuidelines.push('- introversionが高いため、静かで思慮深いトーンを保ってください');
   }
   if ((traits.curiosity ?? 0) >= 0.6) {
     styleGuidelines.push(

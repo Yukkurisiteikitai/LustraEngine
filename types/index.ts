@@ -68,7 +68,7 @@ export interface EpisodeCluster {
   detectedCount: number;
   lastDetectedAt: string | null;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
 
 export interface ExperienceClusterMap {

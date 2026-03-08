@@ -11,4 +11,5 @@ export interface ClusterData {
   strength: number;
   detectedCount: number;
   lastDetectedAt: string | null;
+  createdAt: string;
 }

@@ -13,7 +13,6 @@ export class SupabaseClusterCommandRepository implements IClusterCommandReposito
     assignments: ClusterAssignment[],
   ): Promise<void> {
     const { error } = await this.supabase.rpc('classify_experience_atomic', {
-      p_user_id: userId,
       p_experience_id: experienceId,
       p_assignments: assignments,
     });

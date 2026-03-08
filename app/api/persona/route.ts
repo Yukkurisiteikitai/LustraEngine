@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createRepositories } from '@/container/createRepositories';
-import { PersonaMapper } from '@/application/mappers/PersonaMapper';
 import { AuthError } from '@/core/errors/AuthError';
 import { handleError } from '@/lib/apiHelpers';
 import type { PersonaSnapshot } from '@/types';

@@ -58,6 +58,14 @@ export async function POST(request: Request) {
     if (!Array.isArray(obstacles) || obstacles.length === 0) {
       throw new ValidationError('obstaclesは1件以上必須です');
     }
+    for (const obs of obstacles) {
+      if (typeof obs.stressLevel !== 'number' || obs.stressLevel < 1 || obs.stressLevel > 5) {
+        throw new ValidationError('stressLevelは1〜5の数値で指定してください');
+      }
+      if (obs.actionResult !== 'AVOIDED' && obs.actionResult !== 'CONFRONTED') {
+        throw new ValidationError('actionResultはAVOIDEDまたはCONFRONTEDで指定してください');
+      }
+    }
 
     const displayName =
       typeof user.user_metadata?.display_name === 'string'
@@ -70,7 +78,7 @@ export async function POST(request: Request) {
     }
 
     const useCase = createLogExperienceUseCase(supabase, queue);
-    await useCase.execute(user.id, { displayName }, obstacles, date, lmConfig ?? { provider: 'claude' });
+    await useCase.execute(user.id, { displayName }, obstacles, date, lmConfig);
 
     revalidateTag('analytics', {});
 

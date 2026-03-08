@@ -126,8 +126,8 @@ export default async function PatternsPage() {
     strength: c.strength,
     detectedCount: c.detectedCount,
     lastDetectedAt: c.lastDetectedAt,
-    createdAt: '',
-    updatedAt: '',
+    createdAt: c.createdAt,
+    updatedAt: c.lastDetectedAt ?? '',
   }));
 
   return (

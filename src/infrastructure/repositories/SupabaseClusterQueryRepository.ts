@@ -24,6 +24,7 @@ export class SupabaseClusterQueryRepository implements IClusterQueryRepository {
       strength: c.strength as number,
       detectedCount: c.detected_count as number,
       lastDetectedAt: c.last_detected_at as string | null,
+      createdAt: c.created_at as string,
     }));
   }
 
