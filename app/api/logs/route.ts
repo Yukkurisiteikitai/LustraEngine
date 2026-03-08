@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { createLogExperienceUseCase } from '@/container/createUseCases';
-import { createGetAnalyticsUseCase } from '@/container/createUseCases';
+import { createLogExperienceUseCase, createGetAnalyticsUseCase } from '@/container/createUseCases';
+import { VALID_DOMAINS, type Domain } from '@/core/domains/domain/Domain';
 import { InMemoryQueue } from '@/infrastructure/jobs/InMemoryQueue';
 import { createProcessExperienceWorkflow } from '@/container/createWorkflow';
 import { ValidationError } from '@/core/errors/ValidationError';
@@ -59,6 +59,12 @@ export async function POST(request: Request) {
       throw new ValidationError('obstaclesは1件以上必須です');
     }
     for (const obs of obstacles) {
+      if (typeof obs.description !== 'string' || obs.description.trim() === '') {
+        throw new ValidationError('descriptionは必須です');
+      }
+      if (!VALID_DOMAINS.includes(obs.domain as Domain)) {
+        throw new ValidationError('domainはWORK, RELATIONSHIP, HEALTH, MONEY, SELFのいずれかで指定してください');
+      }
       if (typeof obs.stressLevel !== 'number' || obs.stressLevel < 1 || obs.stressLevel > 5) {
         throw new ValidationError('stressLevelは1〜5の数値で指定してください');
       }

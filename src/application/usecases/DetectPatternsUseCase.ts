@@ -53,7 +53,7 @@ export class DetectPatternsUseCase {
       }));
 
       try {
-        await this.clusterCommand.classifyExperienceAtomic(userId, expData.id, assignments);
+        await this.clusterCommand.classifyExperienceAtomic(expData.id, assignments);
         classified++;
       } catch (err) {
         logger.error('detect:atomic_failed', { experienceId: expData.id, err });

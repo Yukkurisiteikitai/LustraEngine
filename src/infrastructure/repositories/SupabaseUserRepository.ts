@@ -1,8 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { IUserRepository } from '@/core/domains/user/IUserRepository';
 import { InfrastructureError } from '@/core/errors/InfrastructureError';
-
-type Domain = 'WORK' | 'RELATIONSHIP' | 'HEALTH' | 'MONEY' | 'SELF';
+import { VALID_DOMAINS, type Domain } from '@/core/domains/domain/Domain';
 
 const DEFAULT_DOMAIN_NAMES: Record<Domain, string> = {
   WORK: '仕事',
@@ -11,8 +10,6 @@ const DEFAULT_DOMAIN_NAMES: Record<Domain, string> = {
   MONEY: 'お金',
   SELF: '自分',
 };
-
-const DOMAIN_KEYS = Object.keys(DEFAULT_DOMAIN_NAMES) as Domain[];
 
 export class SupabaseUserRepository implements IUserRepository {
   constructor(private readonly supabase: SupabaseClient) {}
@@ -26,7 +23,7 @@ export class SupabaseUserRepository implements IUserRepository {
   }
 
   async ensureDefaultDomains(userId: string): Promise<Map<string, string>> {
-    const rows = DOMAIN_KEYS.map((key) => ({
+    const rows = VALID_DOMAINS.map((key) => ({
       user_id: userId,
       name: DEFAULT_DOMAIN_NAMES[key],
       description: key,
@@ -45,8 +42,9 @@ export class SupabaseUserRepository implements IUserRepository {
 
     const map = new Map<string, string>();
     for (const row of data ?? []) {
-      if (row.description && DOMAIN_KEYS.includes(row.description as Domain)) {
-        map.set(row.description as string, row.id as string);
+      const desc = row.description;
+      if (typeof desc === 'string' && (VALID_DOMAINS as readonly string[]).includes(desc)) {
+        map.set(desc, row.id as string);
       }
     }
     return map;

@@ -31,10 +31,12 @@ export class SupabaseClusterQueryRepository implements IClusterQueryRepository {
   async findClassifiedIds(expIds: string[]): Promise<Set<string>> {
     if (expIds.length === 0) return new Set();
 
-    const { data } = await this.supabase
+    const { data, error } = await this.supabase
       .from('experience_cluster_map')
       .select('experience_id')
       .in('experience_id', expIds);
+
+    if (error) throw new InfrastructureError('cluster:findClassifiedIds failed', error);
 
     return new Set((data ?? []).map((m) => m.experience_id as string));
   }

@@ -8,7 +8,6 @@ export class SupabaseClusterCommandRepository implements IClusterCommandReposito
 
   // classifyExperienceAtomic: Supabase RPC で原子性を保証
   async classifyExperienceAtomic(
-    userId: string,
     experienceId: string,
     assignments: ClusterAssignment[],
   ): Promise<void> {
