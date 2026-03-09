@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
-export async function POST() {
+export async function POST(request: Request) {
   const supabase = await createSupabaseServerClient();
   await supabase.auth.signOut();
-  return NextResponse.redirect(new URL('/login', 'https://lustra-engine.vercel.app/'), {
+
+  return NextResponse.redirect(new URL('/login', request.url), {
     status: 302,
   });
 }
