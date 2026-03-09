@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     try {
       body = (await request.json()) as LogRequestBody;
     } catch {
-      throw new ValidationError('JSONの形式が不正です');
+      throw new ValidationError('LogRequestBodyの形式ではないJSONの形式です。');
     }
 
     const { date, obstacles, lmConfig } = body;

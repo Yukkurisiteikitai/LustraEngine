@@ -61,14 +61,10 @@ export class SupabaseExperienceRepository implements IExperienceRepository {
 
   async findUnclassified(userId: string): Promise<ExperienceData[]> {
     const { data, error } = await this.supabase
-      .from('experiences')
-      .select('*, domains(description)')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(10);
+      .rpc('get_unclassified_experiences', { p_user_id: userId, p_limit: 10 });
 
     if (error) throw new InfrastructureError('experience:findUnclassified failed', error);
-    return (data ?? []).map((r) => ExperienceMapper.fromRow(r as Record<string, unknown>));
+    return (data ?? []).map((r: Record<string, unknown>) => ExperienceMapper.fromRow(r));
   }
 
   async findRecent(userId: string, limit: number): Promise<ExperienceData[]> {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, FormEvent, KeyboardEvent } from 'react';
+import { useState, useEffect, useRef, FormEvent, KeyboardEvent, useCallback } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -35,6 +35,27 @@ const TRAIT_ORDER: TraitName[] = [
   'social_anxiety',
 ];
 
+interface ThreadSummary {
+  id: string;
+  title: string;
+  createdAt: string;
+}
+
+interface PersistedMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  contexts: string[];
+  contextIdSet: number;
+  createdAt: string;
+}
+
+function persistedToChat(msg: PersistedMessage): ChatMessage {
+  return {
+    role: msg.role,
+    content: msg.contexts[msg.contextIdSet] ?? '',
+  };
+}
+
 export default function ChatPage() {
   const { data: snapshot, isLoading: personaLoading } = usePersona();
   const chatMutation = useChatMutation();
@@ -42,6 +63,9 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [hasConfig, setHasConfig] = useState(false);
+  const [currentThreadId, setCurrentThreadId] = useState<string | undefined>(undefined);
+  const [threads, setThreads] = useState<ThreadSummary[]>([]);
+  const [threadsLoading, setThreadsLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -51,6 +75,37 @@ export default function ChatPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, chatMutation.isPending]);
+
+  const fetchThreads = useCallback(async () => {
+    setThreadsLoading(true);
+    try {
+      const res = await fetch('/api/chat/threads');
+      if (res.ok) {
+        const json = (await res.json()) as { threads: ThreadSummary[] };
+        setThreads(json.threads);
+      }
+    } finally {
+      setThreadsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchThreads();
+  }, [fetchThreads]);
+
+  async function selectThread(threadId: string) {
+    setCurrentThreadId(threadId);
+    const res = await fetch(`/api/chat/threads/${threadId}`);
+    if (res.ok) {
+      const json = (await res.json()) as { messages: PersistedMessage[] };
+      setMessages(json.messages.map(persistedToChat));
+    }
+  }
+
+  function startNewThread() {
+    setCurrentThreadId(undefined);
+    setMessages([]);
+  }
 
   const hasPersona = !personaLoading && !!snapshot?.personaJson;
   const canSend = hasConfig && hasPersona && !chatMutation.isPending && input.trim() !== '';
@@ -64,8 +119,13 @@ export default function ChatPage() {
     setInput('');
 
     try {
-      const result = await chatMutation.mutateAsync({ message, history: messages });
+      const result = await chatMutation.mutateAsync({ message, history: messages, threadId: currentThreadId });
       setMessages([...newHistory, { role: 'assistant', content: result.response }]);
+
+      if (result.threadId && result.threadId !== currentThreadId) {
+        setCurrentThreadId(result.threadId);
+        void fetchThreads();
+      }
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'エラーが発生しました';
       setMessages([...newHistory, { role: 'assistant', content: `⚠️ ${errMsg}` }]);
@@ -91,7 +151,7 @@ export default function ChatPage() {
       <Header />
       <main className={styles.main}>
         <div className={styles.layout}>
-          {/* Sidebar */}
+          {/* Left sidebar: persona info */}
           <aside className={styles.sidebar}>
             <h2 className={styles.sidebarTitle}>ペルソナ</h2>
 
@@ -153,6 +213,35 @@ export default function ChatPage() {
                 </p>
               </div>
             )}
+
+            {/* Thread history */}
+            <div className={styles.threadSection}>
+              <div className={styles.threadHeader}>
+                <h3 className={styles.clusterTitle}>チャット履歴</h3>
+                <button className={styles.newThreadBtn} onClick={startNewThread}>
+                  新規
+                </button>
+              </div>
+              {threadsLoading && <p className={styles.loading}>読み込み中...</p>}
+              {!threadsLoading && threads.length === 0 && (
+                <p className={styles.loading}>履歴なし</p>
+              )}
+              <ul className={styles.threadList}>
+                {threads.map((t) => (
+                  <li key={t.id}>
+                    <button
+                      className={`${styles.threadItem} ${t.id === currentThreadId ? styles.threadItemActive : ''}`}
+                      onClick={() => void selectThread(t.id)}
+                    >
+                      <span className={styles.threadTitle}>{t.title}</span>
+                      <span className={styles.threadDate}>
+                        {new Date(t.createdAt).toLocaleDateString('ja-JP')}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </aside>
 
           {/* Chat */}

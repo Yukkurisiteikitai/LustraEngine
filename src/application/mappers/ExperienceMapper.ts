@@ -14,7 +14,12 @@ export class ExperienceMapper {
   }
 
   static fromRow(row: Record<string, unknown>): ExperienceData {
+    // supports both nested join (domains.description) and flat RPC column (domain_description)
     const domainsJoin = row.domains as { description?: string } | null | undefined;
+    const domainKey =
+      domainsJoin?.description ??
+      (row.domain_description as string | null | undefined) ??
+      undefined;
     return {
       id: row.id as string,
       userId: row.user_id as string,
@@ -27,7 +32,7 @@ export class ExperienceMapper {
       emotion: (row.emotion as string | null) ?? undefined,
       context: (row.context as string | null) ?? undefined,
       domainId: (row.domain_id as string | null) ?? undefined,
-      domainKey: domainsJoin?.description ?? undefined,
+      domainKey,
       date: row.logged_at as string,
     };
   }

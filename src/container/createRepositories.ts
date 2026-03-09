@@ -5,6 +5,8 @@ import { SupabaseClusterCommandRepository } from '@/infrastructure/repositories/
 import { SupabaseTraitRepository } from '@/infrastructure/repositories/SupabaseTraitRepository';
 import { SupabasePersonaRepository } from '@/infrastructure/repositories/SupabasePersonaRepository';
 import { SupabaseUserRepository } from '@/infrastructure/repositories/SupabaseUserRepository';
+import { SupabaseThreadRepository } from '@/infrastructure/repositories/SupabaseThreadRepository';
+import { SupabaseMessageRepository } from '@/infrastructure/repositories/SupabaseMessageRepository';
 
 export function createRepositories(supabase: SupabaseClient) {
   return {
@@ -14,5 +16,7 @@ export function createRepositories(supabase: SupabaseClient) {
     trait: new SupabaseTraitRepository(supabase),
     persona: new SupabasePersonaRepository(supabase),
     user: new SupabaseUserRepository(supabase),
+    thread: new SupabaseThreadRepository(supabase),
+    message: new SupabaseMessageRepository(supabase),
   };
 }

@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     try {
       body = (await req.json()) as DetectRequestBody;
     } catch {
-      throw new ValidationError('JSONの形式が不正です');
+      throw new ValidationError('DetectRequestBodyの形式JSONが不正です。');
     }
 
     const { lmConfig } = body;

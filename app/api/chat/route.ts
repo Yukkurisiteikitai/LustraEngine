@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { createChatUseCase } from '@/container/createUseCases';
+import { createChatUseCase, createThreadUseCase, createSaveChatMessageUseCase } from '@/container/createUseCases';
 import { createLLM } from '@/infrastructure/llm/createLLM';
 import { ValidationError } from '@/core/errors/ValidationError';
 import { AuthError } from '@/core/errors/AuthError';
@@ -11,6 +11,7 @@ interface ChatRequestBody {
   message: string;
   history: ChatMessage[];
   lmConfig?: LMConfig;
+  threadId?: string;
 }
 
 export async function POST(req: Request) {
@@ -23,10 +24,10 @@ export async function POST(req: Request) {
     try {
       body = (await req.json()) as ChatRequestBody;
     } catch {
-      throw new ValidationError('JSONの形式が不正です');
+      throw new ValidationError('ChatRequestBody形式のJSONが不正です。');
     }
 
-    const { message, history, lmConfig } = body;
+    const { message, history, lmConfig, threadId } = body;
 
     if (!message || typeof message !== 'string' || message.trim() === '') {
       throw new ValidationError('メッセージが空です');
@@ -51,7 +52,26 @@ export async function POST(req: Request) {
       );
     }
 
-    return NextResponse.json({ response: result.response });
+    // Persist messages to DB (fire-and-forget errors don't fail the response)
+    let resolvedThreadId = threadId;
+    try {
+      const saveUseCase = createSaveChatMessageUseCase(supabase);
+
+      if (!resolvedThreadId) {
+        const threadUseCase = createThreadUseCase(supabase);
+        const thread = await threadUseCase.execute(user.id, message.slice(0, 50));
+        resolvedThreadId = thread.id;
+      }
+
+      await Promise.all([
+        saveUseCase.execute(resolvedThreadId, user.id, 'user', message),
+        saveUseCase.execute(resolvedThreadId, user.id, 'assistant', result.response),
+      ]);
+    } catch {
+      // persistence errors are non-fatal — chat response is already computed
+    }
+
+    return NextResponse.json({ response: result.response, threadId: resolvedThreadId });
   } catch (err) {
     return handleError(err);
   }

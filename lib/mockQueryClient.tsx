@@ -126,17 +126,25 @@ export function useTraitInferenceMutation() {
 
 export function useChatMutation() {
   return useMutation({
-    mutationFn: async ({ message, history }: { message: string; history: ChatMessage[] }) => {
+    mutationFn: async ({
+      message,
+      history,
+      threadId,
+    }: {
+      message: string;
+      history: ChatMessage[];
+      threadId?: string;
+    }) => {
       const cfg = loadLMConfig();
       if (!cfg) throw new Error('LM設定が見つかりません。設定ページで設定してください。');
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, history, lmConfig: cfg }),
+        body: JSON.stringify({ message, history, lmConfig: cfg, threadId }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error((json as { message?: string }).message ?? 'チャットに失敗しました');
-      return json as { response: string };
+      return json as { response: string; threadId?: string };
     },
   });
 }

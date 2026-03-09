@@ -13,10 +13,16 @@ export class PersonaMapper {
   }
 
   static fromRow(row: Record<string, unknown>): PersonaData {
+    const raw = row.persona_json as Record<string, unknown> | null | undefined;
+    const personaJson: PersonaData['personaJson'] = {
+      traits: (raw?.traits ?? {}) as PersonaData['personaJson']['traits'],
+      dominantClusters: Array.isArray(raw?.dominantClusters) ? raw.dominantClusters : [],
+      domainBreakdown: (raw?.domainBreakdown ?? {}) as PersonaData['personaJson']['domainBreakdown'],
+    };
     return {
       id: row.id as string,
       userId: row.user_id as string,
-      personaJson: row.persona_json as PersonaData['personaJson'],
+      personaJson,
       traitsHash: (row.traits_hash as string | null) ?? undefined,
       version: (row.version as number | null) ?? undefined,
       createdAt: row.created_at as string,

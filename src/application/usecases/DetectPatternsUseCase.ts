@@ -1,6 +1,5 @@
 import { Experience } from '@/core/domains/experience/Experience';
 import type { IExperienceRepository } from '@/core/domains/experience/IExperienceRepository';
-import type { IClusterQueryRepository } from '@/core/domains/cluster/IClusterQueryRepository';
 import type { IClusterCommandRepository } from '@/core/domains/cluster/IClusterCommandRepository';
 import type { ILLMPort } from '@/application/ports/ILLMPort';
 import type { LLMRetryPolicy } from '@/application/llm/policies/LLMRetryPolicy';
@@ -16,7 +15,6 @@ import { logger } from '@/infrastructure/observability/logger';
 export class DetectPatternsUseCase {
   constructor(
     private readonly expRepo: IExperienceRepository,
-    private readonly clusterQuery: IClusterQueryRepository,
     private readonly clusterCommand: IClusterCommandRepository,
     private readonly llm: ILLMPort,
     private readonly retry: LLMRetryPolicy,
@@ -24,9 +22,7 @@ export class DetectPatternsUseCase {
   ) {}
 
   async execute(userId: string): Promise<{ classified: number }> {
-    const rawExps = await this.expRepo.findUnclassified(userId);
-    const classifiedIds = await this.clusterQuery.findClassifiedIds(rawExps.map((e) => e.id));
-    const targets = rawExps.filter((e) => !classifiedIds.has(e.id));
+    const targets = await this.expRepo.findUnclassified(userId);
 
     let classified = 0;
 
