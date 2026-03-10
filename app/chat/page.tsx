@@ -119,7 +119,7 @@ export default function ChatPage() {
     setInput('');
 
     try {
-      const result = await chatMutation.mutateAsync({ message, history: messages, threadId: currentThreadId });
+      const result = await chatMutation.mutateAsync({ message, history: messages.slice(-20), threadId: currentThreadId });
       setMessages([...newHistory, { role: 'assistant', content: result.response }]);
 
       if (result.threadId && result.threadId !== currentThreadId) {
@@ -290,6 +290,7 @@ export default function ChatPage() {
                 }
                 disabled={!hasConfig || !hasPersona || chatMutation.isPending}
                 rows={3}
+                maxLength={1000}
               />
               <button
                 type="submit"

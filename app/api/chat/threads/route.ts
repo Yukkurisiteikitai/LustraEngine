@@ -3,7 +3,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createThreadUseCase, createGetThreadHistoryUseCase } from '@/container/createUseCases';
 import { AuthError } from '@/core/errors/AuthError';
 import { ValidationError } from '@/core/errors/ValidationError';
-import { handleError } from '@/lib/apiHelpers';
+import { handleError, checkBodySize } from '@/lib/apiHelpers';
 
 export async function GET() {
   try {
@@ -26,6 +26,7 @@ export async function POST(req: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new AuthError('認証が必要です');
 
+    checkBodySize(req, 4 * 1024);
     let title: string | undefined;
     try {
       const body = (await req.json()) as { title?: string };

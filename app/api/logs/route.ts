@@ -7,7 +7,7 @@ import { InMemoryQueue } from '@/infrastructure/jobs/InMemoryQueue';
 import { createProcessExperienceWorkflow } from '@/container/createWorkflow';
 import { ValidationError } from '@/core/errors/ValidationError';
 import { AuthError } from '@/core/errors/AuthError';
-import { handleError } from '@/lib/apiHelpers';
+import { handleError, checkBodySize } from '@/lib/apiHelpers';
 import type { CreateExperienceDTO } from '@/application/dto/ExperienceDTO';
 import type { LMConfig } from '@/types';
 
@@ -43,6 +43,7 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new AuthError('認証が必要です');
 
+    checkBodySize(request, 16 * 1024);
     let body: LogRequestBody;
     try {
       body = (await request.json()) as LogRequestBody;
