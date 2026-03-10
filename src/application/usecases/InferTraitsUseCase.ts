@@ -32,10 +32,10 @@ export class InferTraitsUseCase {
 
     let traitScores: Record<TraitName, number>;
     try {
-      const raw = await this.retry.execute(() =>
+      const { text } = await this.retry.execute(() =>
         this.llm.generate(TRAIT_SYSTEM_PROMPT, userMessage, 256),
       );
-      traitScores = this.validator.validateTraitResponse(raw) ?? buildFallbackTraits(clusters);
+      traitScores = this.validator.validateTraitResponse(text) ?? buildFallbackTraits(clusters);
     } catch (err) {
       logger.warn('infer:llm_failed', { userId, err });
       traitScores = buildFallbackTraits(clusters);

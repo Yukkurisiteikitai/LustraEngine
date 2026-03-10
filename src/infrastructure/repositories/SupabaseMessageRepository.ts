@@ -27,6 +27,8 @@ export class SupabaseMessageRepository implements IMessageRepository {
         role: input.role,
         contexts: input.contexts,
         context_id_set: input.contextIdSet,
+        token_count: input.tokenCount ?? null,
+        model_id: input.modelId ?? null,
       })
       .select('*')
       .single();

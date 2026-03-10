@@ -1,4 +1,4 @@
-import type { ILLMPort } from '@/application/ports/ILLMPort';
+import type { ILLMPort, LLMResult } from '@/application/ports/ILLMPort';
 import { LLMError } from '@/core/errors/LLMError';
 
 export class LMStudioAdapter implements ILLMPort {
@@ -12,7 +12,7 @@ export class LMStudioAdapter implements ILLMPort {
     this.endpoint = endpoint.replace(/\/$/, '');
   }
 
-  async generate(systemPrompt: string, userMessage: string, maxTokens: number): Promise<string> {
+  async generate(systemPrompt: string, userMessage: string, maxTokens: number): Promise<LLMResult> {
     const res = await fetch(`${this.endpoint}/v1/chat/completions`, {
       method: 'POST',
       headers: {
@@ -34,7 +34,15 @@ export class LMStudioAdapter implements ILLMPort {
       throw new LLMError(`LM Studio API error ${res.status}: ${text}`);
     }
 
-    const json = (await res.json()) as { choices: Array<{ message: { content: string } }> };
-    return json.choices[0]?.message?.content ?? '';
+    const json = (await res.json()) as {
+      choices: Array<{ message: { content: string } }>;
+      model?: string;
+      usage?: { total_tokens: number };
+    };
+    return {
+      text: json.choices[0]?.message?.content ?? '',
+      tokenCount: json.usage?.total_tokens ?? 0,
+      modelName: json.model ?? this.model,
+    };
   }
 }

@@ -66,7 +66,10 @@ export async function POST(req: Request) {
 
       await Promise.all([
         saveUseCase.execute(resolvedThreadId, user.id, 'user', message),
-        saveUseCase.execute(resolvedThreadId, user.id, 'assistant', result.response),
+        saveUseCase.execute(resolvedThreadId, user.id, 'assistant', result.response, {
+          tokenCount: result.tokenCount,
+          modelName: result.modelName,
+        }),
       ]);
     } catch {
       // persistence errors are non-fatal — chat response is already computed

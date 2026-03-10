@@ -10,6 +10,8 @@ export class MessageMapper {
       contexts: row.contexts as string[],
       contextIdSet: row.context_id_set as number,
       createdAt: row.created_at as string,
+      tokenCount: row.token_count != null ? (row.token_count as number) : undefined,
+      modelId: row.model_id != null ? (row.model_id as string) : undefined,
     };
   }
 }

@@ -15,7 +15,7 @@ export class ChatUseCase {
     userId: string,
     message: string,
     history: ChatMessage[],
-  ): Promise<{ response: string; personaMissing?: boolean }> {
+  ): Promise<{ response: string; tokenCount?: number; modelName?: string; personaMissing?: boolean }> {
     const persona = await this.personaRepo.getLatest(userId);
 
     if (!persona) {
@@ -36,7 +36,7 @@ export class ChatUseCase {
       .join('\n');
     const fullUserMessage = historyText ? `${historyText}\nuser: ${message}` : message;
 
-    const response = await this.llm.generate(systemPrompt, fullUserMessage, 1024);
-    return { response };
+    const { text, tokenCount, modelName } = await this.llm.generate(systemPrompt, fullUserMessage, 1024);
+    return { response: text, tokenCount, modelName };
   }
 }

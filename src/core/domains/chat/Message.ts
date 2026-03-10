@@ -6,6 +6,8 @@ export interface MessageData {
   contexts: string[];
   contextIdSet: number;
   createdAt: string;
+  tokenCount?: number;
+  modelId?: string;
 }
 
 export class Message {

@@ -7,6 +7,7 @@ import { SupabasePersonaRepository } from '@/infrastructure/repositories/Supabas
 import { SupabaseUserRepository } from '@/infrastructure/repositories/SupabaseUserRepository';
 import { SupabaseThreadRepository } from '@/infrastructure/repositories/SupabaseThreadRepository';
 import { SupabaseMessageRepository } from '@/infrastructure/repositories/SupabaseMessageRepository';
+import { SupabaseLlmModelRepository } from '@/infrastructure/repositories/SupabaseLlmModelRepository';
 
 export function createRepositories(supabase: SupabaseClient) {
   return {
@@ -18,5 +19,12 @@ export function createRepositories(supabase: SupabaseClient) {
     user: new SupabaseUserRepository(supabase),
     thread: new SupabaseThreadRepository(supabase),
     message: new SupabaseMessageRepository(supabase),
+  };
+}
+
+export function createRepositoriesWithAdmin(supabase: SupabaseClient, adminClient: SupabaseClient) {
+  return {
+    ...createRepositories(supabase),
+    llmModel: new SupabaseLlmModelRepository(adminClient),
   };
 }
