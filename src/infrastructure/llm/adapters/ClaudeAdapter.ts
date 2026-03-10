@@ -1,5 +1,8 @@
 import type { ILLMPort, LLMResult } from '@/application/ports/ILLMPort';
 import { LLMError } from '@/core/errors/LLMError';
+import { logger } from '@/infrastructure/observability/logger';
+
+const MODEL = 'claude-haiku-4-5-20251001';
 
 export class ClaudeAdapter implements ILLMPort {
   constructor(private readonly apiKey: string) {}
@@ -13,7 +16,7 @@ export class ClaudeAdapter implements ILLMPort {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
+        model: MODEL,
         max_tokens: maxTokens,
         system: systemPrompt,
         messages: [{ role: 'user', content: userMessage }],
@@ -21,8 +24,25 @@ export class ClaudeAdapter implements ILLMPort {
     });
 
     if (!res.ok) {
-      const text = await res.text();
-      throw new LLMError(`Claude API error ${res.status}: ${text}`);
+      const body = await res.text();
+      if (res.status === 429) {
+        const retryAfter = res.headers.get('retry-after');
+        logger.error('llm:claude_rate_limited', {
+          layer: 'ClaudeAdapter',
+          status: 429,
+          model: MODEL,
+          retryAfter,
+          body,
+        });
+      } else {
+        logger.error('llm:claude_api_error', {
+          layer: 'ClaudeAdapter',
+          status: res.status,
+          model: MODEL,
+          body,
+        });
+      }
+      throw new LLMError(`Claude API error ${res.status}: ${body}`);
     }
 
     const json = (await res.json()) as {

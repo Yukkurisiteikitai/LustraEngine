@@ -4,7 +4,10 @@ import { createChatUseCase, createThreadUseCase, createSaveChatMessageUseCase } 
 import { createLLM } from '@/infrastructure/llm/createLLM';
 import { ValidationError } from '@/core/errors/ValidationError';
 import { AuthError } from '@/core/errors/AuthError';
+import { RateLimitError } from '@/core/errors/RateLimitError';
 import { handleError, checkBodySize } from '@/lib/apiHelpers';
+import { chatRateLimiter } from '@/infrastructure/rate-limiting/rateLimiterSingleton';
+import { logger } from '@/infrastructure/observability/logger';
 import type { ChatMessage, LMConfig } from '@/types';
 
 interface ChatRequestBody {
@@ -19,6 +22,28 @@ export async function POST(req: Request) {
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new AuthError('認証が必要です');
+
+    // Per-user token budget check
+    const rateLimitStatus = chatRateLimiter.check(user.id);
+    if (!rateLimitStatus.allowed) {
+      logger.error('api:chat_rate_limit_exceeded', {
+        layer: 'ChatRoute',
+        operation: 'POST /api/chat',
+        userId: user.id,
+        usedTokens: rateLimitStatus.usedTokens,
+        maxTokens: rateLimitStatus.maxTokens,
+        retryAfterSeconds: rateLimitStatus.retryAfterSeconds,
+      });
+      throw new RateLimitError(
+        `トークン制限に達しました。${rateLimitStatus.retryAfterSeconds}秒後に再試行してください。`,
+        {
+          userId: user.id,
+          usedTokens: rateLimitStatus.usedTokens,
+          maxTokens: rateLimitStatus.maxTokens,
+          retryAfterSeconds: rateLimitStatus.retryAfterSeconds,
+        },
+      );
+    }
 
     checkBodySize(req, 128 * 1024);
     let body: ChatRequestBody;
@@ -40,7 +65,7 @@ export async function POST(req: Request) {
       throw new ValidationError('Claude API キーが設定されていません');
     }
 
-    const useCase = createChatUseCase(supabase, createLLM(lmConfig));
+    const useCase = createChatUseCase(supabase, createLLM(lmConfig, { waitForSlot: false, endpoint: '/api/chat' }));
     const result = await useCase.execute(user.id, message, history ?? []);
 
     if (result.personaMissing) {
@@ -51,6 +76,16 @@ export async function POST(req: Request) {
         },
         { status: 422 },
       );
+    }
+
+    // Record token usage for rate limiting
+    if (result.tokenCount) {
+      chatRateLimiter.record(user.id, result.tokenCount);
+      logger.info('api:chat_tokens_recorded', {
+        userId: user.id,
+        tokenCount: result.tokenCount,
+        newUsedTotal: rateLimitStatus.usedTokens + result.tokenCount,
+      });
     }
 
     // Persist messages to DB (fire-and-forget errors don't fail the response)
