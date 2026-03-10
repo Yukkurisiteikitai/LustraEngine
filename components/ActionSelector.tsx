@@ -65,6 +65,7 @@ export default function ActionSelector({
           value={action}
           onChange={(event) => onChangeAction(event.target.value)}
           rows={2}
+          maxLength={200}
           className={styles.textarea}
           placeholder="例: YouTubeを見た"
         />
@@ -79,6 +80,7 @@ export default function ActionSelector({
           value={actionText}
           onChange={(event) => onChangeText(event.target.value)}
           rows={3}
+          maxLength={300}
           className={styles.textarea}
           placeholder="例: 朝イチで5分だけ取り組んだ"
         />

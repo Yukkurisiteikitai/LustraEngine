@@ -81,6 +81,7 @@ export default function ObstacleForm({
             }
           }}
           className={styles.input}
+          maxLength={200}
           placeholder="例: 上司に相談するのが怖い"
           aria-invalid={Boolean(errors.description)}
           aria-describedby={errors.description ? 'description-error' : undefined}
@@ -103,6 +104,7 @@ export default function ObstacleForm({
           rows={2}
           value={form.goal ?? ''}
           onChange={(event) => setForm((prev) => ({ ...prev, goal: event.target.value }))}
+          maxLength={200}
           className={styles.input}
           placeholder="例: 英語の勉強"
         />
@@ -118,6 +120,7 @@ export default function ObstacleForm({
           rows={2}
           value={form.emotion ?? ''}
           onChange={(event) => setForm((prev) => ({ ...prev, emotion: event.target.value }))}
+          maxLength={100}
           className={styles.input}
           placeholder="例: 罪悪感、不安"
         />
@@ -133,6 +136,7 @@ export default function ObstacleForm({
           rows={2}
           value={form.context ?? ''}
           onChange={(event) => setForm((prev) => ({ ...prev, context: event.target.value }))}
+          maxLength={200}
           className={styles.input}
           placeholder="例: 夜、一人で部屋にいた"
         />

@@ -4,7 +4,7 @@ import { createChatUseCase, createThreadUseCase, createSaveChatMessageUseCase } 
 import { createLLM } from '@/infrastructure/llm/createLLM';
 import { ValidationError } from '@/core/errors/ValidationError';
 import { AuthError } from '@/core/errors/AuthError';
-import { handleError } from '@/lib/apiHelpers';
+import { handleError, checkBodySize } from '@/lib/apiHelpers';
 import type { ChatMessage, LMConfig } from '@/types';
 
 interface ChatRequestBody {
@@ -20,6 +20,7 @@ export async function POST(req: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new AuthError('認証が必要です');
 
+    checkBodySize(req, 128 * 1024);
     let body: ChatRequestBody;
     try {
       body = (await req.json()) as ChatRequestBody;
