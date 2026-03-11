@@ -1,9 +1,11 @@
+import type { IPairNodeRepository } from '@/core/domains/chat/IPairNodeRepository';
 import type { IMessageRepository } from '@/core/domains/chat/IMessageRepository';
 import type { ILlmModelRepository } from '@/core/domains/llm/ILlmModelRepository';
-import type { MessageData } from '@/core/domains/chat/Message';
+import type { TokenUsage } from '@/application/ports/ILLMPort';
 
 export class SaveChatMessageUseCase {
   constructor(
+    private readonly pairNodeRepo: IPairNodeRepository,
     private readonly messageRepo: IMessageRepository,
     private readonly llmModelRepo: ILlmModelRepository,
   ) {}
@@ -11,22 +13,40 @@ export class SaveChatMessageUseCase {
   async execute(
     threadId: string,
     userId: string,
-    role: 'user' | 'assistant',
-    content: string,
-    opts?: { tokenCount?: number; modelName?: string },
-  ): Promise<MessageData> {
+    userContent: string,
+    assistantContent: string,
+    opts?: { tokenUsage?: TokenUsage; modelName?: string },
+  ): Promise<{ pairNodeId: string }> {
     let modelId: string | undefined;
-    if (role === 'assistant' && opts?.modelName) {
+    let unitPrice: number | undefined;
+    if (opts?.modelName) {
       modelId = await this.llmModelRepo.upsertByName(opts.modelName);
+      const pricing = await this.llmModelRepo.getPricing(modelId);
+      unitPrice = pricing.outputPrice ?? undefined;
     }
-    return this.messageRepo.save({
-      threadId,
-      userId,
-      role,
-      contexts: [content],
-      contextIdSet: 0,
-      tokenCount: role === 'assistant' ? opts?.tokenCount : undefined,
-      modelId,
-    });
+
+    const pairNode = await this.pairNodeRepo.save(userId, threadId);
+
+    const [, assistantMessage] = await Promise.all([
+      this.messageRepo.save({
+        pairNodeId: pairNode.id,
+        userId,
+        role: 'user',
+        content: userContent,
+      }),
+      this.messageRepo.save({
+        pairNodeId: pairNode.id,
+        userId,
+        role: 'assistant',
+        content: assistantContent,
+        tokenCount: opts?.tokenUsage?.output,
+        modelId,
+        unitPrice,
+      }),
+    ]);
+
+    await this.pairNodeRepo.updateSelectMessage(pairNode.id, assistantMessage.id);
+
+    return { pairNodeId: pairNode.id };
   }
 }

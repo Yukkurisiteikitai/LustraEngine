@@ -52,7 +52,11 @@ export class ClaudeAdapter implements ILLMPort {
     };
     return {
       text: json.content.find((c) => c.type === 'text')?.text ?? '',
-      tokenCount: json.usage.input_tokens + json.usage.output_tokens,
+      tokenUsage: {
+        total: json.usage.input_tokens + json.usage.output_tokens,
+        input: json.usage.input_tokens,
+        output: json.usage.output_tokens,
+      },
       modelName: json.model,
     };
   }

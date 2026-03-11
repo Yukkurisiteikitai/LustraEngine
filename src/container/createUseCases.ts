@@ -60,17 +60,17 @@ export function createThreadUseCase(supabase: SupabaseClient) {
 }
 
 export function createGetThreadHistoryUseCase(supabase: SupabaseClient) {
-  const { thread, message } = createRepositories(supabase);
-  return new GetThreadHistoryUseCase(thread, message);
+  const { thread, pairNode, message } = createRepositories(supabase);
+  return new GetThreadHistoryUseCase(thread, pairNode, message);
 }
 
 export function createSaveChatMessageUseCase(supabase: SupabaseClient) {
-  const { message } = createRepositories(supabase);
+  const { pairNode, message } = createRepositories(supabase);
   const { llmModel } = createRepositoriesWithAdmin(supabase, createAdminClient());
-  return new SaveChatMessageUseCase(message, llmModel);
+  return new SaveChatMessageUseCase(pairNode, message, llmModel);
 }
 
 export function createRethinkMessageUseCase(supabase: SupabaseClient) {
-  const { message } = createRepositories(supabase);
-  return new RethinkMessageUseCase(message);
+  const { pairNode, message } = createRepositories(supabase);
+  return new RethinkMessageUseCase(pairNode, message);
 }

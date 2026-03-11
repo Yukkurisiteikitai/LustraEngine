@@ -37,11 +37,19 @@ export class LMStudioAdapter implements ILLMPort {
     const json = (await res.json()) as {
       choices: Array<{ message: { content: string } }>;
       model?: string;
-      usage?: { total_tokens: number };
+      usage?: { total_tokens?: number; input_tokens?: number; output_tokens?: number };
     };
+    const u = json.usage;
+    const tokenUsage = u != null
+      ? {
+          total: u.total_tokens ?? (u.input_tokens ?? 0) + (u.output_tokens ?? 0),
+          input: u.input_tokens,
+          output: u.output_tokens,
+        }
+      : undefined;
     return {
       text: json.choices[0]?.message?.content ?? '',
-      tokenCount: json.usage?.total_tokens ?? 0,
+      tokenUsage,
       modelName: json.model ?? this.model,
     };
   }

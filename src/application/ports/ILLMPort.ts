@@ -1,6 +1,12 @@
+export type TokenUsage = {
+  total: number;
+  input?: number;
+  output?: number;
+};
+
 export interface LLMResult {
   text: string;
-  tokenCount: number;
+  tokenUsage: TokenUsage | undefined;
   modelName: string;
 }
 

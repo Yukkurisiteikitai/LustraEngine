@@ -1,23 +1,11 @@
 export interface MessageData {
   id: string;
-  threadId: string;
+  pairNodeId: string;
   userId: string;
   role: 'user' | 'assistant';
-  contexts: string[];
-  contextIdSet: number;
+  content: string;
   createdAt: string;
   tokenCount?: number;
   modelId?: string;
-}
-
-export class Message {
-  constructor(private data: MessageData) {}
-
-  activeContext(): string {
-    return this.data.contexts[this.data.contextIdSet] ?? '';
-  }
-
-  toData(): MessageData {
-    return { ...this.data };
-  }
+  unitPrice?: number;
 }

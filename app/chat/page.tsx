@@ -43,16 +43,16 @@ interface ThreadSummary {
 
 interface PersistedMessage {
   id: string;
+  pairNodeId: string;
   role: 'user' | 'assistant';
-  contexts: string[];
-  contextIdSet: number;
+  content: string;
   createdAt: string;
 }
 
 function persistedToChat(msg: PersistedMessage): ChatMessage {
   return {
     role: msg.role,
-    content: msg.contexts[msg.contextIdSet] ?? '',
+    content: msg.content,
   };
 }
 

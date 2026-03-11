@@ -79,12 +79,12 @@ export async function POST(req: Request) {
     }
 
     // Record token usage for rate limiting
-    if (result.tokenCount) {
-      chatRateLimiter.record(user.id, result.tokenCount);
+    if (result.tokenUsage != null) {
+      chatRateLimiter.record(user.id, result.tokenUsage.total);
       logger.info('api:chat_tokens_recorded', {
         userId: user.id,
-        tokenCount: result.tokenCount,
-        newUsedTotal: rateLimitStatus.usedTokens + result.tokenCount,
+        tokenUsage: result.tokenUsage,
+        newUsedTotal: rateLimitStatus.usedTokens + result.tokenUsage.total,
       });
     }
 
@@ -99,13 +99,10 @@ export async function POST(req: Request) {
         resolvedThreadId = thread.id;
       }
 
-      await Promise.all([
-        saveUseCase.execute(resolvedThreadId, user.id, 'user', message),
-        saveUseCase.execute(resolvedThreadId, user.id, 'assistant', result.response, {
-          tokenCount: result.tokenCount,
-          modelName: result.modelName,
-        }),
-      ]);
+      await saveUseCase.execute(
+        resolvedThreadId, user.id, message, result.response,
+        { tokenUsage: result.tokenUsage, modelName: result.modelName },
+      );
     } catch {
       // persistence errors are non-fatal — chat response is already computed
     }
