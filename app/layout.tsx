@@ -3,8 +3,20 @@ import './globals.css';
 import Providers from './providers';
 
 export const metadata: Metadata = {
-  title: 'Lustra MVP',
-  description: 'Lustra MVP mock UI',
+  title: 'YourselfLM',
+  description: 'YourselfLMは、LLMを活用して自己理解を深めるためのツールです。ユーザーは、LLMとの対話を通じて自己分析や目標設定を行い、自己成長を促進します。',
+  openGraph: {
+    title: 'YourselfLM',
+    description: 'YourselfLMは、LLMを活用して自己理解を深めるためのツールです。ユーザーは、LLMとの対話を通じて自己分析や目標設定を行い、自己成長を促進します。',
+    url: 'https://www.yourselflm.org/',
+    images: [
+      {
+        url: './favicon_io/favicon.ico',
+        width: 32,
+        height: 32,
+      },
+    ],
+  },
 };
 
 export default function RootLayout({
