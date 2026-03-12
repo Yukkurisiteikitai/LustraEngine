@@ -90,6 +90,7 @@ export async function POST(req: Request) {
 
     // Persist messages to DB (fire-and-forget errors don't fail the response)
     let resolvedThreadId = threadId;
+    let resolvedPairNodeId: string | undefined;
     try {
       const saveUseCase = createSaveChatMessageUseCase(supabase);
 
@@ -99,15 +100,16 @@ export async function POST(req: Request) {
         resolvedThreadId = thread.id;
       }
 
-      await saveUseCase.execute(
+      const { pairNodeId } = await saveUseCase.execute(
         resolvedThreadId, user.id, message, result.response,
         { tokenUsage: result.tokenUsage, modelName: result.modelName },
       );
+      resolvedPairNodeId = pairNodeId;
     } catch {
       // persistence errors are non-fatal — chat response is already computed
     }
 
-    return NextResponse.json({ response: result.response, threadId: resolvedThreadId });
+    return NextResponse.json({ response: result.response, threadId: resolvedThreadId, pairNodeId: resolvedPairNodeId });
   } catch (err) {
     return handleError(err);
   }

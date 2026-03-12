@@ -12,6 +12,60 @@ export class LMStudioAdapter implements ILLMPort {
     this.endpoint = endpoint.replace(/\/$/, '');
   }
 
+  async *generateStream(
+    systemPrompt: string,
+    userMessage: string,
+    maxTokens: number,
+  ): AsyncGenerator<string> {
+    const res = await fetch(`${this.endpoint}/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: this.model,
+        max_tokens: maxTokens,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage },
+        ],
+        stream: true,
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new LLMError(`LM Studio streaming API error ${res.status}: ${text}`);
+    }
+
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') return;
+        try {
+          const json = JSON.parse(data) as {
+            choices?: Array<{ delta?: { content?: string }; finish_reason?: string }>;
+          };
+          const chunk = json.choices?.[0]?.delta?.content;
+          if (chunk) yield chunk;
+        } catch {
+          // ignore malformed SSE lines
+        }
+      }
+    }
+  }
+
   async generate(systemPrompt: string, userMessage: string, maxTokens: number): Promise<LLMResult> {
     const res = await fetch(`${this.endpoint}/v1/chat/completions`, {
       method: 'POST',

@@ -49,23 +49,33 @@ interface PersistedMessage {
   createdAt: string;
 }
 
-function persistedToChat(msg: PersistedMessage): ChatMessage {
-  return {
-    role: msg.role,
-    content: msg.content,
-  };
+// UI message type — extends ChatMessage with optional pairNodeId for rethink support
+interface UIChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  pairNodeId?: string;
+}
+
+function persistedToUI(msg: PersistedMessage): UIChatMessage {
+  return { role: msg.role, content: msg.content, pairNodeId: msg.pairNodeId };
 }
 
 export default function ChatPage() {
   const { data: snapshot, isLoading: personaLoading } = usePersona();
   const chatMutation = useChatMutation();
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<UIChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [hasConfig, setHasConfig] = useState(false);
   const [currentThreadId, setCurrentThreadId] = useState<string | undefined>(undefined);
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [threadsLoading, setThreadsLoading] = useState(false);
+
+  // Rethink state
+  const [rethinkActivePairNodeId, setRethinkActivePairNodeId] = useState<string | null>(null);
+  const [rethinkInput, setRethinkInput] = useState('');
+  const [rethinkingPairNodeId, setRethinkingPairNodeId] = useState<string | null>(null);
+
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -74,7 +84,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, chatMutation.isPending]);
+  }, [messages, chatMutation.isPending, rethinkingPairNodeId]);
 
   const fetchThreads = useCallback(async () => {
     setThreadsLoading(true);
@@ -98,29 +108,36 @@ export default function ChatPage() {
     const res = await fetch(`/api/chat/threads/${threadId}`);
     if (res.ok) {
       const json = (await res.json()) as { messages: PersistedMessage[] };
-      setMessages(json.messages.map(persistedToChat));
+      setMessages(json.messages.map(persistedToUI));
     }
   }
 
   function startNewThread() {
     setCurrentThreadId(undefined);
     setMessages([]);
+    setRethinkActivePairNodeId(null);
+    setRethinkingPairNodeId(null);
   }
 
+  const isBusy = chatMutation.isPending || rethinkingPairNodeId !== null;
   const hasPersona = !personaLoading && !!snapshot?.personaJson;
-  const canSend = hasConfig && hasPersona && !chatMutation.isPending && input.trim() !== '';
+  const canSend = hasConfig && hasPersona && !isBusy && input.trim() !== '';
 
   async function handleSend() {
     const message = input.trim();
     if (!message || !canSend) return;
 
-    const newHistory: ChatMessage[] = [...messages, { role: 'user', content: message }];
+    const newHistory: UIChatMessage[] = [...messages, { role: 'user', content: message }];
     setMessages(newHistory);
     setInput('');
 
     try {
-      const result = await chatMutation.mutateAsync({ message, history: messages.slice(-20), threadId: currentThreadId });
-      setMessages([...newHistory, { role: 'assistant', content: result.response }]);
+      const result = await chatMutation.mutateAsync({
+        message,
+        history: messages.slice(-20).map((m): ChatMessage => ({ role: m.role, content: m.content })),
+        threadId: currentThreadId,
+      });
+      setMessages([...newHistory, { role: 'assistant', content: result.response, pairNodeId: result.pairNodeId }]);
 
       if (result.threadId && result.threadId !== currentThreadId) {
         setCurrentThreadId(result.threadId);
@@ -129,6 +146,88 @@ export default function ChatPage() {
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'エラーが発生しました';
       setMessages([...newHistory, { role: 'assistant', content: `⚠️ ${errMsg}` }]);
+    }
+  }
+
+  async function handleRethink(pairNodeId: string) {
+    if (!currentThreadId) return;
+    const newPrompt = rethinkInput.trim();
+    setRethinkActivePairNodeId(null);
+    setRethinkInput('');
+    setRethinkingPairNodeId(pairNodeId);
+
+    // Clear the current content to show streaming from scratch
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.pairNodeId === pairNodeId && msg.role === 'assistant'
+          ? { ...msg, content: '' }
+          : msg,
+      ),
+    );
+
+    try {
+      const cfg = loadLMConfig();
+      if (!cfg) throw new Error('LM設定が見つかりません。設定ページで設定してください。');
+
+      const res = await fetch('/api/chat/rethink', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pairNodeId, newPrompt, threadId: currentThreadId, lmConfig: cfg }),
+      });
+
+      if (!res.ok) {
+        const json = (await res.json()) as { message?: string };
+        throw new Error(json.message ?? 'やり直しに失敗しました');
+      }
+
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let accumulated = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const json = JSON.parse(line.slice(6)) as {
+              chunk?: string;
+              done?: boolean;
+              error?: string;
+            };
+            if (json.chunk) {
+              accumulated += json.chunk;
+              const snapshot = accumulated;
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.pairNodeId === pairNodeId && msg.role === 'assistant'
+                    ? { ...msg, content: snapshot }
+                    : msg,
+                ),
+              );
+            }
+            if (json.error) throw new Error(json.error);
+          } catch (parseErr) {
+            if (parseErr instanceof SyntaxError) continue; // ignore malformed SSE
+            throw parseErr;
+          }
+        }
+      }
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'やり直しに失敗しました';
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.pairNodeId === pairNodeId && msg.role === 'assistant'
+            ? { ...msg, content: `⚠️ ${errMsg}` }
+            : msg,
+        ),
+      );
+    } finally {
+      setRethinkingPairNodeId(null);
     }
   }
 
@@ -258,17 +357,76 @@ export default function ChatPage() {
               )}
 
               {messages.map((msg, i) => (
-                <div
-                  key={i}
-                  className={msg.role === 'user' ? styles.bubbleUser : styles.bubbleAssistant}
-                >
-                  {msg.content}
+                <div key={i} className={styles.bubbleWrapper}>
+                  {msg.role === 'user' ? (
+                    <div className={styles.bubbleUser}>{msg.content}</div>
+                  ) : (
+                    <>
+                      <div className={styles.bubbleAssistant}>
+                        {rethinkingPairNodeId === msg.pairNodeId && msg.content === '' ? (
+                          <span className={styles.thinking}>考え中...</span>
+                        ) : (
+                          msg.content
+                        )}
+                      </div>
+
+                      {/* Rethink controls — only for persisted assistant messages */}
+                      {msg.pairNodeId && currentThreadId && (
+                        rethinkActivePairNodeId === msg.pairNodeId ? (
+                          <div className={styles.rethinkForm}>
+                            <input
+                              className={styles.rethinkInput}
+                              value={rethinkInput}
+                              onChange={(e) => setRethinkInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  void handleRethink(msg.pairNodeId!);
+                                }
+                                if (e.key === 'Escape') setRethinkActivePairNodeId(null);
+                              }}
+                              placeholder="新しい指示（空欄で再生成）"
+                              autoFocus
+                              disabled={isBusy}
+                            />
+                            <button
+                              className={styles.rethinkSubmitBtn}
+                              onClick={() => void handleRethink(msg.pairNodeId!)}
+                              disabled={isBusy}
+                            >
+                              実行
+                            </button>
+                            <button
+                              className={styles.rethinkCancelBtn}
+                              onClick={() => setRethinkActivePairNodeId(null)}
+                              disabled={isBusy}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            className={styles.rethinkBtn}
+                            onClick={() => {
+                              setRethinkActivePairNodeId(msg.pairNodeId!);
+                              setRethinkInput('');
+                            }}
+                            disabled={isBusy}
+                          >
+                            やり直す
+                          </button>
+                        )
+                      )}
+                    </>
+                  )}
                 </div>
               ))}
 
               {chatMutation.isPending && (
-                <div className={styles.bubbleAssistant}>
-                  <span className={styles.thinking}>考え中...</span>
+                <div className={styles.bubbleWrapper}>
+                  <div className={styles.bubbleAssistant}>
+                    <span className={styles.thinking}>考え中...</span>
+                  </div>
                 </div>
               )}
 
@@ -288,7 +446,7 @@ export default function ChatPage() {
                     ? 'ペルソナ推論を先に実行してください'
                     : 'メッセージを入力（Enter で送信、Shift+Enter で改行）'
                 }
-                disabled={!hasConfig || !hasPersona || chatMutation.isPending}
+                disabled={!hasConfig || !hasPersona || isBusy}
                 rows={3}
                 maxLength={1000}
               />
