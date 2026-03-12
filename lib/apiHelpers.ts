@@ -3,6 +3,8 @@ import { ValidationError } from '@/core/errors/ValidationError';
 import { AuthError } from '@/core/errors/AuthError';
 import { LLMError } from '@/core/errors/LLMError';
 import { InfrastructureError } from '@/core/errors/InfrastructureError';
+import { RateLimitError } from '@/core/errors/RateLimitError';
+import { LLMConcurrencyError } from '@/core/errors/LLMConcurrencyError';
 import { logger } from '@/infrastructure/observability/logger';
 
 export function checkBodySize(req: Request, maxBytes: number): void {
@@ -15,6 +17,24 @@ export function checkBodySize(req: Request, maxBytes: number): void {
 }
 
 export function handleError(err: unknown): NextResponse {
+  if (err instanceof RateLimitError) {
+    logger.error('api:rate_limit_exceeded', {
+      ...err.context,
+      message: err.message,
+      stack: err.stack,
+    });
+    const res = NextResponse.json({ message: err.message }, { status: 429 });
+    res.headers.set('Retry-After', String(err.context.retryAfterSeconds));
+    return res;
+  }
+  if (err instanceof LLMConcurrencyError) {
+    logger.error('api:llm_concurrency_exhausted', {
+      ...err.context,
+      message: err.message,
+      stack: err.stack,
+    });
+    return NextResponse.json({ message: err.message }, { status: 503 });
+  }
   if (err instanceof ValidationError) {
     return NextResponse.json({ message: err.message }, { status: 400 });
   }
@@ -27,6 +47,9 @@ export function handleError(err: unknown): NextResponse {
   if (err instanceof InfrastructureError) {
     return NextResponse.json({ message: err.message }, { status: 500 });
   }
-  logger.error('unhandled_error', { err: String(err) });
+  logger.error('unhandled_error', {
+    err: String(err),
+    stack: err instanceof Error ? err.stack : undefined,
+  });
   return NextResponse.json({ message: '予期しないエラーが発生しました' }, { status: 500 });
 }

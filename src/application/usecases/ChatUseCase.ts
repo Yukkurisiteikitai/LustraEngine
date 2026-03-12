@@ -1,6 +1,6 @@
 import type { IExperienceRepository } from '@/core/domains/experience/IExperienceRepository';
 import type { IPersonaRepository } from '@/core/domains/persona/IPersonaRepository';
-import type { ILLMPort } from '@/application/ports/ILLMPort';
+import type { ILLMPort, TokenUsage } from '@/application/ports/ILLMPort';
 import { buildChatSystemPrompt } from '@/application/llm/chatSystemPrompt';
 import type { ChatMessage } from '@/types';
 
@@ -15,7 +15,7 @@ export class ChatUseCase {
     userId: string,
     message: string,
     history: ChatMessage[],
-  ): Promise<{ response: string; personaMissing?: boolean }> {
+  ): Promise<{ response: string; tokenUsage?: TokenUsage; modelName?: string; personaMissing?: boolean }> {
     const persona = await this.personaRepo.getLatest(userId);
 
     if (!persona) {
@@ -36,7 +36,7 @@ export class ChatUseCase {
       .join('\n');
     const fullUserMessage = historyText ? `${historyText}\nuser: ${message}` : message;
 
-    const response = await this.llm.generate(systemPrompt, fullUserMessage, 1024);
-    return { response };
+    const { text, tokenUsage, modelName } = await this.llm.generate(systemPrompt, fullUserMessage, 1024);
+    return { response: text, tokenUsage, modelName };
   }
 }

@@ -7,11 +7,11 @@ import { InfrastructureError } from '@/core/errors/InfrastructureError';
 export class SupabaseMessageRepository implements IMessageRepository {
   constructor(private supabase: SupabaseClient) {}
 
-  async findByThread(threadId: string): Promise<MessageData[]> {
+  async findByPairNodes(pairNodeIds: string[]): Promise<MessageData[]> {
     const { data, error } = await this.supabase
       .from('messages')
       .select('*')
-      .eq('thread_id', threadId)
+      .in('pair_node_id', pairNodeIds)
       .order('created_at', { ascending: true });
 
     if (error) throw new InfrastructureError(`メッセージ取得エラー: ${error.message}`);
@@ -22,36 +22,18 @@ export class SupabaseMessageRepository implements IMessageRepository {
     const { data, error } = await this.supabase
       .from('messages')
       .insert({
-        thread_id: input.threadId,
+        pair_node_id: input.pairNodeId,
         user_id: input.userId,
         role: input.role,
-        contexts: input.contexts,
-        context_id_set: input.contextIdSet,
+        content: input.content,
+        token_count: input.tokenCount ?? null,
+        model_id: input.modelId ?? null,
+        unit_price: input.unitPrice ?? null,
       })
       .select('*')
       .single();
 
     if (error) throw new InfrastructureError(`メッセージ保存エラー: ${error.message}`);
     return MessageMapper.fromRow(data as Record<string, unknown>);
-  }
-
-  async appendContext(messageId: string, newContext: string): Promise<MessageData> {
-    // append to array and advance index to the new element
-    const { data, error } = await this.supabase.rpc('append_message_context', {
-      p_message_id: messageId,
-      p_new_context: newContext,
-    });
-
-    if (error) throw new InfrastructureError(`コンテキスト追加エラー: ${error.message}`);
-    return MessageMapper.fromRow(data as Record<string, unknown>);
-  }
-
-  async setContextId(messageId: string, index: number): Promise<void> {
-    const { error } = await this.supabase
-      .from('messages')
-      .update({ context_id_set: index })
-      .eq('id', messageId);
-
-    if (error) throw new InfrastructureError(`コンテキストID更新エラー: ${error.message}`);
   }
 }

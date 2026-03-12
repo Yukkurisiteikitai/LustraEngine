@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { IJobQueue } from '@/application/jobs/IJobQueue';
 import type { ILLMPort } from '@/application/ports/ILLMPort';
-import { createRepositories } from './createRepositories';
+import { createRepositories, createRepositoriesWithAdmin } from './createRepositories';
 import { LLMRetryPolicy } from '@/application/llm/policies/LLMRetryPolicy';
 import { LLMResponseValidator } from '@/application/llm/policies/LLMResponseValidator';
 import { LogExperienceUseCase } from '@/application/usecases/LogExperienceUseCase';
@@ -13,6 +13,7 @@ import { CreateThreadUseCase } from '@/application/usecases/CreateThreadUseCase'
 import { GetThreadHistoryUseCase } from '@/application/usecases/GetThreadHistoryUseCase';
 import { SaveChatMessageUseCase } from '@/application/usecases/SaveChatMessageUseCase';
 import { RethinkMessageUseCase } from '@/application/usecases/RethinkMessageUseCase';
+import { createAdminClient } from '@/infrastructure/supabase/createAdminClient';
 
 export function createLogExperienceUseCase(supabase: SupabaseClient, queue: IJobQueue) {
   const { experience, user } = createRepositories(supabase);
@@ -59,16 +60,17 @@ export function createThreadUseCase(supabase: SupabaseClient) {
 }
 
 export function createGetThreadHistoryUseCase(supabase: SupabaseClient) {
-  const { thread, message } = createRepositories(supabase);
-  return new GetThreadHistoryUseCase(thread, message);
+  const { thread, pairNode, message } = createRepositories(supabase);
+  return new GetThreadHistoryUseCase(thread, pairNode, message);
 }
 
 export function createSaveChatMessageUseCase(supabase: SupabaseClient) {
-  const { message } = createRepositories(supabase);
-  return new SaveChatMessageUseCase(message);
+  const { pairNode, message } = createRepositories(supabase);
+  const { llmModel } = createRepositoriesWithAdmin(supabase, createAdminClient());
+  return new SaveChatMessageUseCase(pairNode, message, llmModel);
 }
 
 export function createRethinkMessageUseCase(supabase: SupabaseClient) {
-  const { message } = createRepositories(supabase);
-  return new RethinkMessageUseCase(message);
+  const { pairNode, message } = createRepositories(supabase);
+  return new RethinkMessageUseCase(pairNode, message);
 }

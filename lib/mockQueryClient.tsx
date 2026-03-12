@@ -144,7 +144,7 @@ export function useChatMutation() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error((json as { message?: string }).message ?? 'チャットに失敗しました');
-      return json as { response: string; threadId?: string };
+      return json as { response: string; threadId?: string; pairNodeId?: string };
     },
   });
 }

@@ -32,9 +32,10 @@ export class DetectPatternsUseCase {
 
       let raw: string;
       try {
-        raw = await this.retry.execute(() =>
+        const { text } = await this.retry.execute(() =>
           this.llm.generate(PATTERN_SYSTEM_PROMPT, userMessage, 512),
         );
+        raw = text;
       } catch (err) {
         logger.warn('detect:llm_failed', { experienceId: expData.id, err });
         continue;
