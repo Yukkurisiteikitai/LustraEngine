@@ -12,8 +12,8 @@ export const metadata: Metadata = {
     images: [
       {
         url: '/api/favicon',
-        width: 32,
-        height: 32,
+        width: 48,
+        height: 48,
       },
     ],
   },

@@ -3,7 +3,7 @@ import path from 'path';
 
 export async function GET() {
   try {
-    const faviconPath = path.join(process.cwd(), 'favicon_io', 'favicon.ico');
+    const faviconPath = path.join(process.cwd(), 'app', 'favicon_io', 'favicon.ico');
     const faviconBuffer = await readFile(faviconPath);
 
     return new Response(faviconBuffer, {
