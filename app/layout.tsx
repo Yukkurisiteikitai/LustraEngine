@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     url: 'https://www.yourselflm.org/',
     images: [
       {
-        url: '/api/favicon',
+        url: 'https://www.yourselflm.org/api/favicon',
         width: 48,
         height: 48,
       },
