@@ -5,6 +5,12 @@ import Providers from './providers';
 export const metadata: Metadata = {
   title: 'YourselfLM',
   description: 'YourselfLMは、LLMを活用して自己理解を深めるためのツールです。ユーザーは、LLMとの対話を通じて自己分析や目標設定を行い、自己成長を促進します。',
+  manifest: '/manifest.json',
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/apple-icon.png',
+  },
   openGraph: {
     title: 'YourselfLM',
     description: 'YourselfLMは、LLMを活用して自己理解を深めるためのツールです。ユーザーは、LLMとの対話を通じて自己分析や目標設定を行い、自己成長を促進します。',
