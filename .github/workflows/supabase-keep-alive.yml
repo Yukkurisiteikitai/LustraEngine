@@ -1,0 +1,21 @@
+name: Supabase Keep Alive
+
+on:
+  schedule:
+    # 毎日 午前0時（UTC）に実行
+    - cron: '0 0 * * *'
+  workflow_dispatch: # 手動実行用ボタンも作っておく
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    environment: NEXT_PUBLIC_SUPABASE_URL 
+    steps:
+      - name: Send request to Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          curl -i -X GET "${SUPABASE_URL}/rest/v1/healthcheck" \
+          -H "apikey: ${SUPABASE_ANON_KEY}" \
+          -H "Authorization: Bearer ${SUPABASE_ANON_KEY}"
