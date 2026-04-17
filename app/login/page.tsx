@@ -7,6 +7,7 @@ import Footer from '@/components/Footer';
 import styles from './page.module.css';
 
 type Mode = 'login' | 'signup';
+const GOOGLE_REDIRECT_PATH = '/api/auth/callback?next=/';
 
 export default function LoginPage() {
   const [mode, setMode] = useState<Mode>('login');
@@ -49,6 +50,25 @@ export default function LoginPage() {
     setLoading(false);
   }
 
+  async function handleGoogleLogin() {
+    setError('');
+    setMessage('');
+    setLoading(true);
+
+    const supabase = createSupabaseBrowserClient();
+    const { error: signInError } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}${GOOGLE_REDIRECT_PATH}`,
+      },
+    });
+
+    if (signInError) {
+      setError(signInError.message);
+      setLoading(false);
+    }
+  }
+
   return (
     <>
       <Header />
@@ -57,6 +77,19 @@ export default function LoginPage() {
           <h1 className={styles.title}>
             {mode === 'login' ? 'ログイン' : 'アカウント作成'}
           </h1>
+
+          <button
+            type="button"
+            className={styles.googleButton}
+            onClick={handleGoogleLogin}
+            disabled={loading}
+          >
+            {loading ? '処理中...' : 'Google アカウントでログイン'}
+          </button>
+
+          <div className={styles.divider}>
+            <span>または</span>
+          </div>
 
           <form onSubmit={handleSubmit} className={styles.form} noValidate>
             <div className={styles.group}>
