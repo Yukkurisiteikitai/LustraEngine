@@ -1,9 +1,11 @@
 import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ConfrontationChart from '@/components/ConfrontationChart';
 import StressChart from '@/components/StressChart';
 import ObstacleList from '@/components/ObstacleList';
+import PsychologySection from './PsychologySection';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createGetAnalyticsUseCase } from '@/container/createUseCases';
 import type { ObstacleRecord } from '@/types';
@@ -30,6 +32,15 @@ export default async function DashboardPage() {
         </section>
 
         <ObstacleList items={data.recentExperiences as unknown as ObstacleRecord[]} />
+
+        <section>
+          <h2 style={{ marginBottom: '1.5rem', fontSize: '1.25rem', fontWeight: 700 }}>
+            あなたの傾向
+          </h2>
+          <Suspense fallback={<div style={{ color: '#6b7280' }}>分析中...</div>}>
+            <PsychologySection userId={user.id} />
+          </Suspense>
+        </section>
       </main>
       <Footer />
     </>

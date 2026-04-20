@@ -1,6 +1,7 @@
 import { Experience } from '@/core/domains/experience/Experience';
 import type { IExperienceRepository } from '@/core/domains/experience/IExperienceRepository';
 import type { IClusterCommandRepository } from '@/core/domains/cluster/IClusterCommandRepository';
+import type { IPsychologyRepository } from '@/core/ports/IPsychologyRepository';
 import type { ILLMPort } from '@/application/ports/ILLMPort';
 import type { LLMRetryPolicy } from '@/application/llm/policies/LLMRetryPolicy';
 import type { LLMResponseValidator } from '@/application/llm/policies/LLMResponseValidator';
@@ -19,6 +20,7 @@ export class DetectPatternsUseCase {
     private readonly llm: ILLMPort,
     private readonly retry: LLMRetryPolicy,
     private readonly validator: LLMResponseValidator,
+    private readonly psychologyRepo: IPsychologyRepository,
   ) {}
 
   async execute(userId: string): Promise<{ classified: number }> {
@@ -33,7 +35,7 @@ export class DetectPatternsUseCase {
       let raw: string;
       try {
         const { text } = await this.retry.execute(() =>
-          this.llm.generate(PATTERN_SYSTEM_PROMPT, userMessage, 512),
+          this.llm.generate(PATTERN_SYSTEM_PROMPT, userMessage, 800),
         );
         raw = text;
       } catch (err) {
@@ -42,6 +44,18 @@ export class DetectPatternsUseCase {
       }
 
       const parsed = this.validator.validatePatternResponse(raw);
+
+      if (parsed?.psychologyAnalysis) {
+        try {
+          await this.psychologyRepo.updateExperiencePsychologyAnalysis(
+            expData.id,
+            parsed.psychologyAnalysis,
+          );
+        } catch (err) {
+          logger.error('detect:psychology_failed', { experienceId: expData.id, err });
+        }
+      }
+
       if (!parsed || parsed.assignments.length === 0) continue;
 
       const assignments: ClusterAssignment[] = parsed.assignments.map((a) => ({

@@ -26,23 +26,25 @@ export function createGetAnalyticsUseCase(supabase: SupabaseClient) {
 }
 
 export function createDetectPatternsUseCase(supabase: SupabaseClient, llm: ILLMPort) {
-  const { experience, clusterCommand } = createRepositories(supabase);
+  const { experience, clusterCommand, psychology } = createRepositories(supabase);
   return new DetectPatternsUseCase(
     experience,
     clusterCommand,
     llm,
     new LLMRetryPolicy(),
     new LLMResponseValidator(),
+    psychology,
   );
 }
 
 export function createInferTraitsUseCase(supabase: SupabaseClient, llm: ILLMPort) {
-  const { experience, clusterQuery, trait, persona } = createRepositories(supabase);
+  const { experience, clusterQuery, trait, persona, psychology } = createRepositories(supabase);
   return new InferTraitsUseCase(
     experience,
     clusterQuery,
     trait,
     persona,
+    psychology,
     llm,
     new LLMRetryPolicy(),
     new LLMResponseValidator(),
@@ -50,8 +52,8 @@ export function createInferTraitsUseCase(supabase: SupabaseClient, llm: ILLMPort
 }
 
 export function createChatUseCase(supabase: SupabaseClient, llm: ILLMPort) {
-  const { experience, persona } = createRepositories(supabase);
-  return new ChatUseCase(experience, persona, llm);
+  const { experience, persona, psychology } = createRepositories(supabase);
+  return new ChatUseCase(experience, persona, llm, psychology);
 }
 
 export function createThreadUseCase(supabase: SupabaseClient) {

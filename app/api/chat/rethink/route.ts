@@ -74,8 +74,8 @@ export async function POST(req: Request) {
       .slice(0, pairNodeUserMsgIdx)
       .map((m) => ({ role: m.role, content: m.content }));
 
-    // Build system prompt from persona + recent experiences
-    const { persona, experience } = createRepositories(supabase);
+    // Build system prompt from persona + recent experiences + psychology profile
+    const { persona, experience, psychology } = createRepositories(supabase);
     const personaSnapshot = await persona.getLatest(user.id);
     if (!personaSnapshot) {
       return NextResponse.json(
@@ -83,8 +83,19 @@ export async function POST(req: Request) {
         { status: 422 },
       );
     }
-    const experiences = await experience.findRecent(user.id, 5);
-    const systemPrompt = buildChatSystemPrompt(personaSnapshot.personaJson, experiences);
+    const [experiences, bigFive, attachment, identityStatus] = await Promise.all([
+      experience.findRecent(user.id, 5),
+      psychology.getBigFiveScore(user.id),
+      psychology.getAttachmentProfile(user.id),
+      psychology.getIdentityStatus(user.id),
+    ]);
+    const systemPrompt = buildChatSystemPrompt(
+      personaSnapshot.personaJson,
+      experiences,
+      bigFive,
+      attachment,
+      identityStatus,
+    );
 
     // Build the full user message (same format as ChatUseCase)
     const historyText = priorHistory.map((m) => `${m.role}: ${m.content}`).join('\n');

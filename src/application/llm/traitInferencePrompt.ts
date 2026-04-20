@@ -1,28 +1,58 @@
 import type { ClusterData } from '@/core/domains/cluster/Cluster';
 import type { ExperienceData } from '@/core/domains/experience/Experience';
 
-export const TRAIT_SYSTEM_PROMPT = `You are a personality trait inference engine for a self-reflection app.
-Given a user's behavioral pattern clusters and recent experiences, infer scores for 6 personality traits.
+export const TRAIT_SYSTEM_PROMPT = `あなたはユーザーの経験データを分析して、Big Five性格特性を推定する専門家です。
 
-Trait mapping context:
-- procrastination → low discipline (0.2-0.4), high self_criticism (0.6-0.8)
-- social_avoidance → high introversion (0.6-0.8), high social_anxiety (0.6-0.8)
-- authority_anxiety → high social_anxiety (0.7-0.9), low risk_tolerance (0.2-0.4)
-- perfectionism → high self_criticism (0.7-0.9), moderate discipline (0.5-0.7)
+## 入力データ
+- 直近の経験ログ（description, emotion, action_result等）
+- 検出済みのパターン（episode_clusters）
 
-Score 0.0 = very low, 1.0 = very high. Use the full 0-1 range.
+## 出力形式
+以下のJSON形式で返すこと:
 
-Respond ONLY with valid JSON:
 {
-  "traits": {
-    "introversion": 0.0,
-    "discipline": 0.0,
-    "curiosity": 0.0,
-    "risk_tolerance": 0.0,
-    "self_criticism": 0.0,
-    "social_anxiety": 0.0
-  }
-}`;
+  "bigFive": {
+    "openness": 0.0〜1.0,
+    "conscientiousness": 0.0〜1.0,
+    "extraversion": 0.0〜1.0,
+    "agreeableness": 0.0〜1.0,
+    "neuroticism": 0.0〜1.0,
+    "confidence": 0.0〜1.0
+  },
+  "facets": [
+    {
+      "domain": "openness",
+      "facetName": "intellectual_curiosity",
+      "score": 0.0〜1.0,
+      "confidence": 0.0〜1.0
+    }
+  ],
+  "attachmentHints": {
+    "anxietyScore": 1.0〜7.0,
+    "avoidanceScore": 1.0〜7.0
+  },
+  "identityStatus": [
+    {
+      "domain": "career" | "values" | "relationships" | "interests",
+      "explorationScore": 0.0〜1.0,
+      "commitmentScore": 0.0〜1.0
+    }
+  ]
+}
+
+attachmentHintsのスコアが推定できない場合はnullを設定すること。
+推定できたファセットのみfacetsに含めること。
+
+## 重要な文化的注意事項（WEIRDバイアス補正）
+Big Fiveはアメリカの大学生を主なサンプルとして開発された尺度です。
+以下の解釈を避けること:
+
+- extraversion低い → 問題あり、とみなさない（日本では内省的であることが適応的な場合がある）
+- agreeableness高い → 従順で主体性がない、とみなさない（集団調和を重視することは日本文化で肯定的）
+- conscientiousness低い → 怠け者、とみなさない（義務感より自律的な動機づけを優先することもある）
+- attribution_locus=external → 責任逃れ、とみなさない（文脈依存的な自己認識は日本で一般的）
+
+スコアは「この人の傾向」を記述するものであり、「良い/悪い」の評価ではない。`;
 
 export function buildTraitUserMessage(
   clusters: ClusterData[],
@@ -34,17 +64,20 @@ export function buildTraitUserMessage(
 
   const recentSummary = experiences
     .slice(0, 20)
-    .map(
-      (e) =>
-        `- [${e.actionResult}] stress=${e.stressLevel} "${e.description.slice(0, 80)}"`,
-    )
+    .map((e) => {
+      const parts = [`- [${e.actionResult}] stress=${e.stressLevel} "${e.description.slice(0, 80)}"`];
+      if (e.emotion) parts.push(`  emotion: ${e.emotion}`);
+      if (e.goal) parts.push(`  goal: ${e.goal}`);
+      if (e.action) parts.push(`  action: ${e.action}`);
+      return parts.join('\n');
+    })
     .join('\n');
 
   return [
-    'Behavioral clusters:',
-    clusterSummary || '(none detected yet)',
+    '## 検出済みパターン（episode_clusters）:',
+    clusterSummary || '(まだ検出されていません)',
     '',
-    'Recent experiences (up to 20):',
-    recentSummary || '(no recent experiences)',
+    '## 直近の経験ログ（最大20件）:',
+    recentSummary || '(経験データなし)',
   ].join('\n');
 }

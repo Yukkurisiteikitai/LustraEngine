@@ -7,7 +7,6 @@ import Footer from '@/components/Footer';
 import styles from './page.module.css';
 
 type Mode = 'login' | 'signup';
-const GOOGLE_REDIRECT_PATH = '/api/auth/callback?next=/';
 
 export default function LoginPage() {
   const [mode, setMode] = useState<Mode>('login');
@@ -56,10 +55,11 @@ export default function LoginPage() {
     setLoading(true);
 
     const supabase = createSupabaseBrowserClient();
+    const redirectTo = `${window.location.origin}/api/auth/callback?next=/`;
     const { error: signInError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}${GOOGLE_REDIRECT_PATH}`,
+        redirectTo,
       },
     });
 
