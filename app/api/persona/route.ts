@@ -13,10 +13,15 @@ export async function GET() {
     } = await supabase.auth.getUser();
     if (!user) throw new AuthError('認証が必要です');
 
-    const { persona } = createRepositories(supabase);
-    const data = await persona.getLatest(user.id);
+    const { persona, psychology } = createRepositories(supabase);
+    const [data, bigFive, attachment, identityStatus] = await Promise.all([
+      persona.getLatest(user.id),
+      psychology.getBigFiveScore(user.id),
+      psychology.getAttachmentProfile(user.id),
+      psychology.getIdentityStatus(user.id),
+    ]);
 
-    if (!data) return NextResponse.json({ snapshot: null });
+    if (!data) return NextResponse.json({ snapshot: null, bigFive: null, attachment: null, identityStatus: [] });
 
     const snapshot: PersonaSnapshot = {
       id: data.id,
@@ -25,7 +30,7 @@ export async function GET() {
       createdAt: data.createdAt,
     };
 
-    return NextResponse.json({ snapshot });
+    return NextResponse.json({ snapshot, bigFive, attachment, identityStatus });
   } catch (err) {
     return handleError(err);
   }

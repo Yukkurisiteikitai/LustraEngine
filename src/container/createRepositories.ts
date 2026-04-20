@@ -9,6 +9,7 @@ import { SupabaseThreadRepository } from '@/infrastructure/repositories/Supabase
 import { SupabaseMessageRepository } from '@/infrastructure/repositories/SupabaseMessageRepository';
 import { SupabasePairNodeRepository } from '@/infrastructure/repositories/SupabasePairNodeRepository';
 import { SupabaseLlmModelRepository } from '@/infrastructure/repositories/SupabaseLlmModelRepository';
+import { SupabasePsychologyRepository } from '@/infrastructure/repositories/SupabasePsychologyRepository';
 
 export function createRepositories(supabase: SupabaseClient) {
   return {
@@ -21,6 +22,7 @@ export function createRepositories(supabase: SupabaseClient) {
     thread: new SupabaseThreadRepository(supabase),
     message: new SupabaseMessageRepository(supabase),
     pairNode: new SupabasePairNodeRepository(supabase),
+    psychology: new SupabasePsychologyRepository(supabase),
   };
 }
 
