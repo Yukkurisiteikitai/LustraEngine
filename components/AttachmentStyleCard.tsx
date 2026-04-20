@@ -53,7 +53,7 @@ export default function AttachmentStyleCard({ profile }: Props) {
             dataKey="x"
             domain={[1, 7]}
             name="回避傾向"
-            label={{ value: '←自立　　　　つながり→', position: 'insideBottom', offset: -12, fontSize: 11 }}
+            label={{ value: '←つながり　　　　自立→', position: 'insideBottom', offset: -12, fontSize: 11 }}
           />
           <YAxis
             type="number"

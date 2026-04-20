@@ -43,7 +43,7 @@ export interface BigFiveScore {
   confidence: number;
   evidenceCount: number;
   applyCulturalAdjustment: boolean;
-  updatedAt: Date;
+  updatedAt: string;
 }
 
 export interface BigFiveFacet {

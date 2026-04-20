@@ -66,7 +66,7 @@ export class SupabasePsychologyRepository implements IPsychologyRepository {
       confidence: data.confidence as number,
       evidenceCount: data.evidence_count as number,
       applyCulturalAdjustment: data.apply_cultural_adjustment as boolean,
-      updatedAt: new Date(data.updated_at as string),
+      updatedAt: data.updated_at as string,
     };
   }
 

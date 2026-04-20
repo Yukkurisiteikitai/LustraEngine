@@ -132,7 +132,7 @@ export class LLMResponseValidator {
       const extraversion = clamp(bf.extraversion);
       const agreeableness = clamp(bf.agreeableness);
       const neuroticism = clamp(bf.neuroticism);
-      const confidence = clamp(bf.confidence) ?? 0.5;
+      const confidence = clamp(bf.confidence) ?? 0.1;
 
       if (
         openness === null || conscientiousness === null || extraversion === null ||
@@ -142,15 +142,19 @@ export class LLMResponseValidator {
       const facets: BigFiveResponse['facets'] = [];
       if (Array.isArray(parsed.facets)) {
         for (const f of parsed.facets as Record<string, unknown>[]) {
+          const facetScore = clamp(f.score);
+          const facetConfidence = clamp(f.confidence);
           if (
             BIG_FIVE_DOMAINS.includes(f.domain as BigFiveDomain) &&
-            typeof f.facetName === 'string'
+            typeof f.facetName === 'string' &&
+            facetScore !== null &&
+            facetConfidence !== null
           ) {
             facets.push({
               domain: f.domain as BigFiveDomain,
               facetName: f.facetName,
-              score: clamp(f.score) ?? 0.5,
-              confidence: clamp(f.confidence) ?? 0.5,
+              score: facetScore,
+              confidence: facetConfidence,
             });
           }
         }
@@ -168,11 +172,17 @@ export class LLMResponseValidator {
       const identityStatus: BigFiveResponse['identityStatus'] = [];
       if (Array.isArray(parsed.identityStatus)) {
         for (const is_ of parsed.identityStatus as Record<string, unknown>[]) {
-          if (IDENTITY_DOMAINS.includes(is_.domain as typeof IDENTITY_DOMAINS[number])) {
+          const explorationScore = clamp(is_.explorationScore);
+          const commitmentScore = clamp(is_.commitmentScore);
+          if (
+            IDENTITY_DOMAINS.includes(is_.domain as typeof IDENTITY_DOMAINS[number]) &&
+            explorationScore !== null &&
+            commitmentScore !== null
+          ) {
             identityStatus.push({
               domain: is_.domain as typeof IDENTITY_DOMAINS[number],
-              explorationScore: clamp(is_.explorationScore) ?? 0.5,
-              commitmentScore: clamp(is_.commitmentScore) ?? 0.5,
+              explorationScore,
+              commitmentScore,
             });
           }
         }

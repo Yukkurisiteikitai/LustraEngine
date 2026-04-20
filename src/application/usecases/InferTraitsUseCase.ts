@@ -5,12 +5,24 @@ import type { IPersonaRepository } from '@/core/domains/persona/IPersonaReposito
 import type { IPsychologyRepository } from '@/core/ports/IPsychologyRepository';
 import type { ILLMPort } from '@/application/ports/ILLMPort';
 import type { LLMRetryPolicy } from '@/application/llm/policies/LLMRetryPolicy';
-import type { LLMResponseValidator } from '@/application/llm/policies/LLMResponseValidator';
+import type { LLMResponseValidator, BigFiveResponse } from '@/application/llm/policies/LLMResponseValidator';
 import { TRAIT_SYSTEM_PROMPT, buildTraitUserMessage } from '@/application/llm/traitInferencePrompt';
 import { buildFallbackTraits } from '@/core/domains/trait/Trait';
 import { buildPersonaJson } from '@/core/domains/persona/Persona';
 import type { TraitName } from '@/types';
 import { logger } from '@/infrastructure/observability/logger';
+
+function deriveLegacyTraitsFromBigFive(bf: BigFiveResponse['bigFive']): Record<TraitName, number> {
+  const clamp = (v: number) => Math.max(0, Math.min(1, v));
+  return {
+    introversion:   clamp(1 - bf.extraversion),
+    discipline:     clamp(bf.conscientiousness),
+    curiosity:      clamp(bf.openness),
+    risk_tolerance: clamp(1 - bf.neuroticism * 0.6 + bf.extraversion * 0.2),
+    self_criticism: clamp(bf.neuroticism),
+    social_anxiety: clamp(bf.neuroticism * 0.5 + (1 - bf.extraversion) * 0.5),
+  };
+}
 
 export class InferTraitsUseCase {
   constructor(
@@ -33,13 +45,17 @@ export class InferTraitsUseCase {
     const userMessage = buildTraitUserMessage(clusters, experiences);
 
     let traitScores: Record<TraitName, number>;
-    let llmText: string | null = null;
+    let bigFiveResult: BigFiveResponse | null = null;
     try {
       const { text } = await this.retry.execute(() =>
         this.llm.generate(TRAIT_SYSTEM_PROMPT, userMessage, 1024),
       );
-      llmText = text;
-      traitScores = this.validator.validateTraitResponse(text) ?? buildFallbackTraits(clusters);
+      bigFiveResult = this.validator.validateBigFiveResponse(text);
+      if (bigFiveResult) {
+        traitScores = deriveLegacyTraitsFromBigFive(bigFiveResult.bigFive);
+      } else {
+        traitScores = this.validator.validateTraitResponse(text) ?? buildFallbackTraits(clusters);
+      }
     } catch (err) {
       logger.warn('infer:llm_failed', { userId, err });
       traitScores = buildFallbackTraits(clusters);
@@ -57,56 +73,57 @@ export class InferTraitsUseCase {
     }
 
     // Big Five スコアを big_five_scores テーブルに保存
-    if (llmText) {
-      const bigFiveResult = this.validator.validateBigFiveResponse(llmText);
-      if (bigFiveResult) {
-        try {
-          await this.psychologyRepo.upsertBigFiveScore({
-            userId,
-            openness: bigFiveResult.bigFive.openness,
-            conscientiousness: bigFiveResult.bigFive.conscientiousness,
-            extraversion: bigFiveResult.bigFive.extraversion,
-            agreeableness: bigFiveResult.bigFive.agreeableness,
-            neuroticism: bigFiveResult.bigFive.neuroticism,
-            confidence: bigFiveResult.bigFive.confidence,
-            evidenceCount: experiences.length,
-            applyCulturalAdjustment: true,
-          });
+    if (bigFiveResult) {
+      try {
+        await this.psychologyRepo.upsertBigFiveScore({
+          userId,
+          openness: bigFiveResult.bigFive.openness,
+          conscientiousness: bigFiveResult.bigFive.conscientiousness,
+          extraversion: bigFiveResult.bigFive.extraversion,
+          agreeableness: bigFiveResult.bigFive.agreeableness,
+          neuroticism: bigFiveResult.bigFive.neuroticism,
+          confidence: bigFiveResult.bigFive.confidence,
+          evidenceCount: experiences.length,
+          applyCulturalAdjustment: true,
+        });
 
-          for (const facet of bigFiveResult.facets) {
-            await this.psychologyRepo.upsertBigFiveFacet({
+        await Promise.all(
+          bigFiveResult.facets.map((facet) =>
+            this.psychologyRepo.upsertBigFiveFacet({
               userId,
               domain: facet.domain,
               facetName: facet.facetName,
               score: facet.score,
               confidence: facet.confidence,
+            })
+          )
+        );
+
+        if (bigFiveResult.attachmentHints) {
+          const { anxietyScore, avoidanceScore } = bigFiveResult.attachmentHints;
+          if (anxietyScore !== null || avoidanceScore !== null) {
+            await this.psychologyRepo.upsertAttachmentProfile({
+              userId,
+              anxietyScore: anxietyScore ?? undefined,
+              avoidanceScore: avoidanceScore ?? undefined,
+              confidence: bigFiveResult.bigFive.confidence,
+              evidenceCount: experiences.length,
             });
           }
+        }
 
-          if (bigFiveResult.attachmentHints) {
-            const { anxietyScore, avoidanceScore } = bigFiveResult.attachmentHints;
-            if (anxietyScore !== null || avoidanceScore !== null) {
-              await this.psychologyRepo.upsertAttachmentProfile({
-                userId,
-                anxietyScore: anxietyScore ?? undefined,
-                avoidanceScore: avoidanceScore ?? undefined,
-                confidence: bigFiveResult.bigFive.confidence,
-                evidenceCount: experiences.length,
-              });
-            }
-          }
-
-          for (const is_ of bigFiveResult.identityStatus) {
-            await this.psychologyRepo.upsertIdentityStatus({
+        await Promise.all(
+          bigFiveResult.identityStatus.map((is_) =>
+            this.psychologyRepo.upsertIdentityStatus({
               userId,
               domain: is_.domain,
               explorationScore: is_.explorationScore,
               commitmentScore: is_.commitmentScore,
-            });
-          }
-        } catch (err) {
-          logger.warn('infer:big_five_save_failed', { userId, err });
-        }
+            })
+          )
+        );
+      } catch (err) {
+        logger.warn('infer:big_five_save_failed', { userId, err });
       }
     }
 

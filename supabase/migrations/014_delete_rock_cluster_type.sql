@@ -1,6 +1,6 @@
 -- cluster_typeのCHECK制約を削除し、自由なラベルを許容する
 ALTER TABLE episode_clusters
-  DROP CONSTRAINT episode_clusters_cluster_type_check;
+  DROP CONSTRAINT IF EXISTS episode_clusters_cluster_type_check;
 
 -- 代わりにcategoryカラムを追加して理論的分類を保持
 ALTER TABLE episode_clusters
