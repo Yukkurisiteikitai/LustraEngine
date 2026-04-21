@@ -17,6 +17,10 @@ export class SupabaseMonitoringRepository implements IMonitoringRepository {
       throw new InfrastructureError('monitoring:getDbStats rpc failed', error);
     }
 
+    if (data == null || typeof data !== 'object' || !('total_db_size_mb' in data)) {
+      throw new InfrastructureError('monitoring:getDbStats returned invalid data', { data });
+    }
+
     const raw = data as RawDbStats;
 
     return {

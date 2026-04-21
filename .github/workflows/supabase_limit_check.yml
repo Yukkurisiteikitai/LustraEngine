@@ -19,5 +19,5 @@ jobs:
         env:
           MONITOR_SECRET: ${{ secrets.MONITOR_SECRET }}
         run: |
-          curl -i -X GET "https://www.yourselflm.org/api/monitor" \
+          curl --fail -i -X GET "https://www.yourselflm.org/api/monitor" \
             -H "Authorization: Bearer ${MONITOR_SECRET}"
