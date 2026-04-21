@@ -14,6 +14,9 @@ import { GetThreadHistoryUseCase } from '@/application/usecases/GetThreadHistory
 import { SaveChatMessageUseCase } from '@/application/usecases/SaveChatMessageUseCase';
 import { RethinkMessageUseCase } from '@/application/usecases/RethinkMessageUseCase';
 import { createAdminClient } from '@/infrastructure/supabase/createAdminClient';
+import { CheckDbLimitsUseCase } from '@/application/usecases/CheckDbLimitsUseCase';
+import { SupabaseMonitoringRepository } from '@/infrastructure/repositories/SupabaseMonitoringRepository';
+import { DiscordWebhookAdapter } from '@/infrastructure/notifications/DiscordWebhookAdapter';
 
 export function createLogExperienceUseCase(supabase: SupabaseClient, queue: IJobQueue) {
   const { experience, user } = createRepositories(supabase);
@@ -75,4 +78,19 @@ export function createSaveChatMessageUseCase(supabase: SupabaseClient) {
 export function createRethinkMessageUseCase(supabase: SupabaseClient) {
   const { pairNode, message } = createRepositories(supabase);
   return new RethinkMessageUseCase(pairNode, message);
+}
+
+export function createCheckDbLimitsUseCase(): CheckDbLimitsUseCase {
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+  if (!webhookUrl) throw new Error('Missing env var: DISCORD_WEBHOOK_URL');
+
+  const warnMb = parseInt(process.env.SUPABASE_DB_SIZE_WARN_MB ?? '400', 10);
+  const criticalMb = parseInt(process.env.SUPABASE_DB_SIZE_CRITICAL_MB ?? '480', 10);
+
+  const adminClient = createAdminClient();
+  return new CheckDbLimitsUseCase(
+    new SupabaseMonitoringRepository(adminClient),
+    new DiscordWebhookAdapter(webhookUrl),
+    { warnMb, criticalMb },
+  );
 }
