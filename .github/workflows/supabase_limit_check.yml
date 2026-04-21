@@ -14,8 +14,9 @@ jobs:
     environment: NEXT_PUBLIC_SUPABASE_URL 
     steps:
       - name: Send request to Supabase
+        # モニターに関しては統計情報のみにアクセスできるものとしてMONITOR_SECRETとして自作認証キーを使用している。
+        # そのためsupabaseのURLのEnviromentとして登録しているが、supabaseそのもののAPIキーではない点には注意が必要
         env:
-          # SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           MONITOR_SECRET: ${{ secrets.MONITOR_SECRET }}
         run: |
           curl -i -X GET "https://www.yourselflm.org/api/monitor" \
