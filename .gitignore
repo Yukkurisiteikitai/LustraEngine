@@ -28,6 +28,7 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+workers/.dev.vars
 
 # vercel
 .vercel
@@ -40,3 +41,4 @@ history
 
 # FVM Version Cache
 .fvm/
+workers/node_modules
