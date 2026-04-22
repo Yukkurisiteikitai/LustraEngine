@@ -5,7 +5,6 @@ import { LLMError } from '@/core/errors/LLMError';
 import { InfrastructureError } from '@/core/errors/InfrastructureError';
 import { RateLimitError } from '@/core/errors/RateLimitError';
 import { LLMConcurrencyError } from '@/core/errors/LLMConcurrencyError';
-import { logger } from '@/infrastructure/observability/logger';
 
 export function checkBodySize(req: Request, maxBytes: number): void {
   const contentLength = req.headers.get('content-length');
@@ -18,7 +17,7 @@ export function checkBodySize(req: Request, maxBytes: number): void {
 
 export function handleError(err: unknown): NextResponse {
   if (err instanceof RateLimitError) {
-    logger.error('api:rate_limit_exceeded', {
+    console.error('api:rate_limit_exceeded', {
       ...err.context,
       message: err.message,
       stack: err.stack,
@@ -28,7 +27,7 @@ export function handleError(err: unknown): NextResponse {
     return res;
   }
   if (err instanceof LLMConcurrencyError) {
-    logger.error('api:llm_concurrency_exhausted', {
+    console.error('api:llm_concurrency_exhausted', {
       ...err.context,
       message: err.message,
       stack: err.stack,
@@ -47,7 +46,7 @@ export function handleError(err: unknown): NextResponse {
   if (err instanceof InfrastructureError) {
     return NextResponse.json({ message: err.message }, { status: 500 });
   }
-  logger.error('unhandled_error', {
+  console.error('unhandled_error', {
     err: String(err),
     stack: err instanceof Error ? err.stack : undefined,
   });

@@ -3,6 +3,7 @@ import type { IExperienceRepository } from '@/core/domains/experience/IExperienc
 import type { IClusterCommandRepository } from '@/core/domains/cluster/IClusterCommandRepository';
 import type { IPsychologyRepository } from '@/core/ports/IPsychologyRepository';
 import type { ILLMPort } from '@/application/ports/ILLMPort';
+import type { ILoggerPort } from '@/application/ports/ILoggerPort';
 import type { LLMRetryPolicy } from '@/application/llm/policies/LLMRetryPolicy';
 import type { LLMResponseValidator } from '@/application/llm/policies/LLMResponseValidator';
 import {
@@ -11,13 +12,13 @@ import {
   PATTERN_CLUSTER_LABELS,
 } from '@/application/llm/patternDetectionPrompt';
 import type { ClusterAssignment, ClusterType } from '@/types';
-import { logger } from '@/infrastructure/observability/logger';
 
 export class DetectPatternsUseCase {
   constructor(
     private readonly expRepo: IExperienceRepository,
     private readonly clusterCommand: IClusterCommandRepository,
     private readonly llm: ILLMPort,
+    private readonly logger: ILoggerPort,
     private readonly retry: LLMRetryPolicy,
     private readonly validator: LLMResponseValidator,
     private readonly psychologyRepo: IPsychologyRepository,
@@ -39,7 +40,7 @@ export class DetectPatternsUseCase {
         );
         raw = text;
       } catch (err) {
-        logger.warn('detect:llm_failed', { experienceId: expData.id, err });
+        this.logger.warn('detect:llm_failed', { experienceId: expData.id, err });
         continue;
       }
 
@@ -52,7 +53,7 @@ export class DetectPatternsUseCase {
             parsed.psychologyAnalysis,
           );
         } catch (err) {
-          logger.error('detect:psychology_failed', { experienceId: expData.id, err });
+          this.logger.error('detect:psychology_failed', { experienceId: expData.id, err });
         }
       }
 
@@ -67,7 +68,7 @@ export class DetectPatternsUseCase {
         await this.clusterCommand.classifyExperienceAtomic(expData.id, assignments);
         classified++;
       } catch (err) {
-        logger.error('detect:atomic_failed', { experienceId: expData.id, err });
+        this.logger.error('detect:atomic_failed', { experienceId: expData.id, err });
       }
     }
 
