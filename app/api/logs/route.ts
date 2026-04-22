@@ -139,7 +139,7 @@ export async function POST(request: Request) {
     // Cloudflare コンテキストが取れる場合（wrangler dev / 本番）は
     // ctx.waitUntil() で書き込みをバックグラウンドへ回して 202 を即返す。
     // next dev（CF なし）では同期実行して従来どおり 200 + analyticsを返す。
-    let cfContext: Awaited<ReturnType<typeof getCloudflareContext<Record<string, unknown>>>> | null = null;
+    let cfContext: Awaited<ReturnType<typeof getCloudflareContext>> | null = null;
     try {
       cfContext = await getCloudflareContext({ async: true });
     } catch {
