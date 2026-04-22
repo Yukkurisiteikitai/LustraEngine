@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     const useCase = createDetectPatternsUseCase(supabase, createLLM(lmConfig));
     const { classified } = await useCase.execute(user.id);
 
-    revalidateTag('patterns', {});
+    revalidateTag('patterns');
 
     return NextResponse.json({
       classified,

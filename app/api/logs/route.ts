@@ -19,10 +19,6 @@ interface LogRequestBody {
   lmConfig?: LMConfig;
 }
 
-interface CloudflareEnv {
-  HTML_CACHE: KVNamespace;
-}
-
 // キャッシュキー: ssr:v1:{userId}:{path}
 function buildCacheKey(userId: string, pathname: string): string {
   const pathKey = pathname.replace(/\/$/, '').replace(/^\//, '').replace(/\//g, '-') || 'root';
@@ -127,9 +123,9 @@ export async function POST(request: Request) {
     // Cloudflare コンテキストが取れる場合（wrangler dev / 本番）は
     // ctx.waitUntil() で書き込みをバックグラウンドへ回して 202 を即返す。
     // next dev（CF なし）では同期実行して従来どおり 200 + analyticsを返す。
-    let cfContext: { ctx: ExecutionContext; env: CloudflareEnv } | null = null;
+    let cfContext: Awaited<ReturnType<typeof getCloudflareContext<Record<string, unknown>>>> | null = null;
     try {
-      cfContext = await getCloudflareContext<CloudflareEnv>({ async: true });
+      cfContext = await getCloudflareContext({ async: true });
     } catch {
       // ローカル next dev 環境では getCloudflareContext が使えないため無視
     }
@@ -152,7 +148,7 @@ export async function POST(request: Request) {
     const useCase = createLogExperienceUseCase(supabase, queue);
     await useCase.execute(user.id, { displayName }, obstacles, date, lmConfig);
 
-    revalidateTag('analytics', {});
+    revalidateTag('analytics');
 
     const analytics = await createGetAnalyticsUseCase(supabase).execute(user.id);
     return NextResponse.json({

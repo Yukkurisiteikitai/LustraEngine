@@ -31,8 +31,8 @@
 	"kv_namespaces": [
 		{
 			"binding": "HTML_CACHE",
-			"id": "<your-kv-namespace-id>",
-			"preview_id": "<your-preview-kv-id>"
+			"id": "3194659df99e40e9a561e94fe57755b0",
+			"preview_id": "ec9c007488be4477a1de8bb751815a94"
 		}
 	]
 }
