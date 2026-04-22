@@ -8,21 +8,22 @@
     "start": "next start",
     "test": "jest",
     "lint": "next lint",
-    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
+    "preview": "NEXT_PRIVATE_TURBOPACK=0 opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "NEXT_PRIVATE_TURBOPACK=0 opennextjs-cloudflare build && opennextjs-cloudflare deploy"
   },
   "dependencies": {
     "@opennextjs/cloudflare": "^1.17.1",
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.98.0",
     "@tanstack/react-query": "^5.90.21",
-    "next": "^16.1.5",
+    "next": "15.5.15",
     "p-limit": "^7.3.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "recharts": "^3.8.1"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260422.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
     "@testing-library/user-event": "^14.6.1",
@@ -31,6 +32,8 @@
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "autoprefixer": "^10.4.14",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "15.5.15",
     "eslint-plugin-boundaries": "^5.4.0",
     "identity-obj-proxy": "^3.0.0",
     "jest": "^29.7.0",

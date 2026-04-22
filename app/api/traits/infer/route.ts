@@ -37,8 +37,8 @@ export async function POST(req: Request) {
     const useCase = createInferTraitsUseCase(supabase, createLLM(lmConfig));
     const { traits } = await useCase.execute(user.id);
 
-    revalidateTag('traits', {});
-    revalidateTag('persona', {});
+    revalidateTag('traits');
+    revalidateTag('persona');
 
     return NextResponse.json({ traits, message: 'トレイト推論が完了しました' });
   } catch (err) {

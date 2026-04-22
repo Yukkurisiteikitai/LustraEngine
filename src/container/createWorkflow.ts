@@ -3,6 +3,7 @@ import { InMemoryQueue } from '@/infrastructure/jobs/InMemoryQueue';
 import { ProcessExperienceWorkflow } from '@/application/workflows/ProcessExperienceWorkflow';
 import { createDetectPatternsUseCase, createInferTraitsUseCase } from './createUseCases';
 import { createLLM } from '@/infrastructure/llm/createLLM';
+import { logger } from '@/infrastructure/observability/logger';
 import type { DetectPatternsJobPayload } from '@/application/jobs/DetectPatternsJob';
 import type { InferTraitsJobPayload } from '@/application/jobs/InferTraitsJob';
 
@@ -13,6 +14,7 @@ export function createProcessExperienceWorkflow(supabase: SupabaseClient, queue:
     (payload: InferTraitsJobPayload) =>
       createInferTraitsUseCase(supabase, createLLM(payload.lmConfig)),
     queue,
+    logger,
   );
 
   // Handler 登録

@@ -13,7 +13,7 @@
           { "from": "infrastructure", "allow": ["core", "application", "infrastructure", "shared"] },
           { "from": "container",      "allow": ["core", "application", "infrastructure", "container", "shared"] },
           { "from": "presentation",   "allow": ["core", "application", "infrastructure", "container", "presentation", "shared"] },
-          { "from": "shared",         "allow": ["shared"] }
+          { "from": "shared",         "allow": ["core", "presentation", "shared"] }
         ]
       }
     ]

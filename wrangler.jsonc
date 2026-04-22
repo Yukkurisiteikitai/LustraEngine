@@ -23,5 +23,16 @@
 		// Enable image optimization
 		// see https://opennext.js.org/cloudflare/howtos/image
 		"binding": "IMAGES"
-	}
+	},
+	// ── ユーザー固有HTMLキャッシュ用 KV ──────────────────────────────────────
+	// 初回セットアップ時に以下を実行して id を取得してから差し替えること:
+	//   npx wrangler kv namespace create "HTML_CACHE"
+	//   npx wrangler kv namespace create "HTML_CACHE" --preview
+	"kv_namespaces": [
+		{
+			"binding": "HTML_CACHE",
+			"id": "3194659df99e40e9a561e94fe57755b0",
+			"preview_id": "ec9c007488be4477a1de8bb751815a94"
+		}
+	]
 }

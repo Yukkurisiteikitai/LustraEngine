@@ -90,7 +90,11 @@ export default function LogNewPage() {
       {
         onSuccess: (data) => {
           setMessageType('success');
-          setStatusMessage(`${data.message}（向き合い率: ${data.summary.confrontationRate}%）`);
+          setStatusMessage(
+            data.summary
+              ? `${data.message}（向き合い率: ${data.summary.confrontationRate}%）`
+              : data.message,
+          );
           // Fire-and-forget pattern detection
           const cfg = loadLMConfig();
           if (cfg) {

@@ -4,13 +4,13 @@ import type { ITraitRepository } from '@/core/domains/trait/ITraitRepository';
 import type { IPersonaRepository } from '@/core/domains/persona/IPersonaRepository';
 import type { IPsychologyRepository } from '@/core/ports/IPsychologyRepository';
 import type { ILLMPort } from '@/application/ports/ILLMPort';
+import type { ILoggerPort } from '@/application/ports/ILoggerPort';
 import type { LLMRetryPolicy } from '@/application/llm/policies/LLMRetryPolicy';
 import type { LLMResponseValidator, BigFiveResponse } from '@/application/llm/policies/LLMResponseValidator';
 import { TRAIT_SYSTEM_PROMPT, buildTraitUserMessage } from '@/application/llm/traitInferencePrompt';
 import { buildFallbackTraits } from '@/core/domains/trait/Trait';
 import { buildPersonaJson } from '@/core/domains/persona/Persona';
 import type { TraitName } from '@/types';
-import { logger } from '@/infrastructure/observability/logger';
 
 function deriveLegacyTraitsFromBigFive(bf: BigFiveResponse['bigFive']): Record<TraitName, number> {
   const clamp = (v: number) => Math.max(0, Math.min(1, v));
@@ -32,6 +32,7 @@ export class InferTraitsUseCase {
     private readonly personaRepo: IPersonaRepository,
     private readonly psychologyRepo: IPsychologyRepository,
     private readonly llm: ILLMPort,
+    private readonly logger: ILoggerPort,
     private readonly retry: LLMRetryPolicy,
     private readonly validator: LLMResponseValidator,
   ) {}
@@ -57,7 +58,7 @@ export class InferTraitsUseCase {
         traitScores = this.validator.validateTraitResponse(text) ?? buildFallbackTraits(clusters);
       }
     } catch (err) {
-      logger.warn('infer:llm_failed', { userId, err });
+      this.logger.warn('infer:llm_failed', { userId, err });
       traitScores = buildFallbackTraits(clusters);
     }
 
@@ -69,7 +70,7 @@ export class InferTraitsUseCase {
     try {
       await this.personaRepo.saveSnapshot(userId, personaJson, traitsHash);
     } catch (err) {
-      logger.warn('infer:snapshot_failed', { userId, err });
+      this.logger.warn('infer:snapshot_failed', { userId, err });
     }
 
     // Big Five スコアを big_five_scores テーブルに保存
@@ -123,7 +124,7 @@ export class InferTraitsUseCase {
           )
         );
       } catch (err) {
-        logger.warn('infer:big_five_save_failed', { userId, err });
+        this.logger.warn('infer:big_five_save_failed', { userId, err });
       }
     }
 

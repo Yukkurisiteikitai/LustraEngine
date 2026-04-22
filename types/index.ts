@@ -23,10 +23,10 @@ export interface LogPayload {
 }
 
 export interface LogResponse {
-  id: string;
-  savedAt: string;
+  id?: string;
+  savedAt?: string;
   message: string;
-  summary: {
+  summary?: {
     confrontationRate: number;
     avgStress7Days: number;
     streakDays: number;

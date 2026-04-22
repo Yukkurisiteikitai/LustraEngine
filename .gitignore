@@ -28,6 +28,11 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+*.dev.vars
+.dev.vars
+
+# cloudflare
+.wrangler
 
 # vercel
 .vercel
@@ -37,6 +42,7 @@ yarn-error.log*
 next-env.d.ts
 .txt
 history
+
 
 # FVM Version Cache
 .fvm/

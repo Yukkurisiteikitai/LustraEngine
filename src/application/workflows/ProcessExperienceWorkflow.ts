@@ -3,7 +3,7 @@ import type { InferTraitsUseCase } from '@/application/usecases/InferTraitsUseCa
 import type { IJobQueue } from '@/application/jobs/IJobQueue';
 import type { DetectPatternsJobPayload } from '@/application/jobs/DetectPatternsJob';
 import type { InferTraitsJobPayload } from '@/application/jobs/InferTraitsJob';
-import { logger } from '@/infrastructure/observability/logger';
+import type { ILoggerPort } from '@/application/ports/ILoggerPort';
 
 type DetectFactory = (payload: DetectPatternsJobPayload) => DetectPatternsUseCase;
 type InferFactory = (payload: InferTraitsJobPayload) => InferTraitsUseCase;
@@ -14,12 +14,13 @@ export class ProcessExperienceWorkflow {
     private readonly detectFactory: DetectFactory,
     private readonly inferFactory: InferFactory,
     private readonly queue: IJobQueue,
+    private readonly logger: ILoggerPort,
   ) {}
 
   // detect job runner から呼ばれる
   async runDetect(payload: DetectPatternsJobPayload): Promise<void> {
     const { classified } = await this.detectFactory(payload).execute(payload.userId);
-    logger.info('workflow:detect_complete', { userId: payload.userId, classified });
+    this.logger.info('workflow:detect_complete', { userId: payload.userId, classified });
     // detect 完了後に infer を enqueue
     await this.queue.enqueue('inferTraits', payload);
   }
@@ -27,6 +28,6 @@ export class ProcessExperienceWorkflow {
   // infer job runner から呼ばれる
   async runInfer(payload: InferTraitsJobPayload): Promise<void> {
     await this.inferFactory(payload).execute(payload.userId);
-    logger.info('workflow:infer_complete', { userId: payload.userId });
+    this.logger.info('workflow:infer_complete', { userId: payload.userId });
   }
 }

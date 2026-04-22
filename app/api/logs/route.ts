@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createLogExperienceUseCase, createGetAnalyticsUseCase } from '@/container/createUseCases';
 import { VALID_DOMAINS, type Domain } from '@/core/domains/domain/Domain';
@@ -10,11 +11,96 @@ import { AuthError } from '@/core/errors/AuthError';
 import { handleError, checkBodySize } from '@/lib/apiHelpers';
 import type { CreateExperienceDTO } from '@/application/dto/ExperienceDTO';
 import type { LMConfig } from '@/types';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 interface LogRequestBody {
   date: string;
   obstacles: CreateExperienceDTO[];
   lmConfig?: LMConfig;
+}
+
+type KVNamespaceLike = {
+  get: (...args: unknown[]) => unknown;
+  put: (...args: unknown[]) => unknown;
+  delete: (...args: unknown[]) => unknown;
+};
+
+type CloudflareContextLike = {
+  env: {
+    HTML_CACHE?: unknown;
+  };
+  ctx: {
+    waitUntil: (promise: Promise<unknown>) => void;
+  };
+};
+
+function isKVNamespaceLike(value: unknown): value is KVNamespaceLike {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as KVNamespaceLike).get === 'function' &&
+    typeof (value as KVNamespaceLike).put === 'function' &&
+    typeof (value as KVNamespaceLike).delete === 'function'
+  );
+}
+
+function isCloudflareContextLike(value: unknown): value is CloudflareContextLike {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const maybe = value as {
+    env?: { HTML_CACHE?: unknown };
+    ctx?: { waitUntil?: unknown };
+  };
+
+  return (
+    typeof maybe.env === 'object' &&
+    maybe.env !== null &&
+    typeof maybe.ctx === 'object' &&
+    maybe.ctx !== null &&
+    typeof maybe.ctx.waitUntil === 'function'
+  );
+}
+
+// キャッシュキー: ssr:v1:{userId}:{encodedPath}
+function buildCacheKey(userId: string, pathname: string): string {
+  const normalizedPath = pathname === '/' ? '/' : pathname.replace(/\/$/, '') || '/';
+  const pathKey = encodeURIComponent(normalizedPath);
+  return `ssr:v1:${userId}:${pathKey}`;
+}
+
+const INVALIDATED_PAGES = ['/dashboard', '/logs', '/analytics'];
+
+async function backgroundSave(
+  kv: KVNamespaceLike,
+  supabase: SupabaseClient,
+  userId: string,
+  displayName: string | null,
+  body: LogRequestBody,
+): Promise<void> {
+  // Step 1: Supabase への書き込み（既存のユースケースをそのまま利用）
+  try {
+    const queue = new InMemoryQueue();
+    if (body.lmConfig) {
+      createProcessExperienceWorkflow(supabase, queue);
+    }
+    const useCase = createLogExperienceUseCase(supabase, queue);
+    await useCase.execute(userId, { displayName }, body.obstacles, body.date, body.lmConfig);
+  } catch (err) {
+    console.error('[logs:bg] Supabase書き込み失敗:', err);
+    return; // INSERT失敗時はキャッシュを触らない
+  }
+
+  // Step 2: ユーザー固有ページの KV キャッシュを無効化
+  try {
+    await Promise.allSettled(
+      INVALIDATED_PAGES.map((p) => kv.delete(buildCacheKey(userId, p))),
+    );
+  } catch (err) {
+    console.error('[logs:bg] KVキャッシュ無効化失敗:', err);
+    // 非致命的: TTL（1時間）経過で自動削除される
+  }
 }
 
 export async function GET() {
@@ -79,19 +165,44 @@ export async function POST(request: Request) {
         ? (user.user_metadata.display_name as string)
         : null;
 
+    // Cloudflare コンテキストが取れる場合（wrangler dev / 本番）は
+    // ctx.waitUntil() で書き込みをバックグラウンドへ回して 202 を即返す。
+    // next dev（CF なし）では同期実行して従来どおり 200 + analyticsを返す。
+    let cfContext: Awaited<ReturnType<typeof getCloudflareContext>> | null = null;
+    try {
+      cfContext = await getCloudflareContext({ async: true });
+    } catch {
+      // ローカル next dev 環境では getCloudflareContext が使えないため無視
+    }
+
+    if (isCloudflareContextLike(cfContext)) {
+      const htmlCache = cfContext.env.HTML_CACHE;
+      if (isKVNamespaceLike(htmlCache)) {
+        cfContext.ctx.waitUntil(
+          backgroundSave(htmlCache, supabase, user.id, displayName, body),
+        );
+        return NextResponse.json(
+          { message: '記録を受け付けました。バックグラウンドで処理中です。' },
+          { status: 202 },
+        );
+      }
+
+      console.warn(
+        'Cloudflare KV binding "HTML_CACHE" is missing or invalid; falling back to synchronous log processing.',
+      );
+    }
+
+    // ── ローカル next dev フォールバック（同期実行）──────────────────────────
     const queue = new InMemoryQueue();
     if (lmConfig) {
       createProcessExperienceWorkflow(supabase, queue);
     }
-
     const useCase = createLogExperienceUseCase(supabase, queue);
     await useCase.execute(user.id, { displayName }, obstacles, date, lmConfig);
 
-    revalidateTag('analytics', {});
+    revalidateTag('analytics');
 
-    // Return analytics summary
     const analytics = await createGetAnalyticsUseCase(supabase).execute(user.id);
-
     return NextResponse.json({
       message: '記録を保存しました。今日の一歩が未来を変えます。',
       summary: {

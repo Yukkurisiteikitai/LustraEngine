@@ -17,6 +17,7 @@ import { createAdminClient } from '@/infrastructure/supabase/createAdminClient';
 import { CheckDbLimitsUseCase } from '@/application/usecases/CheckDbLimitsUseCase';
 import { SupabaseMonitoringRepository } from '@/infrastructure/repositories/SupabaseMonitoringRepository';
 import { DiscordWebhookAdapter } from '@/infrastructure/notifications/DiscordWebhookAdapter';
+import { logger } from '@/infrastructure/observability/logger';
 
 export function createLogExperienceUseCase(supabase: SupabaseClient, queue: IJobQueue) {
   const { experience, user } = createRepositories(supabase);
@@ -34,6 +35,7 @@ export function createDetectPatternsUseCase(supabase: SupabaseClient, llm: ILLMP
     experience,
     clusterCommand,
     llm,
+    logger,
     new LLMRetryPolicy(),
     new LLMResponseValidator(),
     psychology,
@@ -49,6 +51,7 @@ export function createInferTraitsUseCase(supabase: SupabaseClient, llm: ILLMPort
     persona,
     psychology,
     llm,
+    logger,
     new LLMRetryPolicy(),
     new LLMResponseValidator(),
   );
