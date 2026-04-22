@@ -14,12 +14,13 @@
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4 |
+| Frontend | Next.js 15 App Router, React 19, TypeScript, Tailwind CSS 4 |
 | Backend | Supabase (PostgreSQL + Auth) |
 | State | TanStack Query v5 |
 | LLM | Claude (Anthropic API) / LM Studio (local) |
 | Concurrency | p-limit |
 | Testing | Jest + @testing-library/react |
+| Deployment | Cloudflare Workers (via @opennextjs/cloudflare) |
 
 ## Architecture
 
@@ -61,6 +62,46 @@ POST /api/logs
                  └─ DetectPatternsUseCase  →  enqueue: inferTraits
                       └─ InferTraitsUseCase  →  updates persona snapshot
 ```
+
+## Cloudflare Deployment
+
+This app runs on **Cloudflare Workers** via [`@opennextjs/cloudflare`](https://github.com/opennextjs/opennextjs-cloudflare), which adapts Next.js App Router for the Cloudflare runtime.
+
+### Commands
+
+```bash
+npm run preview   # Local preview using the Cloudflare runtime (wrangler dev)
+npm run deploy    # Build and deploy to Cloudflare Workers
+```
+
+### Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `wrangler.jsonc` | Worker name, KV namespace bindings, compatibility flags, image optimization |
+| `cloudflare-env.d.ts` | TypeScript type definitions for Cloudflare bindings (`CloudflareEnv`) |
+
+### KV Cache Strategy
+
+SSR HTML for authenticated pages is cached per-user in **Cloudflare KV** (`HTML_CACHE`).
+
+| Item | Detail |
+|------|--------|
+| Cached pages | `/dashboard`, `/logs`, `/analytics` |
+| Cache key format | `ssr:v1:{userId}:{pathname}` |
+| TTL | 1 hour |
+| Invalidation | On successful experience log, the user's KV entries are deleted in the background |
+
+### Execution Mode Differences
+
+The `/api/logs` endpoint behaves differently depending on the runtime:
+
+| Environment | Execution | Response | KV Cache |
+|-------------|-----------|----------|----------|
+| Cloudflare (prod / `npm run preview`) | Async via `waitUntil` | `202 Accepted` | Invalidated in background |
+| Local (`npm run dev`) | Synchronous | `200 OK` + analytics summary | None |
+
+In Cloudflare mode, the response is returned immediately and Supabase writes + KV invalidation happen after the response via `ctx.waitUntil()`.
 
 ## Getting Started
 
@@ -111,12 +152,16 @@ npm run dev      # http://localhost:3000
 npm test         # Run Jest test suite
 npm run lint     # ESLint (includes architecture boundary checks)
 npm run build    # Production build
+npm run preview  # Local preview using Cloudflare runtime
+npm run deploy   # Build and deploy to Cloudflare Workers
 ```
 
 ## Project Structure
 
 ```
 RecEngine/
+├── wrangler.jsonc          # Cloudflare Worker configuration
+├── cloudflare-env.d.ts     # Cloudflare binding type definitions
 ├── app/                    # Next.js App Router pages and API routes
 │   ├── api/
 │   │   ├── chat/           # POST /api/chat, POST /api/chat/rethink (SSE)
@@ -144,7 +189,7 @@ RecEngine/
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/api/logs` | Record an experience; asynchronously triggers pattern detection |
+| `POST` | `/api/logs` | Record an experience; triggers async pattern detection. Returns `202 Accepted` on Cloudflare (background processing) or `200 OK` + analytics summary locally |
 | `POST` | `/api/chat` | Send a chat message (per-user rate limiting applied) |
 | `POST` | `/api/chat/rethink` | Regenerate an assistant response for a pair node (SSE streaming) |
 | `POST` | `/api/patterns/detect` | Manually trigger pattern detection job |
