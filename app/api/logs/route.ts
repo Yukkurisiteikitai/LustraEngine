@@ -19,6 +19,22 @@ interface LogRequestBody {
   lmConfig?: LMConfig;
 }
 
+type KVNamespaceLike = {
+  get: (...args: unknown[]) => unknown;
+  put: (...args: unknown[]) => unknown;
+  delete: (...args: unknown[]) => unknown;
+};
+
+function isKVNamespaceLike(value: unknown): value is KVNamespaceLike {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as KVNamespaceLike).get === 'function' &&
+    typeof (value as KVNamespaceLike).put === 'function' &&
+    typeof (value as KVNamespaceLike).delete === 'function'
+  );
+}
+
 // キャッシュキー: ssr:v1:{userId}:{path}
 function buildCacheKey(userId: string, pathname: string): string {
   const pathKey = pathname.replace(/\/$/, '').replace(/^\//, '').replace(/\//g, '-') || 'root';
@@ -131,12 +147,19 @@ export async function POST(request: Request) {
     }
 
     if (cfContext) {
-      cfContext.ctx.waitUntil(
-        backgroundSave(cfContext.env.HTML_CACHE, supabase, user.id, displayName, body),
-      );
-      return NextResponse.json(
-        { message: '記録を受け付けました。バックグラウンドで処理中です。' },
-        { status: 202 },
+      const htmlCache = cfContext.env.HTML_CACHE;
+      if (isKVNamespaceLike(htmlCache)) {
+        cfContext.ctx.waitUntil(
+          backgroundSave(htmlCache, supabase, user.id, displayName, body),
+        );
+        return NextResponse.json(
+          { message: '記録を受け付けました。バックグラウンドで処理中です。' },
+          { status: 202 },
+        );
+      }
+
+      console.warn(
+        'Cloudflare KV binding "HTML_CACHE" is missing or invalid; falling back to synchronous log processing.',
       );
     }
 
