@@ -25,6 +25,15 @@ type KVNamespaceLike = {
   delete: (...args: unknown[]) => unknown;
 };
 
+type CloudflareContextLike = {
+  env: {
+    HTML_CACHE?: unknown;
+  };
+  ctx: {
+    waitUntil: (promise: Promise<unknown>) => void;
+  };
+};
+
 function isKVNamespaceLike(value: unknown): value is KVNamespaceLike {
   return (
     typeof value === 'object' &&
@@ -35,16 +44,36 @@ function isKVNamespaceLike(value: unknown): value is KVNamespaceLike {
   );
 }
 
-// キャッシュキー: ssr:v1:{userId}:{path}
+function isCloudflareContextLike(value: unknown): value is CloudflareContextLike {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const maybe = value as {
+    env?: { HTML_CACHE?: unknown };
+    ctx?: { waitUntil?: unknown };
+  };
+
+  return (
+    typeof maybe.env === 'object' &&
+    maybe.env !== null &&
+    typeof maybe.ctx === 'object' &&
+    maybe.ctx !== null &&
+    typeof maybe.ctx.waitUntil === 'function'
+  );
+}
+
+// キャッシュキー: ssr:v1:{userId}:{encodedPath}
 function buildCacheKey(userId: string, pathname: string): string {
-  const pathKey = pathname.replace(/\/$/, '').replace(/^\//, '').replace(/\//g, '-') || 'root';
+  const normalizedPath = pathname === '/' ? '/' : pathname.replace(/\/$/, '') || '/';
+  const pathKey = encodeURIComponent(normalizedPath);
   return `ssr:v1:${userId}:${pathKey}`;
 }
 
 const INVALIDATED_PAGES = ['/dashboard', '/logs', '/analytics'];
 
 async function backgroundSave(
-  kv: KVNamespace,
+  kv: KVNamespaceLike,
   supabase: SupabaseClient,
   userId: string,
   displayName: string | null,
@@ -146,7 +175,7 @@ export async function POST(request: Request) {
       // ローカル next dev 環境では getCloudflareContext が使えないため無視
     }
 
-    if (cfContext) {
+    if (isCloudflareContextLike(cfContext)) {
       const htmlCache = cfContext.env.HTML_CACHE;
       if (isKVNamespaceLike(htmlCache)) {
         cfContext.ctx.waitUntil(
