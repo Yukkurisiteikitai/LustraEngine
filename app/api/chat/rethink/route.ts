@@ -56,9 +56,18 @@ export async function POST(req: Request) {
       throw new ValidationError('Claude API キーが設定されていません');
     }
 
-    // Get thread history to reconstruct context
+    // Run all independent DB queries in parallel after auth
     const historyUseCase = createGetThreadHistoryUseCase(supabase);
-    const allMessages = await historyUseCase.getMessages(threadId);
+    const { persona, experience, psychology } = createRepositories(supabase);
+    const [allMessages, personaSnapshot, experiences, bigFive, attachment, identityStatus] =
+      await Promise.all([
+        historyUseCase.getMessages(threadId),
+        persona.getLatest(user.id),
+        experience.findRecent(user.id, 5),
+        psychology.getBigFiveScore(user.id),
+        psychology.getAttachmentProfile(user.id),
+        psychology.getIdentityStatus(user.id),
+      ]);
 
     // Find user message at this pair_node and build prior history
     const pairNodeUserMsgIdx = allMessages.findIndex(
@@ -75,20 +84,12 @@ export async function POST(req: Request) {
       .map((m) => ({ role: m.role, content: m.content }));
 
     // Build system prompt from persona + recent experiences + psychology profile
-    const { persona, experience, psychology } = createRepositories(supabase);
-    const personaSnapshot = await persona.getLatest(user.id);
     if (!personaSnapshot) {
       return NextResponse.json(
         { message: 'ペルソナスナップショットが見つかりません。先にペルソナページでトレイト推論を実行してください。' },
         { status: 422 },
       );
     }
-    const [experiences, bigFive, attachment, identityStatus] = await Promise.all([
-      experience.findRecent(user.id, 5),
-      psychology.getBigFiveScore(user.id),
-      psychology.getAttachmentProfile(user.id),
-      psychology.getIdentityStatus(user.id),
-    ]);
     const systemPrompt = buildChatSystemPrompt(
       personaSnapshot.personaJson,
       experiences,
