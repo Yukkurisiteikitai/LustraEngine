@@ -4,4 +4,5 @@ export interface PairNodeData {
   threadId: string;
   selectMessageId: string | null;
   createdAt: string;
+  version: number;
 }
