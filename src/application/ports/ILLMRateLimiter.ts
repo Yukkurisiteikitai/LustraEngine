@@ -9,7 +9,7 @@ export interface RateLimitStatus {
 
 export interface ILLMRateLimiter {
   /** LLM 呼び出し前: 残バジェットを確認 */
-  check(userId: string): RateLimitStatus;
+  check(userId: string): Promise<RateLimitStatus>;
   /** LLM 呼び出し後: 実消費トークンを記録 */
-  record(userId: string, tokens: number): void;
+  record(userId: string, tokens: number): Promise<void>;
 }
