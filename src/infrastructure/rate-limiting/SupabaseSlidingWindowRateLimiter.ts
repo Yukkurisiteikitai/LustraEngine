@@ -12,15 +12,27 @@ export class SupabaseSlidingWindowRateLimiter implements ILLMRateLimiter {
     const now = Date.now();
     const windowStart = new Date(now - this.windowMs).toISOString();
 
-    const { data, error } = await this.supabase
-      .from('token_usage_windows')
-      .select('used_tokens, window_start')
-      .eq('user_id', userId)
-      .gte('window_start', windowStart)
-      .order('window_start', { ascending: true });
+    const { data, error } = await this.supabase.rpc('get_token_usage_in_window', {
+      p_user_id: userId,
+      p_window_start: windowStart,
+    });
 
     if (error) {
-      // On DB error, fail open to avoid blocking users
+      console.error('[RateLimiter] check() DB error — failing closed', {
+        userId,
+        error: error.message,
+      });
+      return {
+        allowed: false,
+        usedTokens: this.maxTokens,
+        maxTokens: this.maxTokens,
+        remainingTokens: 0,
+        resetAtMs: now + this.windowMs,
+        retryAfterSeconds: Math.ceil(this.windowMs / 1000),
+      };
+    }
+
+    if (!data || data.length === 0) {
       return {
         allowed: true,
         usedTokens: 0,
@@ -31,11 +43,11 @@ export class SupabaseSlidingWindowRateLimiter implements ILLMRateLimiter {
       };
     }
 
-    const rows = data ?? [];
-    const usedTokens = rows.reduce((sum, r) => sum + (r.used_tokens as number), 0);
+    const { total_used, oldest_window_start } = data[0];
+    const usedTokens = Number(total_used);
     const allowed = usedTokens < this.maxTokens;
-    const oldestMs = rows.length > 0
-      ? new Date(rows[0].window_start as string).getTime()
+    const oldestMs = oldest_window_start
+      ? new Date(oldest_window_start).getTime()
       : now;
     const resetAtMs = oldestMs + this.windowMs;
 
