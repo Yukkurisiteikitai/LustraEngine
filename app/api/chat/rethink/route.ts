@@ -122,9 +122,9 @@ export async function POST(req: Request) {
           const rethinkUseCase = createRethinkMessageUseCase(supabase);
           await rethinkUseCase.execute(pairNodeId, user.id, fullText);
 
-          // Record estimated token usage for rate limiting
+          // Atomically check budget and record usage to prevent concurrent over-spend
           const estimatedTokens = Math.ceil(fullText.length / 3);
-          await rateLimiter.record(user.id, estimatedTokens);
+          await rateLimiter.checkAndRecord(user.id, estimatedTokens);
 
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
         } catch (err) {

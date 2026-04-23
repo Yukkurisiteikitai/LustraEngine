@@ -79,13 +79,32 @@ export async function POST(req: Request) {
       );
     }
 
-    // Record token usage for rate limiting
+    // Atomically check budget and record usage to prevent concurrent over-spend
     if (result.tokenUsage != null) {
-      await rateLimiter.record(user.id, result.tokenUsage.total);
+      const recordStatus = await rateLimiter.checkAndRecord(user.id, result.tokenUsage.total);
+      if (!recordStatus.allowed) {
+        logger.error('api:chat_rate_limit_exceeded', {
+          layer: 'ChatRoute',
+          operation: 'POST /api/chat (checkAndRecord)',
+          userId: user.id,
+          usedTokens: recordStatus.usedTokens,
+          maxTokens: recordStatus.maxTokens,
+          retryAfterSeconds: recordStatus.retryAfterSeconds,
+        });
+        throw new RateLimitError(
+          `トークン制限に達しました。${recordStatus.retryAfterSeconds}秒後に再試行してください。`,
+          {
+            userId: user.id,
+            usedTokens: recordStatus.usedTokens,
+            maxTokens: recordStatus.maxTokens,
+            retryAfterSeconds: recordStatus.retryAfterSeconds,
+          },
+        );
+      }
       logger.info('api:chat_tokens_recorded', {
         userId: user.id,
         tokenUsage: result.tokenUsage,
-        newUsedTotal: rateLimitStatus.usedTokens + result.tokenUsage.total,
+        newUsedTotal: recordStatus.usedTokens,
       });
     }
 

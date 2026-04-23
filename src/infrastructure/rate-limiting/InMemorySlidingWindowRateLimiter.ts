@@ -32,6 +32,29 @@ export class InMemorySlidingWindowRateLimiter implements ILLMRateLimiter {
     this.windows.set(userId, entries);
   }
 
+  async checkAndRecord(userId: string, tokens: number): Promise<RateLimitStatus> {
+    const now = Date.now();
+    const entries = this.getActiveEntries(userId, now);
+    const usedTokens = entries.reduce((sum, e) => sum + e.tokens, 0);
+    const allowed = usedTokens < this.maxTokens;
+    const oldest = entries[0]?.timestamp ?? now;
+    const resetAtMs = oldest + this.windowMs;
+
+    if (allowed) {
+      entries.push({ timestamp: now, tokens });
+      this.windows.set(userId, entries);
+    }
+
+    return {
+      allowed,
+      usedTokens: allowed ? usedTokens + tokens : usedTokens,
+      maxTokens: this.maxTokens,
+      remainingTokens: Math.max(0, this.maxTokens - usedTokens - (allowed ? tokens : 0)),
+      resetAtMs,
+      retryAfterSeconds: allowed ? 0 : Math.ceil((resetAtMs - now) / 1000),
+    };
+  }
+
   private getActiveEntries(userId: string, now: number) {
     const windowStart = now - this.windowMs;
     const all = this.windows.get(userId) ?? [];

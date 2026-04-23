@@ -68,13 +68,61 @@ export class SupabaseSlidingWindowRateLimiter implements ILLMRateLimiter {
       window_start: now,
       used_tokens: tokens,
     });
+  }
 
-    // Clean up expired entries (fire-and-forget)
+  async cleanup(userId: string): Promise<void> {
     const expiredBefore = new Date(Date.now() - this.windowMs).toISOString();
-    void this.supabase
+    await this.supabase
       .from('token_usage_windows')
       .delete()
       .eq('user_id', userId)
       .lt('window_start', expiredBefore);
+  }
+
+  async checkAndRecord(userId: string, tokens: number): Promise<RateLimitStatus> {
+    const now = Date.now();
+
+    const { data, error } = await this.supabase.rpc('check_and_record_tokens', {
+      p_user_id: userId,
+      p_tokens: tokens,
+      p_max_tokens: this.maxTokens,
+      p_window_ms: this.windowMs,
+    });
+
+    if (error || data == null) {
+      return {
+        allowed: false,
+        usedTokens: 0,
+        maxTokens: this.maxTokens,
+        remainingTokens: 0,
+        resetAtMs: now + this.windowMs,
+        retryAfterSeconds: Math.ceil(this.windowMs / 1000),
+      };
+    }
+
+    const allowed = data.allowed as boolean;
+    const usedTokens = Number(data.usedTokens);
+    const oldestMs = data.oldestWindowStart
+      ? new Date(data.oldestWindowStart as string).getTime()
+      : now;
+    const resetAtMs = oldestMs + this.windowMs;
+
+    if (allowed) {
+      const expiredBefore = new Date(now - this.windowMs).toISOString();
+      void this.supabase
+        .from('token_usage_windows')
+        .delete()
+        .eq('user_id', userId)
+        .lt('window_start', expiredBefore);
+    }
+
+    return {
+      allowed,
+      usedTokens,
+      maxTokens: this.maxTokens,
+      remainingTokens: Math.max(0, this.maxTokens - usedTokens),
+      resetAtMs,
+      retryAfterSeconds: allowed ? 0 : Math.ceil((resetAtMs - now) / 1000),
+    };
   }
 }
