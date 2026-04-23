@@ -34,5 +34,12 @@
 			"id": "3194659df99e40e9a561e94fe57755b0",
 			"preview_id": "ec9c007488be4477a1de8bb751815a94"
 		}
-	]
+	],
+	// Smart placement: automatically routes Worker invocations to the CF region nearest
+	// to the origin database, minimizing round-trip latency between the Worker and Supabase.
+	// Set your Supabase project region to ap-northeast-1 (Tokyo) or whichever region is
+	// closest to your primary user base for best results.
+	"smart_placement": {
+		"mode": "smart"
+	}
 }
