@@ -6,7 +6,7 @@ import { ValidationError } from '@/core/errors/ValidationError';
 import { AuthError } from '@/core/errors/AuthError';
 import { RateLimitError } from '@/core/errors/RateLimitError';
 import { handleError, checkBodySize } from '@/lib/apiHelpers';
-import { chatRateLimiter } from '@/infrastructure/rate-limiting/rateLimiterSingleton';
+import { createChatRateLimiter } from '@/infrastructure/rate-limiting/rateLimiterSingleton';
 import { logger } from '@/infrastructure/observability/logger';
 import type { ChatMessage, LMConfig } from '@/types';
 
@@ -24,7 +24,8 @@ export async function POST(req: Request) {
     if (!user) throw new AuthError('認証が必要です');
 
     // Per-user token budget check
-    const rateLimitStatus = chatRateLimiter.check(user.id);
+    const rateLimiter = createChatRateLimiter();
+    const rateLimitStatus = await rateLimiter.check(user.id);
     if (!rateLimitStatus.allowed) {
       logger.error('api:chat_rate_limit_exceeded', {
         layer: 'ChatRoute',
@@ -78,13 +79,32 @@ export async function POST(req: Request) {
       );
     }
 
-    // Record token usage for rate limiting
+    // Atomically check budget and record usage to prevent concurrent over-spend
     if (result.tokenUsage != null) {
-      chatRateLimiter.record(user.id, result.tokenUsage.total);
+      const recordStatus = await rateLimiter.checkAndRecord(user.id, result.tokenUsage.total);
+      if (!recordStatus.allowed) {
+        logger.error('api:chat_rate_limit_exceeded', {
+          layer: 'ChatRoute',
+          operation: 'POST /api/chat (checkAndRecord)',
+          userId: user.id,
+          usedTokens: recordStatus.usedTokens,
+          maxTokens: recordStatus.maxTokens,
+          retryAfterSeconds: recordStatus.retryAfterSeconds,
+        });
+        throw new RateLimitError(
+          `トークン制限に達しました。${recordStatus.retryAfterSeconds}秒後に再試行してください。`,
+          {
+            userId: user.id,
+            usedTokens: recordStatus.usedTokens,
+            maxTokens: recordStatus.maxTokens,
+            retryAfterSeconds: recordStatus.retryAfterSeconds,
+          },
+        );
+      }
       logger.info('api:chat_tokens_recorded', {
         userId: user.id,
         tokenUsage: result.tokenUsage,
-        newUsedTotal: rateLimitStatus.usedTokens + result.tokenUsage.total,
+        newUsedTotal: recordStatus.usedTokens,
       });
     }
 

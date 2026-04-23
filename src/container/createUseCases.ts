@@ -79,8 +79,8 @@ export function createSaveChatMessageUseCase(supabase: SupabaseClient) {
 }
 
 export function createRethinkMessageUseCase(supabase: SupabaseClient) {
-  const { pairNode, message } = createRepositories(supabase);
-  return new RethinkMessageUseCase(pairNode, message);
+  const { pairNode } = createRepositories(supabase);
+  return new RethinkMessageUseCase(pairNode, supabase);
 }
 
 export function createCheckDbLimitsUseCase(): CheckDbLimitsUseCase {

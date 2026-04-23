@@ -5,6 +5,7 @@ import { LLMError } from '@/core/errors/LLMError';
 import { InfrastructureError } from '@/core/errors/InfrastructureError';
 import { RateLimitError } from '@/core/errors/RateLimitError';
 import { LLMConcurrencyError } from '@/core/errors/LLMConcurrencyError';
+import { ConcurrencyError } from '@/core/errors/ConcurrencyError';
 
 export function checkBodySize(req: Request, maxBytes: number): void {
   const contentLength = req.headers.get('content-length');
@@ -33,6 +34,9 @@ export function handleError(err: unknown): NextResponse {
       stack: err.stack,
     });
     return NextResponse.json({ message: err.message }, { status: 503 });
+  }
+  if (err instanceof ConcurrencyError) {
+    return NextResponse.json({ message: err.message }, { status: 409 });
   }
   if (err instanceof ValidationError) {
     return NextResponse.json({ message: err.message }, { status: 400 });

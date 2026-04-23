@@ -5,6 +5,9 @@ type JobHandler = (payload: Record<string, unknown>) => Promise<void>;
 
 // MVP: fire-and-forget (Next.js 環境で動く最小実装)
 // 本番: RedisQueue / BullMQ に差し替え可能
+// NOTE: Cloudflare Workers isolates context per request.
+// Handlers registered via register() do not persist across requests.
+// For production on Cloudflare, replace with a durable queue (e.g., Cloudflare Queues, BullMQ + Redis).
 export class InMemoryQueue implements IJobQueue {
   private handlers = new Map<string, JobHandler>();
 

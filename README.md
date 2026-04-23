@@ -92,6 +92,29 @@ SSR HTML for authenticated pages is cached per-user in **Cloudflare KV** (`HTML_
 | TTL | 1 hour |
 | Invalidation | On successful experience log, the user's KV entries are deleted in the background |
 
+### Region Alignment and Smart Placement
+
+Cloudflare Workers run at the edge location closest to the **user's browser** by default. Every database query then travels from that edge node to the **Supabase region** where your PostgreSQL instance lives. If those two locations are far apart, every API call incurs significant cross-region latency.
+
+**Smart Placement** (enabled in `wrangler.jsonc`) automatically routes execution to the Cloudflare region that minimises total round-trip time to Supabase.
+
+#### How to check your Supabase region
+
+1. Open the [Supabase Dashboard](https://supabase.com/dashboard)
+2. Select your project → **Settings → General**
+3. The **Region** field shows where your database is hosted (e.g. `ap-northeast-1 — Tokyo`)
+
+#### Recommended regions
+
+| Supabase Region | Best for |
+|-----------------|----------|
+| `ap-northeast-1` (Tokyo) | Japan / East Asia |
+| `us-east-1` (N. Virginia) | North America / East US |
+| `eu-west-1` (Ireland) | Europe |
+| `ap-southeast-1` (Singapore) | Southeast Asia |
+
+Set your Supabase project region to match your primary user base. Smart Placement will then keep compute and database as close together as possible.
+
 ### Execution Mode Differences
 
 The `/api/logs` endpoint behaves differently depending on the runtime:
