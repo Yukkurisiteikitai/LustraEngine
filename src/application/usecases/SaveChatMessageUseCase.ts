@@ -45,7 +45,7 @@ export class SaveChatMessageUseCase {
       }),
     ]);
 
-    await this.pairNodeRepo.updateSelectMessage(pairNode.id, assistantMessage.id);
+    await this.pairNodeRepo.updateSelectMessage(pairNode.id, assistantMessage.id, pairNode.version);
 
     return { pairNodeId: pairNode.id };
   }
