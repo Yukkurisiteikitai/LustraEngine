@@ -8,7 +8,7 @@ export class InMemorySlidingWindowRateLimiter implements ILLMRateLimiter {
     private readonly windowMs: number,
   ) {}
 
-  check(userId: string): RateLimitStatus {
+  async check(userId: string): Promise<RateLimitStatus> {
     const now = Date.now();
     const entries = this.getActiveEntries(userId, now);
     const usedTokens = entries.reduce((sum, e) => sum + e.tokens, 0);
@@ -25,7 +25,7 @@ export class InMemorySlidingWindowRateLimiter implements ILLMRateLimiter {
     };
   }
 
-  record(userId: string, tokens: number): void {
+  async record(userId: string, tokens: number): Promise<void> {
     const now = Date.now();
     const entries = this.getActiveEntries(userId, now);
     entries.push({ timestamp: now, tokens });

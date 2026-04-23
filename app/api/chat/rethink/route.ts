@@ -8,7 +8,7 @@ import { AuthError } from '@/core/errors/AuthError';
 import { ValidationError } from '@/core/errors/ValidationError';
 import { RateLimitError } from '@/core/errors/RateLimitError';
 import { handleError, checkBodySize } from '@/lib/apiHelpers';
-import { chatRateLimiter } from '@/infrastructure/rate-limiting/rateLimiterSingleton';
+import { createChatRateLimiter } from '@/infrastructure/rate-limiting/rateLimiterSingleton';
 import type { LMConfig } from '@/types';
 
 interface RethinkRequestBody {
@@ -24,7 +24,8 @@ export async function POST(req: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new AuthError('認証が必要です');
 
-    const rateLimitStatus = chatRateLimiter.check(user.id);
+    const rateLimiter = createChatRateLimiter();
+    const rateLimitStatus = await rateLimiter.check(user.id);
     if (!rateLimitStatus.allowed) {
       throw new RateLimitError(
         `トークン制限に達しました。${rateLimitStatus.retryAfterSeconds}秒後に再試行してください。`,
@@ -123,7 +124,7 @@ export async function POST(req: Request) {
 
           // Record estimated token usage for rate limiting
           const estimatedTokens = Math.ceil(fullText.length / 3);
-          chatRateLimiter.record(user.id, estimatedTokens);
+          await rateLimiter.record(user.id, estimatedTokens);
 
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
         } catch (err) {
