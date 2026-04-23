@@ -8,6 +8,7 @@ export class PairNodeMapper {
       threadId: row.thread_id as string,
       selectMessageId: row.select_message_id != null ? (row.select_message_id as string) : null,
       createdAt: row.created_at as string,
+      version: typeof row.version === 'number' ? row.version : 0,
     };
   }
 }
