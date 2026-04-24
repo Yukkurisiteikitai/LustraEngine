@@ -45,6 +45,10 @@ export function handleError(err: unknown): NextResponse {
     return NextResponse.json({ message: err.message }, { status: 401 });
   }
   if (err instanceof LLMError) {
+    console.error('api:llm_error_502', {
+      message: err.message,
+      stack: err.stack,
+    });
     return NextResponse.json({ message: err.message }, { status: 502 });
   }
   if (err instanceof InfrastructureError) {

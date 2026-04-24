@@ -5,6 +5,10 @@ export interface RateLimitStatus {
   remainingTokens: number;
   resetAtMs: number;
   retryAfterSeconds: number;
+  /** Average tokens consumed per request in the current window (0 when no history). */
+  avgTokensPerRequest: number;
+  /** Number of requests recorded in the current window. */
+  requestCount: number;
 }
 
 export interface ILLMRateLimiter {

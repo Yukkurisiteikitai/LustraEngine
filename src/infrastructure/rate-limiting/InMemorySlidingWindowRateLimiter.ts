@@ -15,6 +15,7 @@ export class InMemorySlidingWindowRateLimiter implements ILLMRateLimiter {
     const allowed = usedTokens < this.maxTokens;
     const oldest = entries[0]?.timestamp ?? now;
     const resetAtMs = oldest + this.windowMs;
+    const avgTokensPerRequest = entries.length > 0 ? usedTokens / entries.length : 0;
     return {
       allowed,
       usedTokens,
@@ -22,6 +23,8 @@ export class InMemorySlidingWindowRateLimiter implements ILLMRateLimiter {
       remainingTokens: Math.max(0, this.maxTokens - usedTokens),
       resetAtMs,
       retryAfterSeconds: allowed ? 0 : Math.ceil((resetAtMs - now) / 1000),
+      avgTokensPerRequest,
+      requestCount: entries.length,
     };
   }
 
@@ -39,6 +42,7 @@ export class InMemorySlidingWindowRateLimiter implements ILLMRateLimiter {
     const allowed = usedTokens < this.maxTokens;
     const oldest = entries[0]?.timestamp ?? now;
     const resetAtMs = oldest + this.windowMs;
+    const avgTokensPerRequest = entries.length > 0 ? usedTokens / entries.length : 0;
 
     if (allowed) {
       entries.push({ timestamp: now, tokens });
@@ -52,6 +56,8 @@ export class InMemorySlidingWindowRateLimiter implements ILLMRateLimiter {
       remainingTokens: Math.max(0, this.maxTokens - usedTokens - (allowed ? tokens : 0)),
       resetAtMs,
       retryAfterSeconds: allowed ? 0 : Math.ceil((resetAtMs - now) / 1000),
+      avgTokensPerRequest,
+      requestCount: entries.length,
     };
   }
 

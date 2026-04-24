@@ -29,6 +29,8 @@ export class SupabaseSlidingWindowRateLimiter implements ILLMRateLimiter {
         remainingTokens: 0,
         resetAtMs: now + this.windowMs,
         retryAfterSeconds: Math.ceil(this.windowMs / 1000),
+        avgTokensPerRequest: 0,
+        requestCount: 0,
       };
     }
 
@@ -40,10 +42,12 @@ export class SupabaseSlidingWindowRateLimiter implements ILLMRateLimiter {
         remainingTokens: this.maxTokens,
         resetAtMs: now + this.windowMs,
         retryAfterSeconds: 0,
+        avgTokensPerRequest: 0,
+        requestCount: 0,
       };
     }
 
-    const { total_used, oldest_window_start } = data[0];
+    const { total_used, oldest_window_start, avg_tokens_per_request, request_count } = data[0];
     const usedTokens = Number(total_used);
     const allowed = usedTokens < this.maxTokens;
     const oldestMs = oldest_window_start
@@ -58,6 +62,8 @@ export class SupabaseSlidingWindowRateLimiter implements ILLMRateLimiter {
       remainingTokens: Math.max(0, this.maxTokens - usedTokens),
       resetAtMs,
       retryAfterSeconds: allowed ? 0 : Math.ceil((resetAtMs - now) / 1000),
+      avgTokensPerRequest: Number(avg_tokens_per_request),
+      requestCount: Number(request_count),
     };
   }
 
@@ -68,11 +74,9 @@ export class SupabaseSlidingWindowRateLimiter implements ILLMRateLimiter {
       window_start: now,
       used_tokens: tokens,
     });
-  }
-
-  async cleanup(userId: string): Promise<void> {
+    // Fire-and-forget: purge expired entries so the table doesn't grow unbounded.
     const expiredBefore = new Date(Date.now() - this.windowMs).toISOString();
-    await this.supabase
+    void this.supabase
       .from('token_usage_windows')
       .delete()
       .eq('user_id', userId)
@@ -97,6 +101,8 @@ export class SupabaseSlidingWindowRateLimiter implements ILLMRateLimiter {
         remainingTokens: 0,
         resetAtMs: now + this.windowMs,
         retryAfterSeconds: Math.ceil(this.windowMs / 1000),
+        avgTokensPerRequest: 0,
+        requestCount: 0,
       };
     }
 
@@ -107,15 +113,6 @@ export class SupabaseSlidingWindowRateLimiter implements ILLMRateLimiter {
       : now;
     const resetAtMs = oldestMs + this.windowMs;
 
-    if (allowed) {
-      const expiredBefore = new Date(now - this.windowMs).toISOString();
-      void this.supabase
-        .from('token_usage_windows')
-        .delete()
-        .eq('user_id', userId)
-        .lt('window_start', expiredBefore);
-    }
-
     return {
       allowed,
       usedTokens,
@@ -123,6 +120,9 @@ export class SupabaseSlidingWindowRateLimiter implements ILLMRateLimiter {
       remainingTokens: Math.max(0, this.maxTokens - usedTokens),
       resetAtMs,
       retryAfterSeconds: allowed ? 0 : Math.ceil((resetAtMs - now) / 1000),
+      // checkAndRecord RPC doesn't return per-request stats — use 0 as placeholder.
+      avgTokensPerRequest: 0,
+      requestCount: 0,
     };
   }
 }
