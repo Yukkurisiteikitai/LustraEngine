@@ -12,6 +12,7 @@
 /.next/
 /out/
 .open-next
+*.tsbuildinfo
 
 # production
 /build
