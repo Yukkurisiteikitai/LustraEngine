@@ -1,0 +1,68 @@
+sequenceDiagram
+    participant Client as Client Browser
+    participant LogAPI as POST /api/logs
+    participant Supabase as Supabase
+    participant Queue as InMemoryQueue
+    participant Workflow as ProcessExperienceWorkflow
+    participant Detect as DetectPatternsUseCase
+    participant Psychology as psychology_analysis
+    participant Infer as InferTraitsUseCase
+    participant Persona as persona_snapshot
+    participant KV as Cloudflare KV
+
+    Client->>LogAPI: POST { date, obstacles, lmConfig }
+    activate LogAPI
+
+    LogAPI->>Supabase: INSERT experiences + obstacles
+    activate Supabase
+    Supabase-->>LogAPI: rows inserted
+    deactivate Supabase
+
+    LogAPI->>Queue: new InMemoryQueue()
+    LogAPI->>Workflow: createProcessExperienceWorkflow(supabase, queue)
+    LogAPI->>Queue: queue.register('detectPatterns', handler)
+    LogAPI->>Queue: queue.register('inferTraits', handler)
+
+    LogAPI->>Queue: queue.enqueue('detectPatterns', { userId, lmConfig })
+
+    Note over LogAPI,Queue: Fire-and-forget (HTTP response を待たない)
+
+    par Background Execution
+        Queue->>Workflow: runDetect({ userId, lmConfig })
+        activate Workflow
+
+        Workflow->>Detect: detectFactory(payload).execute(userId)
+        activate Detect
+        Detect->>Supabase: findUnclassified(userId)
+        Supabase-->>Detect: unclassified experiences[]
+        Detect->>Detect: LLM.generate() x N experiences
+        Detect->>Psychology: updateExperiencePsychologyAnalysis()
+        activate Psychology
+        Psychology->>Supabase: UPDATE psychology_analysis
+        Supabase-->>Psychology: ok
+        deactivate Psychology
+        Detect-->>Workflow: { classified: N }
+        deactivate Detect
+
+        Workflow->>Queue: queue.enqueue('inferTraits', { userId, lmConfig })
+        Workflow->>Infer: inferFactory(payload).execute(userId)
+        activate Infer
+        Infer->>Supabase: getData for traits inference
+        Infer->>Infer: LLM.generate()
+        Infer->>Persona: updatePersonaSnapshot()
+        activate Persona
+        Persona->>Supabase: INSERT/UPDATE persona_snapshot
+        Supabase-->>Persona: ok
+        deactivate Persona
+        Infer-->>Workflow: ok
+        deactivate Infer
+
+        deactivate Workflow
+    and HTTP Response
+        LogAPI->>KV: (Cloudflare only) cache invalidate
+        activate KV
+        KV-->>LogAPI: ok
+        deactivate KV
+        LogAPI->>Client: 202 Accepted { message: "記録を受け付けました..." }
+        deactivate LogAPI
+    end
