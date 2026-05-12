@@ -58,8 +58,20 @@
 	// to the origin database, minimizing round-trip latency between the Worker and Supabase.
 	// Set your Supabase project region to ap-northeast-1 (Tokyo) or whichever region is
 	// closest to your primary user base for best results.
-	"smart_placement": {
+	"placement": {
 		"mode": "smart"
+	},
+	// ── Production LLM environment defaults ────────────────────────────────
+	// These are used as the default LLM configuration in production.
+	// In production, user-managed LLM settings are disabled for security.
+	// For production deployments, set LLM_API_KEY as a secret:
+	//   npx wrangler secret put LLM_API_KEY
+	"vars": {
+		"APP_ENV": "production",
+		"LLM_PROVIDER": "openai",
+		"LLM_TYPE": "gpt",
+		"LLM_MODEL": "gpt-4.1-mini",
+		"LLM_BASE_URL": "https://api.openai.com/v1"
 	},
 	// ── Scheduled handlers for daily batch analysis ────────────────────────
 	// Daily analysis batch runs at 00:00 UTC every day

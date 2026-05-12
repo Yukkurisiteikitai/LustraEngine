@@ -14,6 +14,9 @@ export async function createWorkerLLM(
   userId: string,
   llmSettingsRepository: IUserLlmSettingsRepository,
 ): Promise<ILLMPort> {
+  // Environment-based default LLM configuration (used in all environments).
+  // In production, resolveStoredLlmConfig will skip user-stored settings and use this config.
+  // In development/preview, resolveStoredLlmConfig may override with user-stored settings if available.
   const envConfig: LMConfig = {
     provider: (env.LLM_PROVIDER ?? 'custom_openai_compatible') as LMConfig['provider'],
     type: (env.LLM_TYPE ?? 'gpt') as LMConfig['type'],

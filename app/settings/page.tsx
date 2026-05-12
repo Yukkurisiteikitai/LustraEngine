@@ -18,7 +18,7 @@ type SavedLlmSetting = {
   updatedAt: string;
 };
 
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = process.env.APP_ENV === 'production';
 
 function getInitialProvider(provider?: string): LMProvider {
   if (provider === 'openai' || provider === 'anthropic' || provider === 'gemini' || provider === 'deepseek' || provider === 'custom_openai_compatible' || provider === 'lmstudio' || provider === 'claude') {
@@ -199,10 +199,21 @@ export default function SettingsPage() {
             APIキーはサーバー側に暗号化して保存されます。
           </p>
 
+          {isProduction && (
+            <div className={styles.notice} style={{ backgroundColor: '#e8f4f8', padding: '12px', borderRadius: '4px', marginBottom: '16px' }}>
+              <strong>本番環境について</strong>
+              <p style={{ margin: '8px 0 0 0', fontSize: '14px' }}>
+                本番環境では、ユーザー個別のLLM API key保存は現在無効です。
+                <br />
+                分析には管理者が設定したサーバー側LLMを使用します。
+              </p>
+            </div>
+          )}
+
           {loading && <p className={styles.notice}>設定を読み込み中です...</p>}
           {error && <p className={styles.errorMsg}>{error}</p>}
 
-          {(currentConfig || serverSetting) && (
+          {!isProduction && (currentConfig || serverSetting) && (
             <div className={styles.currentStatus}>
               <span className={styles.statusLabel}>現在の設定:</span>
               <span className={styles.statusValue}>
@@ -211,190 +222,194 @@ export default function SettingsPage() {
             </div>
           )}
 
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="provider">
-              AIプロバイダー
-            </label>
-            <select
-              id="provider"
-              className={styles.select}
-              value={provider}
-              onChange={(e) => setProvider(e.target.value as LMProvider)}
-            >
-              <option value="anthropic">Anthropic</option>
-              <option value="openai">OpenAI</option>
-              <option value="deepseek">DeepSeek</option>
-              <option value="gemini" disabled>
-                Gemini (未対応)
-              </option>
-              <option value="custom_openai_compatible">Custom OpenAI-compatible</option>
-              <option value="lmstudio">LM Studio (legacy local)</option>
-            </select>
-          </div>
-
-          {(provider === 'anthropic' || provider === 'openai' || provider === 'deepseek' || provider === 'gemini' || provider === 'custom_openai_compatible') && (
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="apiKey">
-                APIキー
-              </label>
-              <input
-                id="apiKey"
-                type="password"
-                className={styles.input}
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="任意の API キー"
-                autoComplete="off"
-              />
-            </div>
-          )}
-
-          {(provider === 'anthropic' || provider === 'openai' || provider === 'deepseek' || provider === 'gemini' || provider === 'custom_openai_compatible') && (
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="type">
-                Type
-              </label>
-              <select
-                id="type"
-                className={styles.select}
-                value={type}
-                onChange={(e) => setType(e.target.value as LLMProviderType)}
-              >
-                <option value="gpt">GPT-compatible</option>
-                <option value="claude">Claude</option>
-                <option value="gemini">Gemini</option>
-              </select>
-            </div>
-          )}
-
-          {(provider === 'anthropic' || provider === 'openai' || provider === 'deepseek' || provider === 'gemini' || provider === 'custom_openai_compatible') && (
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="baseUrl">
-                Base URL
-              </label>
-              <input
-                id="baseUrl"
-                type="text"
-                className={styles.input}
-                value={baseUrl}
-                onChange={(e) => setBaseUrl(e.target.value)}
-                placeholder="https://api.openai.com/v1"
-              />
-              {provider === 'custom_openai_compatible' && (
-                <p className={styles.notice}>
-                  本番では localhost / private IP / http の URL は使用できません。OpenAI compatible な HTTPS エンドポイントを指定してください。
-                </p>
-              )}
-            </div>
-          )}
-
-          {(provider === 'anthropic' || provider === 'openai' || provider === 'deepseek' || provider === 'gemini' || provider === 'custom_openai_compatible') && (
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="model">
-                モデル名
-              </label>
-              <input
-                id="model"
-                type="text"
-                className={styles.input}
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                placeholder="gpt-4o-mini"
-              />
-            </div>
-          )}
-
-          {(provider === 'anthropic' || provider === 'openai' || provider === 'deepseek' || provider === 'gemini' || provider === 'custom_openai_compatible') && (
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="temperature">
-                Temperature
-              </label>
-              <input
-                id="temperature"
-                type="number"
-                step="0.1"
-                min="0"
-                max="2"
-                className={styles.input}
-                value={temperature}
-                onChange={(e) => setTemperature(e.target.value)}
-              />
-            </div>
-          )}
-
-          {(provider === 'anthropic' || provider === 'openai' || provider === 'deepseek' || provider === 'gemini' || provider === 'custom_openai_compatible') && (
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="maxTokens">
-                Max Tokens
-              </label>
-              <input
-                id="maxTokens"
-                type="number"
-                min="1"
-                className={styles.input}
-                value={maxTokens}
-                onChange={(e) => setMaxTokens(e.target.value)}
-              />
-            </div>
-          )}
-
-          {provider === 'lmstudio' && (
+          {!isProduction && (
             <>
               <div className={styles.field}>
-                <label className={styles.label} htmlFor="lmstudioEndpoint">
-                  LM Studio エンドポイント
+                <label className={styles.label} htmlFor="provider">
+                  AIプロバイダー
                 </label>
-                <input
-                  id="lmstudioEndpoint"
-                  type="text"
-                  className={styles.input}
-                  value={lmstudioEndpoint}
-                  onChange={(e) => setLmstudioEndpoint(e.target.value)}
-                  placeholder="http://localhost:1234/v1"
-                />
+                <select
+                  id="provider"
+                  className={styles.select}
+                  value={provider}
+                  onChange={(e) => setProvider(e.target.value as LMProvider)}
+                >
+                  <option value="anthropic">Anthropic</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="deepseek">DeepSeek</option>
+                  <option value="gemini" disabled>
+                    Gemini (未対応)
+                  </option>
+                  <option value="custom_openai_compatible">Custom OpenAI-compatible</option>
+                  <option value="lmstudio">LM Studio (legacy local)</option>
+                </select>
               </div>
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="lmstudioApiKey">
-                  APIキー（任意）
-                </label>
-                <input
-                  id="lmstudioApiKey"
-                  type="password"
-                  className={styles.input}
-                  value={lmstudioApiKey}
-                  onChange={(e) => setLmstudioApiKey(e.target.value)}
-                  placeholder="lm-studio"
-                  autoComplete="off"
-                />
+
+              {(provider === 'anthropic' || provider === 'openai' || provider === 'deepseek' || provider === 'gemini' || provider === 'custom_openai_compatible') && (
+                <div className={styles.field}>
+                  <label className={styles.label} htmlFor="apiKey">
+                    APIキー
+                  </label>
+                  <input
+                    id="apiKey"
+                    type="password"
+                    className={styles.input}
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="任意の API キー"
+                    autoComplete="off"
+                  />
+                </div>
+              )}
+
+              {(provider === 'anthropic' || provider === 'openai' || provider === 'deepseek' || provider === 'gemini' || provider === 'custom_openai_compatible') && (
+                <div className={styles.field}>
+                  <label className={styles.label} htmlFor="type">
+                    Type
+                  </label>
+                  <select
+                    id="type"
+                    className={styles.select}
+                    value={type}
+                    onChange={(e) => setType(e.target.value as LLMProviderType)}
+                  >
+                    <option value="gpt">GPT-compatible</option>
+                    <option value="claude">Claude</option>
+                    <option value="gemini">Gemini</option>
+                  </select>
+                </div>
+              )}
+
+              {(provider === 'anthropic' || provider === 'openai' || provider === 'deepseek' || provider === 'gemini' || provider === 'custom_openai_compatible') && (
+                <div className={styles.field}>
+                  <label className={styles.label} htmlFor="baseUrl">
+                    Base URL
+                  </label>
+                  <input
+                    id="baseUrl"
+                    type="text"
+                    className={styles.input}
+                    value={baseUrl}
+                    onChange={(e) => setBaseUrl(e.target.value)}
+                    placeholder="https://api.openai.com/v1"
+                  />
+                  {provider === 'custom_openai_compatible' && (
+                    <p className={styles.notice}>
+                      本番では localhost / private IP / http の URL は使用できません。OpenAI compatible な HTTPS エンドポイントを指定してください。
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {(provider === 'anthropic' || provider === 'openai' || provider === 'deepseek' || provider === 'gemini' || provider === 'custom_openai_compatible') && (
+                <div className={styles.field}>
+                  <label className={styles.label} htmlFor="model">
+                    モデル名
+                  </label>
+                  <input
+                    id="model"
+                    type="text"
+                    className={styles.input}
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    placeholder="gpt-4o-mini"
+                  />
+                </div>
+              )}
+
+              {(provider === 'anthropic' || provider === 'openai' || provider === 'deepseek' || provider === 'gemini' || provider === 'custom_openai_compatible') && (
+                <div className={styles.field}>
+                  <label className={styles.label} htmlFor="temperature">
+                    Temperature
+                  </label>
+                  <input
+                    id="temperature"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="2"
+                    className={styles.input}
+                    value={temperature}
+                    onChange={(e) => setTemperature(e.target.value)}
+                  />
+                </div>
+              )}
+
+              {(provider === 'anthropic' || provider === 'openai' || provider === 'deepseek' || provider === 'gemini' || provider === 'custom_openai_compatible') && (
+                <div className={styles.field}>
+                  <label className={styles.label} htmlFor="maxTokens">
+                    Max Tokens
+                  </label>
+                  <input
+                    id="maxTokens"
+                    type="number"
+                    min="1"
+                    className={styles.input}
+                    value={maxTokens}
+                    onChange={(e) => setMaxTokens(e.target.value)}
+                  />
+                </div>
+              )}
+
+              {provider === 'lmstudio' && (
+                <>
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor="lmstudioEndpoint">
+                      LM Studio エンドポイント
+                    </label>
+                    <input
+                      id="lmstudioEndpoint"
+                      type="text"
+                      className={styles.input}
+                      value={lmstudioEndpoint}
+                      onChange={(e) => setLmstudioEndpoint(e.target.value)}
+                      placeholder="http://localhost:1234/v1"
+                    />
+                  </div>
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor="lmstudioApiKey">
+                      APIキー（任意）
+                    </label>
+                    <input
+                      id="lmstudioApiKey"
+                      type="password"
+                      className={styles.input}
+                      value={lmstudioApiKey}
+                      onChange={(e) => setLmstudioApiKey(e.target.value)}
+                      placeholder="lm-studio"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor="lmstudioModel">
+                      モデル名（任意）
+                    </label>
+                    <input
+                      id="lmstudioModel"
+                      type="text"
+                      className={styles.input}
+                      value={lmstudioModel}
+                      onChange={(e) => setLmstudioModel(e.target.value)}
+                      placeholder="local-model"
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className={styles.actions}>
+                <button type="button" className={styles.primary} onClick={() => void handleSave()} disabled={saving || loading}>
+                  保存
+                </button>
+                {currentConfig && (
+                  <button type="button" className={styles.secondary} onClick={handleClear} disabled={saving}>
+                    クリア
+                  </button>
+                )}
               </div>
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="lmstudioModel">
-                  モデル名（任意）
-                </label>
-                <input
-                  id="lmstudioModel"
-                  type="text"
-                  className={styles.input}
-                  value={lmstudioModel}
-                  onChange={(e) => setLmstudioModel(e.target.value)}
-                  placeholder="local-model"
-                />
-              </div>
+
+              {saved && <p className={styles.savedMsg}>設定を保存しました</p>}
             </>
           )}
-
-          <div className={styles.actions}>
-            <button type="button" className={styles.primary} onClick={() => void handleSave()} disabled={saving || loading}>
-              保存
-            </button>
-            {currentConfig && (
-              <button type="button" className={styles.secondary} onClick={handleClear} disabled={saving}>
-                クリア
-              </button>
-            )}
-          </div>
-
-          {saved && <p className={styles.savedMsg}>設定を保存しました</p>}
         </section>
       </main>
       <Footer />

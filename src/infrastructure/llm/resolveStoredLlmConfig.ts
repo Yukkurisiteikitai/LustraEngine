@@ -9,6 +9,14 @@ export async function resolveStoredLlmConfig(
   repository: IUserLlmSettingsRepository,
   encryptionKey?: string,
 ) {
+  // In production, always use environment-default LLM config.
+  // User-managed LLM settings are disabled in production for security.
+  const appEnv = process.env.APP_ENV;
+  if (appEnv === 'production') {
+    return validateLLMConfig(config);
+  }
+
+  // Development/preview environments: allow user-stored LLM settings.
   const activeSetting = await repository.getActiveByUser(userId);
   if (!activeSetting || activeSetting.userId !== userId) {
     return validateLLMConfig(config);
