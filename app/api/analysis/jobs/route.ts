@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createCreateAnalysisJobUseCase } from '@/container/createUseCases';
 import { CloudflareAnalysisQueueProducer } from '@/infrastructure/jobs/CloudflareAnalysisQueueProducer';
@@ -65,6 +66,16 @@ async function enqueueAnalysisJob(
   await producer.enqueue(message);
 }
 
+function createServiceRoleClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error('Supabase service role environment is missing');
+  }
+
+  return createClient(supabaseUrl, serviceRoleKey);
+}
+
 export async function POST(request: Request) {
   try {
     const supabase = await createSupabaseServerClient();
@@ -84,11 +95,12 @@ export async function POST(request: Request) {
       throw new ValidationError('modeはquickまたはfull_3monthsで指定してください');
     }
 
-    const useCase = createCreateAnalysisJobUseCase(supabase);
+    const jobSupabase = createServiceRoleClient();
+    const useCase = createCreateAnalysisJobUseCase(jobSupabase);
     const jobId = await useCase.execute(user.id, { mode });
 
     // Get the job to return status
-    const { data: job, error } = await supabase
+    const { data: job, error } = await jobSupabase
       .from('analysis_jobs')
       .select('*')
       .eq('id', jobId)

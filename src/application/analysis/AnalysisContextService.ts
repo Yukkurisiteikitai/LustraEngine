@@ -24,6 +24,16 @@ export class AnalysisContextService {
     private readonly experienceRepo: IExperienceRepository,
   ) {}
 
+  private readDomain(row: Record<string, unknown>): string {
+    const domainsJoin = row.domains as { description?: string } | null | undefined;
+    return (
+      domainsJoin?.description ??
+      (row.domain_description as string | null | undefined) ??
+      (row.domain_id as string | null | undefined) ??
+      ''
+    );
+  }
+
   async buildContext(userId: string, mode: AnalysisJobMode): Promise<AnalysisContext> {
     const now = new Date();
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -32,7 +42,7 @@ export class AnalysisContextService {
     // Fetch recent logs (last 1 week)
     const { data: recentLogs, error: recentError } = await this.supabase
       .from('experiences')
-      .select('id, description, domain, stress_level, logged_at')
+      .select('id, description, stress_level, logged_at, domain_id, domains(description)')
       .eq('user_id', userId)
       .gte('logged_at', oneWeekAgo.toISOString())
       .order('logged_at', { ascending: false });
@@ -45,7 +55,7 @@ export class AnalysisContextService {
     const mappedRecentLogs = (recentLogs || []).map((log: Record<string, unknown>) => ({
       id: log.id as string,
       description: log.description as string,
-      domain: log.domain as string,
+      domain: this.readDomain(log),
       stressLevel: log.stress_level as number,
       loggedAt: log.logged_at as string,
     }));
@@ -66,7 +76,7 @@ export class AnalysisContextService {
     // Fetch unprocessed logs
     const { data: unprocessedLogs, error: unprocessedError } = await this.supabase
       .from('experiences')
-      .select('id, description, domain, stress_level, logged_at')
+      .select('id, description, stress_level, logged_at, domain_id, domains(description)')
       .eq('user_id', userId)
       .is('processed_at', null)
       .order('logged_at', { ascending: false });
@@ -78,7 +88,7 @@ export class AnalysisContextService {
     context.unprocessedLogs = (unprocessedLogs || []).map((log: Record<string, unknown>) => ({
       id: log.id as string,
       description: log.description as string,
-      domain: log.domain as string,
+      domain: this.readDomain(log),
       stressLevel: log.stress_level as number,
       loggedAt: log.logged_at as string,
     }));
