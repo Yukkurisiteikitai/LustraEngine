@@ -4,60 +4,188 @@ import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { loadLMConfig, saveLMConfig, clearLMConfig } from '@/lib/lmConfig';
-import type { LMConfig, LMProvider } from '@/types';
+import type { LMConfig, LLMProviderType, LMProvider } from '@/types';
 import styles from './page.module.css';
 
+type SavedLlmSetting = {
+  provider: string;
+  type: string;
+  model: string;
+  baseUrl: string | null;
+  hasApiKey: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+const isProduction = process.env.NODE_ENV === 'production';
+
+function getInitialProvider(provider?: string): LMProvider {
+  if (provider === 'openai' || provider === 'anthropic' || provider === 'gemini' || provider === 'deepseek' || provider === 'custom_openai_compatible' || provider === 'lmstudio' || provider === 'claude') {
+    return provider;
+  }
+  return 'anthropic';
+}
+
+function buildStatusLabel(setting: SavedLlmSetting | null, provider: LMProvider, baseUrl: string): string {
+  if (setting) {
+    return `${setting.provider} / ${setting.model}${setting.hasApiKey ? ' / apiKey saved' : ''}`;
+  }
+
+  if (provider === 'custom_openai_compatible' || provider === 'lmstudio') {
+    return `Custom/OpenAI compatible (${baseUrl})`;
+  }
+
+  return provider;
+}
+
 export default function SettingsPage() {
-  const [provider, setProvider] = useState<LMProvider>('claude');
-  const [claudeApiKey, setClaudeApiKey] = useState('');
-  const [lmstudioEndpoint, setLmstudioEndpoint] = useState('http://localhost:1234');
-  const [lmstudioApiKey, setLmstudioApiKey] = useState('');
-  const [lmstudioModel, setLmstudioModel] = useState('');
+  const [provider, setProvider] = useState<LMProvider>('anthropic');
+  const [type, setType] = useState<LLMProviderType>('claude');
+  const [apiKey, setApiKey] = useState('');
+  const [baseUrl, setBaseUrl] = useState('https://api.anthropic.com/v1');
+  const [model, setModel] = useState('claude-haiku-4-5-20251001');
+  const [temperature, setTemperature] = useState('0.2');
+  const [maxTokens, setMaxTokens] = useState('1024');
+  const [lmstudioEndpoint, setLmstudioEndpoint] = useState('http://localhost:1234/v1');
+  const [lmstudioApiKey, setLmstudioApiKey] = useState('lm-studio');
+  const [lmstudioModel, setLmstudioModel] = useState('local-model');
   const [saved, setSaved] = useState(false);
   const [currentConfig, setCurrentConfig] = useState<LMConfig | null>(null);
+  const [serverSetting, setServerSetting] = useState<SavedLlmSetting | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [hasApiKey, setHasApiKey] = useState(false);
 
   useEffect(() => {
-    const cfg = loadLMConfig();
-    if (cfg) {
-      setCurrentConfig(cfg);
-      setProvider(cfg.provider);
-      setClaudeApiKey(cfg.claudeApiKey ?? '');
-      setLmstudioEndpoint(cfg.lmstudioEndpoint ?? 'http://localhost:1234');
-      setLmstudioApiKey(cfg.lmstudioApiKey ?? '');
-      setLmstudioModel(cfg.lmstudioModel ?? '');
+    let cancelled = false;
+
+    async function loadSettings() {
+      try {
+        if (!isProduction) {
+          const cfg = loadLMConfig();
+          if (cfg) {
+            if (cancelled) return;
+            setCurrentConfig(cfg);
+            setProvider(cfg.provider);
+            setType(cfg.type ?? (cfg.provider === 'anthropic' || cfg.provider === 'claude' ? 'claude' : 'gpt'));
+            setApiKey(cfg.apiKey ?? cfg.claudeApiKey ?? cfg.lmstudioApiKey ?? '');
+            setBaseUrl(cfg.baseUrl ?? (cfg.provider === 'anthropic' || cfg.provider === 'claude' ? 'https://api.anthropic.com/v1' : 'https://api.openai.com/v1'));
+            setModel(cfg.model ?? cfg.lmstudioModel ?? (cfg.provider === 'anthropic' || cfg.provider === 'claude' ? 'claude-haiku-4-5-20251001' : 'gpt-4o-mini'));
+            setTemperature(String(cfg.temperature ?? 0.2));
+            setMaxTokens(String(cfg.maxTokens ?? 1024));
+            setLmstudioEndpoint(cfg.lmstudioEndpoint ?? 'http://localhost:1234/v1');
+            setLmstudioApiKey(cfg.lmstudioApiKey ?? 'lm-studio');
+            setLmstudioModel(cfg.lmstudioModel ?? 'local-model');
+          }
+        }
+
+        const response = await fetch('/api/settings/llm', { cache: 'no-store' });
+        if (!response.ok) {
+          throw new Error('サーバー設定の取得に失敗しました');
+        }
+        const payload = (await response.json()) as { setting: SavedLlmSetting | null };
+        if (cancelled) return;
+
+        setServerSetting(payload.setting);
+        if (payload.setting) {
+          setProvider(getInitialProvider(payload.setting.provider));
+          setType(payload.setting.type as LLMProviderType);
+          setApiKey('');
+          setHasApiKey(payload.setting.hasApiKey);
+          setBaseUrl(payload.setting.baseUrl ?? 'https://api.anthropic.com/v1');
+          setModel(payload.setting.model);
+          setCurrentConfig({
+            provider: getInitialProvider(payload.setting.provider),
+            type: payload.setting.type as LLMProviderType,
+            baseUrl: payload.setting.baseUrl ?? undefined,
+            model: payload.setting.model,
+          });
+        }
+      } catch {
+        if (!cancelled) {
+          setError('設定の読み込みに失敗しました');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
     }
+
+    void loadSettings();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  function handleSave() {
+  async function handleSave() {
+    setSaving(true);
+    setError('');
     const config: LMConfig = {
       provider,
-      ...(provider === 'claude'
-        ? { claudeApiKey: claudeApiKey.trim() || undefined }
-        : {
-            lmstudioEndpoint: lmstudioEndpoint.trim() || undefined,
-            lmstudioApiKey: lmstudioApiKey.trim() || undefined,
-            lmstudioModel: lmstudioModel.trim() || undefined,
-          }),
+      type,
+      apiKey: apiKey.trim() || undefined,
+      baseUrl: baseUrl.trim() || undefined,
+      model: model.trim() || undefined,
+      temperature: Number.isFinite(Number(temperature)) ? Number(temperature) : undefined,
+      maxTokens: Number.isFinite(Number(maxTokens)) ? Number(maxTokens) : undefined,
+      claudeApiKey: apiKey.trim() || undefined,
+      lmstudioEndpoint: lmstudioEndpoint.trim() || undefined,
+      lmstudioApiKey: lmstudioApiKey.trim() || undefined,
+      lmstudioModel: lmstudioModel.trim() || undefined,
     };
-    saveLMConfig(config);
-    setCurrentConfig(config);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+
+    try {
+      const response = await fetch('/api/settings/llm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      });
+
+      const payload = (await response.json()) as { setting?: SavedLlmSetting; error?: string };
+      if (!response.ok) {
+        throw new Error(payload.error ?? '設定の保存に失敗しました');
+      }
+
+      if (!isProduction) {
+        saveLMConfig(config);
+      } else {
+        clearLMConfig();
+      }
+
+      setServerSetting(payload.setting ?? null);
+      setCurrentConfig({ ...config, apiKey: undefined });
+      setHasApiKey(Boolean(payload.setting?.hasApiKey));
+      setApiKey('');
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : '設定の保存に失敗しました');
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleClear() {
-    clearLMConfig();
+    if (!isProduction) {
+      clearLMConfig();
+    }
     setCurrentConfig(null);
-    setClaudeApiKey('');
-    setLmstudioEndpoint('http://localhost:1234');
-    setLmstudioApiKey('');
-    setLmstudioModel('');
+    setProvider('anthropic');
+    setType('claude');
+    setApiKey('');
+    setBaseUrl('https://api.anthropic.com/v1');
+    setModel('claude-haiku-4-5-20251001');
+    setTemperature('0.2');
+    setMaxTokens('1024');
+    setLmstudioEndpoint('http://localhost:1234/v1');
+    setLmstudioApiKey('lm-studio');
+    setLmstudioModel('local-model');
     setSaved(false);
-  }
-
-  function maskKey(key: string | undefined): string {
-    if (!key || key.length < 8) return '(未設定)';
-    return `${key.slice(0, 4)}...${key.slice(-4)}`;
+    setHasApiKey(false);
   }
 
   return (
@@ -68,16 +196,17 @@ export default function SettingsPage() {
           <h1 className={styles.title}>LM設定</h1>
           <p className={styles.description}>
             パターン分析に使用するAIプロバイダーを設定します。
-            設定はブラウザのローカルストレージに保存され、サーバーには送信されません。
+            APIキーはサーバー側に暗号化して保存されます。
           </p>
 
-          {currentConfig && (
+          {loading && <p className={styles.notice}>設定を読み込み中です...</p>}
+          {error && <p className={styles.errorMsg}>{error}</p>}
+
+          {(currentConfig || serverSetting) && (
             <div className={styles.currentStatus}>
               <span className={styles.statusLabel}>現在の設定:</span>
               <span className={styles.statusValue}>
-                {currentConfig.provider === 'claude'
-                  ? `Claude API (${maskKey(currentConfig.claudeApiKey)})`
-                  : `LM Studio (${currentConfig.lmstudioEndpoint ?? 'http://localhost:1234'})`}
+                {buildStatusLabel(serverSetting, provider, baseUrl)}
               </span>
             </div>
           )}
@@ -92,24 +221,119 @@ export default function SettingsPage() {
               value={provider}
               onChange={(e) => setProvider(e.target.value as LMProvider)}
             >
-              <option value="claude">Claude API (Anthropic)</option>
-              <option value="lmstudio">LM Studio (ローカル)</option>
+              <option value="anthropic">Anthropic</option>
+              <option value="openai">OpenAI</option>
+              <option value="deepseek">DeepSeek</option>
+              <option value="gemini" disabled>
+                Gemini (未対応)
+              </option>
+              <option value="custom_openai_compatible">Custom OpenAI-compatible</option>
+              <option value="lmstudio">LM Studio (legacy local)</option>
             </select>
           </div>
 
-          {provider === 'claude' && (
+          {(provider === 'anthropic' || provider === 'openai' || provider === 'deepseek' || provider === 'gemini' || provider === 'custom_openai_compatible') && (
             <div className={styles.field}>
-              <label className={styles.label} htmlFor="claudeApiKey">
-                Claude APIキー
+              <label className={styles.label} htmlFor="apiKey">
+                APIキー
               </label>
               <input
-                id="claudeApiKey"
+                id="apiKey"
                 type="password"
                 className={styles.input}
-                value={claudeApiKey}
-                onChange={(e) => setClaudeApiKey(e.target.value)}
-                placeholder="sk-ant-..."
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="任意の API キー"
                 autoComplete="off"
+              />
+            </div>
+          )}
+
+          {(provider === 'anthropic' || provider === 'openai' || provider === 'deepseek' || provider === 'gemini' || provider === 'custom_openai_compatible') && (
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="type">
+                Type
+              </label>
+              <select
+                id="type"
+                className={styles.select}
+                value={type}
+                onChange={(e) => setType(e.target.value as LLMProviderType)}
+              >
+                <option value="gpt">GPT-compatible</option>
+                <option value="claude">Claude</option>
+                <option value="gemini">Gemini</option>
+              </select>
+            </div>
+          )}
+
+          {(provider === 'anthropic' || provider === 'openai' || provider === 'deepseek' || provider === 'gemini' || provider === 'custom_openai_compatible') && (
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="baseUrl">
+                Base URL
+              </label>
+              <input
+                id="baseUrl"
+                type="text"
+                className={styles.input}
+                value={baseUrl}
+                onChange={(e) => setBaseUrl(e.target.value)}
+                placeholder="https://api.openai.com/v1"
+              />
+              {provider === 'custom_openai_compatible' && (
+                <p className={styles.notice}>
+                  本番では localhost / private IP / http の URL は使用できません。OpenAI compatible な HTTPS エンドポイントを指定してください。
+                </p>
+              )}
+            </div>
+          )}
+
+          {(provider === 'anthropic' || provider === 'openai' || provider === 'deepseek' || provider === 'gemini' || provider === 'custom_openai_compatible') && (
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="model">
+                モデル名
+              </label>
+              <input
+                id="model"
+                type="text"
+                className={styles.input}
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                placeholder="gpt-4o-mini"
+              />
+            </div>
+          )}
+
+          {(provider === 'anthropic' || provider === 'openai' || provider === 'deepseek' || provider === 'gemini' || provider === 'custom_openai_compatible') && (
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="temperature">
+                Temperature
+              </label>
+              <input
+                id="temperature"
+                type="number"
+                step="0.1"
+                min="0"
+                max="2"
+                className={styles.input}
+                value={temperature}
+                onChange={(e) => setTemperature(e.target.value)}
+              />
+            </div>
+          )}
+
+          {(provider === 'anthropic' || provider === 'openai' || provider === 'deepseek' || provider === 'gemini' || provider === 'custom_openai_compatible') && (
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="maxTokens">
+                Max Tokens
+              </label>
+              <input
+                id="maxTokens"
+                type="number"
+                min="1"
+                className={styles.input}
+                value={maxTokens}
+                onChange={(e) => setMaxTokens(e.target.value)}
               />
             </div>
           )}
@@ -126,7 +350,7 @@ export default function SettingsPage() {
                   className={styles.input}
                   value={lmstudioEndpoint}
                   onChange={(e) => setLmstudioEndpoint(e.target.value)}
-                  placeholder="http://localhost:1234"
+                  placeholder="http://localhost:1234/v1"
                 />
               </div>
               <div className={styles.field}>
@@ -139,7 +363,7 @@ export default function SettingsPage() {
                   className={styles.input}
                   value={lmstudioApiKey}
                   onChange={(e) => setLmstudioApiKey(e.target.value)}
-                  placeholder="通常は不要"
+                  placeholder="lm-studio"
                   autoComplete="off"
                 />
               </div>
@@ -160,11 +384,11 @@ export default function SettingsPage() {
           )}
 
           <div className={styles.actions}>
-            <button type="button" className={styles.primary} onClick={handleSave}>
+            <button type="button" className={styles.primary} onClick={() => void handleSave()} disabled={saving || loading}>
               保存
             </button>
             {currentConfig && (
-              <button type="button" className={styles.secondary} onClick={handleClear}>
+              <button type="button" className={styles.secondary} onClick={handleClear} disabled={saving}>
                 クリア
               </button>
             )}

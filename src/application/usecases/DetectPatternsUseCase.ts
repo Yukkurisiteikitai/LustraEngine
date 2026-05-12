@@ -1,4 +1,5 @@
 import { Experience } from '@/core/domains/experience/Experience';
+import type { ExperienceData } from '@/core/domains/experience/Experience';
 import type { IExperienceRepository } from '@/core/domains/experience/IExperienceRepository';
 import type { IClusterCommandRepository } from '@/core/domains/cluster/IClusterCommandRepository';
 import type { IPsychologyRepository } from '@/core/ports/IPsychologyRepository';
@@ -6,6 +7,7 @@ import type { ILLMPort } from '@/application/ports/ILLMPort';
 import type { ILoggerPort } from '@/application/ports/ILoggerPort';
 import type { LLMRetryPolicy } from '@/application/llm/policies/LLMRetryPolicy';
 import type { LLMResponseValidator } from '@/application/llm/policies/LLMResponseValidator';
+import type { AnalysisContext } from '@/application/analysis/AnalysisContextService';
 import {
   PATTERN_SYSTEM_PROMPT,
   buildPatternUserMessage,
@@ -24,8 +26,32 @@ export class DetectPatternsUseCase {
     private readonly psychologyRepo: IPsychologyRepository,
   ) {}
 
-  async execute(userId: string): Promise<{ classified: number }> {
-    const targets = await this.expRepo.findUnclassified(userId);
+  async execute(
+    userId: string,
+    context?: AnalysisContext,
+    options?: { dryRun?: boolean; strict?: boolean },
+  ): Promise<{ classified: number }> {
+    // If context is provided (from AnalysisJobConsumer), use context.recentLogs
+    // Otherwise, use traditional findUnclassified() for backward compatibility
+    let targets: ExperienceData[];
+    const dryRun = options?.dryRun ?? false;
+    const strict = options?.strict ?? false;
+
+    if (context?.recentLogs && context.recentLogs.length > 0) {
+      // Convert context logs to experience data format
+      targets = context.recentLogs.map((log) => ({
+        id: log.id,
+        userId,
+        description: log.description,
+        stressLevel: log.stressLevel,
+        actionResult: 'CONFRONTED',
+        domainKey: String(log.domain),
+        date: log.loggedAt,
+      }));
+    } else {
+      // Backward compatibility: fetch unclassified
+      targets = await this.expRepo.findUnclassified(userId);
+    }
 
     let classified = 0;
 
@@ -46,10 +72,10 @@ export class DetectPatternsUseCase {
 
       const parsed = this.validator.validatePatternResponse(raw);
 
-      if (parsed?.psychologyAnalysis) {
+      if (!dryRun && parsed?.psychologyAnalysis) {
         try {
           await this.psychologyRepo.updateExperiencePsychologyAnalysis(
-            expData.id,
+            expData.id as string,
             parsed.psychologyAnalysis,
           );
         } catch (err) {
@@ -64,12 +90,17 @@ export class DetectPatternsUseCase {
         label: a.label ?? PATTERN_CLUSTER_LABELS[a.clusterType as ClusterType] ?? a.clusterType,
       }));
 
-      try {
-        await this.clusterCommand.classifyExperienceAtomic(expData.id, assignments);
-        classified++;
-      } catch (err) {
-        this.logger.error('detect:atomic_failed', { experienceId: expData.id, err });
+      if (!dryRun) {
+        try {
+          await this.clusterCommand.classifyExperienceAtomic(expData.id as string, assignments);
+        } catch (err) {
+          this.logger.error('detect:atomic_failed', { experienceId: expData.id, err });
+          if (strict) throw err;
+          continue;
+        }
       }
+
+      classified++;
     }
 
     return { classified };

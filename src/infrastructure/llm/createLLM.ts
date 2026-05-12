@@ -1,21 +1,28 @@
 import type { ILLMPort } from '@/application/ports/ILLMPort';
 import type { LMConfig } from '@/types';
-import { ClaudeAdapter } from './adapters/ClaudeAdapter';
-import { LMStudioAdapter } from './adapters/LMStudioAdapter';
 import { ConcurrentLLMAdapter } from './adapters/ConcurrentLLMAdapter';
+import {
+  createAnthropicClient,
+  createOpenAICompatibleClient,
+  createUnsupportedProviderClient,
+  normalizeLLMConfig,
+  toILLMPort,
+} from './providerRegistry';
 
 export function createLLM(
   config: LMConfig,
   opts?: { waitForSlot?: boolean; endpoint?: string },
 ): ILLMPort {
-  const base: ILLMPort =
-    config.provider === 'claude'
-      ? new ClaudeAdapter(config.claudeApiKey ?? '')
-      : new LMStudioAdapter(
-          config.lmstudioEndpoint ?? 'http://localhost:1234',
-          config.lmstudioApiKey ?? 'lm-studio',
-          config.lmstudioModel ?? 'local-model',
-        );
+  const resolved = normalizeLLMConfig(config);
+
+  const baseClient =
+    resolved.provider === 'anthropic'
+      ? createAnthropicClient(resolved)
+      : resolved.provider === 'gemini'
+        ? createUnsupportedProviderClient('gemini')
+        : createOpenAICompatibleClient(resolved);
+
+  const base: ILLMPort = toILLMPort(baseClient);
 
   return new ConcurrentLLMAdapter(base, {
     waitForSlot: opts?.waitForSlot ?? true,

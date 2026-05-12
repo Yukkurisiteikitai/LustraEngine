@@ -1,5 +1,4 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { IJobQueue } from '@/application/jobs/IJobQueue';
 import type { ILLMPort } from '@/application/ports/ILLMPort';
 import { createRepositories, createRepositoriesWithAdmin } from './createRepositories';
 import { LLMRetryPolicy } from '@/application/llm/policies/LLMRetryPolicy';
@@ -8,6 +7,7 @@ import { LogExperienceUseCase } from '@/application/usecases/LogExperienceUseCas
 import { GetAnalyticsUseCase } from '@/application/usecases/GetAnalyticsUseCase';
 import { DetectPatternsUseCase } from '@/application/usecases/DetectPatternsUseCase';
 import { InferTraitsUseCase } from '@/application/usecases/InferTraitsUseCase';
+import { CreateAnalysisJobUseCase } from '@/application/usecases/CreateAnalysisJobUseCase';
 import { ChatUseCase } from '@/application/usecases/ChatUseCase';
 import { CreateThreadUseCase } from '@/application/usecases/CreateThreadUseCase';
 import { GetThreadHistoryUseCase } from '@/application/usecases/GetThreadHistoryUseCase';
@@ -19,14 +19,19 @@ import { SupabaseMonitoringRepository } from '@/infrastructure/repositories/Supa
 import { DiscordWebhookAdapter } from '@/infrastructure/notifications/DiscordWebhookAdapter';
 import { logger } from '@/infrastructure/observability/logger';
 
-export function createLogExperienceUseCase(supabase: SupabaseClient, queue: IJobQueue) {
+export function createLogExperienceUseCase(supabase: SupabaseClient) {
   const { experience, user } = createRepositories(supabase);
-  return new LogExperienceUseCase(experience, user, queue);
+  return new LogExperienceUseCase(experience, user);
 }
 
 export function createGetAnalyticsUseCase(supabase: SupabaseClient) {
   const { experience } = createRepositories(supabase);
   return new GetAnalyticsUseCase(experience);
+}
+
+export function createCreateAnalysisJobUseCase(supabase: SupabaseClient) {
+  const { analysisJob } = createRepositories(supabase);
+  return new CreateAnalysisJobUseCase(analysisJob);
 }
 
 export function createDetectPatternsUseCase(supabase: SupabaseClient, llm: ILLMPort) {
@@ -41,7 +46,6 @@ export function createDetectPatternsUseCase(supabase: SupabaseClient, llm: ILLMP
     psychology,
   );
 }
-
 export function createInferTraitsUseCase(supabase: SupabaseClient, llm: ILLMPort) {
   const { experience, clusterQuery, trait, persona, psychology } = createRepositories(supabase);
   return new InferTraitsUseCase(

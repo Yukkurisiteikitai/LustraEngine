@@ -163,10 +163,27 @@ export interface ChatMessage {
 
 // --- LM Config (stored in localStorage, never in DB) ---
 
-export type LMProvider = 'claude' | 'lmstudio';
+export type LLMProvider =
+  | 'openai'
+  | 'anthropic'
+  | 'gemini'
+  | 'deepseek'
+  | 'custom_openai_compatible';
+
+export type LLMProviderType = 'gpt' | 'claude' | 'gemini';
+
+export type LMProvider = LLMProvider | 'claude' | 'lmstudio';
 
 export interface LMConfig {
   provider: LMProvider;
+  type?: LLMProviderType;
+  model?: string;
+  apiKey?: string;
+  baseUrl?: string;
+  temperature?: number;
+  maxTokens?: number;
+
+  // Legacy browser-local settings kept for backward compatibility.
   claudeApiKey?: string;
   lmstudioEndpoint?: string;
   lmstudioApiKey?: string;

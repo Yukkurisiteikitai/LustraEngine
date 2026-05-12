@@ -1,0 +1,149 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { IExperienceRepository } from '@/core/domains/experience/IExperienceRepository';
+import type { AnalysisJobMode } from '@/core/domains/analysis/AnalysisJob';
+import type { ClusterData } from '@/core/domains/cluster/Cluster';
+
+export interface AnalysisContext {
+  mode: AnalysisJobMode;
+  recentLogs: Array<{ id: string; description: string; domain: string; stressLevel: number; loggedAt: string }>;
+  unprocessedLogs: Array<{ id: string; description: string; domain: string; stressLevel: number; loggedAt: string }>;
+  threeMonthSummary?: Array<{ date: string; count: number; avgStress: number }>;
+  previousTraits?: Record<string, unknown>;
+  previousPatterns?: ClusterData[];
+}
+
+/**
+ * Constructs analysis context based on mode
+ * - quick: recent 1 week of logs
+ * - full_3months: 1 week logs + 3 month summary + previous traits/patterns
+ * - daily: 1 week logs + 3 month summary + previous traits/patterns (for unprocessed logs)
+ */
+export class AnalysisContextService {
+  constructor(
+    private readonly supabase: SupabaseClient,
+    private readonly experienceRepo: IExperienceRepository,
+  ) {}
+
+  async buildContext(userId: string, mode: AnalysisJobMode): Promise<AnalysisContext> {
+    const now = new Date();
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const threeMonthsAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+
+    // Fetch recent logs (last 1 week)
+    const { data: recentLogs, error: recentError } = await this.supabase
+      .from('experiences')
+      .select('id, description, domain, stress_level, logged_at')
+      .eq('user_id', userId)
+      .gte('logged_at', oneWeekAgo.toISOString())
+      .order('logged_at', { ascending: false });
+
+    if (recentError) {
+      throw new Error(`Failed to fetch recent logs: ${recentError.message}`);
+    }
+
+    // Map to common format
+    const mappedRecentLogs = (recentLogs || []).map((log: Record<string, unknown>) => ({
+      id: log.id as string,
+      description: log.description as string,
+      domain: log.domain as string,
+      stressLevel: log.stress_level as number,
+      loggedAt: log.logged_at as string,
+    }));
+
+    const context: AnalysisContext = {
+      mode,
+      recentLogs: mappedRecentLogs,
+      unprocessedLogs: [],
+    };
+
+    // For quick mode, return just recent logs
+    if (mode === 'quick') {
+      return context;
+    }
+
+    // For full_3months and daily modes, fetch additional context
+
+    // Fetch unprocessed logs
+    const { data: unprocessedLogs, error: unprocessedError } = await this.supabase
+      .from('experiences')
+      .select('id, description, domain, stress_level, logged_at')
+      .eq('user_id', userId)
+      .is('processed_at', null)
+      .order('logged_at', { ascending: false });
+
+    if (unprocessedError) {
+      throw new Error(`Failed to fetch unprocessed logs: ${unprocessedError.message}`);
+    }
+
+    context.unprocessedLogs = (unprocessedLogs || []).map((log: Record<string, unknown>) => ({
+      id: log.id as string,
+      description: log.description as string,
+      domain: log.domain as string,
+      stressLevel: log.stress_level as number,
+      loggedAt: log.logged_at as string,
+    }));
+
+    // Fetch 3-month summary
+    const { data: threeMonthLogs, error: threeMonthError } = await this.supabase
+      .from('experiences')
+      .select('logged_at, stress_level')
+      .eq('user_id', userId)
+      .gte('logged_at', threeMonthsAgo.toISOString())
+      .lte('logged_at', now.toISOString());
+
+    if (threeMonthError) {
+      throw new Error(`Failed to fetch 3-month logs: ${threeMonthError.message}`);
+    }
+
+    // Build 3-month summary by date
+    const summaryMap = new Map<string, { count: number; totalStress: number }>();
+    (threeMonthLogs || []).forEach((log: Record<string, unknown>) => {
+      const date = (log.logged_at as string).split('T')[0];
+      const stress = log.stress_level as number;
+
+      if (!summaryMap.has(date)) {
+        summaryMap.set(date, { count: 0, totalStress: 0 });
+      }
+      const entry = summaryMap.get(date)!;
+      entry.count += 1;
+      entry.totalStress += stress;
+    });
+
+    context.threeMonthSummary = Array.from(summaryMap.entries()).map(([date, { count, totalStress }]) => ({
+      date,
+      count,
+      avgStress: totalStress / count,
+    }));
+
+    // Fetch previous traits (latest)
+    const { data: traits, error: traitsError } = await this.supabase
+      .from('traits')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (traitsError && traitsError.code !== 'PGRST116') {
+      console.warn(`Failed to fetch traits: ${traitsError.message}`);
+    } else if (traits) {
+      context.previousTraits = traits as Record<string, unknown>;
+    }
+
+    // Fetch previous patterns (latest clusters)
+    const { data: patterns, error: patternsError } = await this.supabase
+      .from('episode_clusters')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    if (patternsError) {
+      console.warn(`Failed to fetch patterns: ${patternsError.message}`);
+    } else if (patterns) {
+      context.previousPatterns = patterns;
+    }
+
+    return context;
+  }
+}

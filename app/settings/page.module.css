@@ -130,3 +130,24 @@
   padding: 0.5rem 0.75rem;
   margin: 0;
 }
+
+.notice {
+  font-size: 0.8125rem;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.errorMsg {
+  font-size: 0.875rem;
+  color: #b91c1c;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  margin: 0;
+}

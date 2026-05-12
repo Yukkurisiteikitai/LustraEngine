@@ -8,6 +8,8 @@ import { RateLimitError } from '@/core/errors/RateLimitError';
 import { handleError, checkBodySize } from '@/lib/apiHelpers';
 import { createChatRateLimiter } from '@/infrastructure/rate-limiting/rateLimiterSingleton';
 import { logger } from '@/infrastructure/observability/logger';
+import { createRepositories } from '@/container/createRepositories';
+import { resolveStoredLlmConfig } from '@/infrastructure/llm/resolveStoredLlmConfig';
 import type { ChatMessage, LMConfig } from '@/types';
 
 interface ChatRequestBody {
@@ -49,16 +51,21 @@ export async function POST(req: Request) {
     if (!message || typeof message !== 'string' || message.trim() === '') {
       throw new ValidationError('メッセージが空です');
     }
-    if (!lmConfig?.provider || !['claude', 'lmstudio'].includes(lmConfig.provider)) {
-      throw new ValidationError('lmConfig.provider が不正です（claude または lmstudio）');
+    if (!lmConfig) {
+      throw new ValidationError('LLM設定が必要です');
     }
-    if (lmConfig.provider === 'claude' && !lmConfig.claudeApiKey) {
-      throw new ValidationError('Claude API キーが設定されていません');
-    }
+
+    const { llmSettings } = createRepositories(supabase);
+    const resolvedLlmConfig = await resolveStoredLlmConfig(
+      user.id,
+      lmConfig,
+      llmSettings,
+      process.env.LLM_SETTINGS_ENCRYPTION_KEY,
+    );
 
     // Rate limiting applies to Claude only.
     // Local LLM (LM Studio) is exempt — no token budget tracking.
-    const isClaude = lmConfig.provider === 'claude';
+    const isClaude = resolvedLlmConfig.provider === 'anthropic';
     const rateLimiter = isClaude ? createChatRateLimiter() : null;
 
     if (rateLimiter) {
@@ -124,7 +131,7 @@ export async function POST(req: Request) {
       layer: 'ChatRoute',
       reqId,
       userId: user.id,
-      provider: lmConfig.provider,
+      provider: resolvedLlmConfig.provider,
       messageChars: message.length,
       historyLength: history?.length ?? 0,
       threadId: threadId ?? null,
@@ -132,7 +139,7 @@ export async function POST(req: Request) {
     });
 
     const tLlm = Date.now();
-    const useCase = createChatUseCase(supabase, createLLM(lmConfig, { waitForSlot: false, endpoint: '/api/chat' }));
+    const useCase = createChatUseCase(supabase, createLLM(resolvedLlmConfig, { waitForSlot: false, endpoint: '/api/chat' }));
     const result = await useCase.execute(user.id, message, history ?? []);
 
     logger.info('api:chat_llm_call_done', {
