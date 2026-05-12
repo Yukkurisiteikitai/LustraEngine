@@ -1,0 +1,63 @@
+graph TB
+    subgraph CLIENT["Client（ブラウザ）"]
+        Chat["Chat UI<br/>loadLMConfig()"]
+        PatternBtn["Pattern Detect Button<br/>loadLMConfig()"]
+        Settings["Settings Page<br/>saveLMConfig()"]
+    end
+
+    subgraph SERVER["Server Component"]
+        HomePage["Home page.tsx<br/>createGetAnalyticsUseCase()"]
+    end
+
+    subgraph API["API Routes"]
+        LogAPI["POST /api/logs<br/>• Supabase insert<br/>• queue.enqueue"]
+        ChatAPI["POST /api/chat<br/>• Rate limit check<br/>• StreamingLLM"]
+        PatternsAPI["POST /api/patterns/detect<br/>• DetectPatternsUseCase<br/>• sync"]
+        TraitsAPI["POST /api/traits/infer<br/>• InferTraitsUseCase"]
+    end
+
+    subgraph CACHE["キャッシング戦略"]
+        KV["Cloudflare KV<br/>（本番: KVNamespace）<br/>TTL: 1時間<br/>キー: ssr:v1:userId:path"]
+        ISR["Next.js revalidateTag<br/>タグ: analytics<br/>patterns"]
+    end
+
+    subgraph ASYNC["非同期 Job Queue"]
+        Queue["InMemoryQueue<br/>（MVPな実装）"]
+        Detect["DetectPatterns Job<br/>→ queue.register()"]
+        Infer["InferTraits Job<br/>→ queue.register()"]
+        Workflow["ProcessExperienceWorkflow<br/>detect → infer"]
+    end
+
+    subgraph DB["Supabase"]
+        Experiences["experiences table"]
+        Psychology["psychology_analysis"]
+        Persona["persona_snapshot"]
+    end
+
+    Chat -->|"lmConfig"| ChatAPI
+    PatternBtn -->|"lmConfig"| PatternsAPI
+    Settings -->|"saveLMConfig"| Chat
+    HomePage -->|"Analytics query"| Experiences
+
+    LogAPI -->|"1. insert"| Experiences
+    LogAPI -->|"2. enqueue"| Queue
+    ChatAPI -->|"read history"| Experiences
+    PatternsAPI -->|"read unclassified"| Experiences
+
+    LogAPI -->|"Cloudflare only"| KV
+    LogAPI -->|"always"| ISR
+    ChatAPI -->|"invalidate"| ISR
+    PatternsAPI -->|"invalidate"| ISR
+
+    Queue -->|"register handlers"| Workflow
+    Workflow -->|"runDetect"| Detect
+    Detect -->|"classify & update"| Psychology
+    Workflow -->|"runInfer"| Infer
+    Infer -->|"update snapshot"| Persona
+
+    style CLIENT fill:#e1f5ff
+    style SERVER fill:#f3e5f5
+    style API fill:#fff3e0
+    style CACHE fill:#fce4ec
+    style ASYNC fill:#e8f5e9
+    style DB fill:#f1f8e9
