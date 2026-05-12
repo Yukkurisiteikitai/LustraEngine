@@ -10,6 +10,8 @@ import { SupabaseMessageRepository } from '@/infrastructure/repositories/Supabas
 import { SupabasePairNodeRepository } from '@/infrastructure/repositories/SupabasePairNodeRepository';
 import { SupabaseLlmModelRepository } from '@/infrastructure/repositories/SupabaseLlmModelRepository';
 import { SupabasePsychologyRepository } from '@/infrastructure/repositories/SupabasePsychologyRepository';
+import { SupabaseAnalysisJobRepository } from '@/infrastructure/repositories/SupabaseAnalysisJobRepository';
+import { SupabaseUserLlmSettingsRepository } from '@/infrastructure/repositories/SupabaseUserLlmSettingsRepository';
 
 export function createRepositories(supabase: SupabaseClient) {
   return {
@@ -23,6 +25,8 @@ export function createRepositories(supabase: SupabaseClient) {
     message: new SupabaseMessageRepository(supabase),
     pairNode: new SupabasePairNodeRepository(supabase),
     psychology: new SupabasePsychologyRepository(supabase),
+    analysisJob: new SupabaseAnalysisJobRepository(supabase),
+    llmSettings: new SupabaseUserLlmSettingsRepository(supabase),
   };
 }
 

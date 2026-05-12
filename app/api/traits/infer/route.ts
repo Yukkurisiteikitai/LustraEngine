@@ -6,6 +6,8 @@ import { createLLM } from '@/infrastructure/llm/createLLM';
 import { ValidationError } from '@/core/errors/ValidationError';
 import { AuthError } from '@/core/errors/AuthError';
 import { handleError, checkBodySize } from '@/lib/apiHelpers';
+import { createRepositories } from '@/container/createRepositories';
+import { resolveStoredLlmConfig } from '@/infrastructure/llm/resolveStoredLlmConfig';
 import type { LMConfig } from '@/types';
 
 interface InferRequestBody {
@@ -27,14 +29,15 @@ export async function POST(req: Request) {
     }
 
     const { lmConfig } = body;
-    if (!lmConfig?.provider || !['claude', 'lmstudio'].includes(lmConfig.provider)) {
-      throw new ValidationError('lmConfig.provider が不正です（claude または lmstudio）');
-    }
-    if (lmConfig.provider === 'claude' && !lmConfig.claudeApiKey) {
-      throw new ValidationError('Claude API キーが設定されていません');
-    }
+    const { llmSettings } = createRepositories(supabase);
+    const resolvedLlmConfig = await resolveStoredLlmConfig(
+      user.id,
+      lmConfig,
+      llmSettings,
+      process.env.LLM_SETTINGS_ENCRYPTION_KEY,
+    );
 
-    const useCase = createInferTraitsUseCase(supabase, createLLM(lmConfig));
+    const useCase = createInferTraitsUseCase(supabase, createLLM(resolvedLlmConfig));
     const { traits } = await useCase.execute(user.id);
 
     revalidateTag('traits');

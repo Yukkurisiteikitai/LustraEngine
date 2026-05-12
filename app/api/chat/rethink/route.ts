@@ -9,6 +9,7 @@ import { ValidationError } from '@/core/errors/ValidationError';
 import { RateLimitError } from '@/core/errors/RateLimitError';
 import { handleError, checkBodySize } from '@/lib/apiHelpers';
 import { createChatRateLimiter } from '@/infrastructure/rate-limiting/rateLimiterSingleton';
+import { resolveStoredLlmConfig } from '@/infrastructure/llm/resolveStoredLlmConfig';
 import type { LMConfig } from '@/types';
 
 interface RethinkRequestBody {
@@ -50,12 +51,13 @@ export async function POST(req: Request) {
 
     if (!pairNodeId) throw new ValidationError('pairNodeId が必要です');
     if (!threadId) throw new ValidationError('threadId が必要です');
-    if (!lmConfig?.provider || !['claude', 'lmstudio'].includes(lmConfig.provider)) {
-      throw new ValidationError('lmConfig.provider が不正です（claude または lmstudio）');
-    }
-    if (lmConfig.provider === 'claude' && !lmConfig.claudeApiKey) {
-      throw new ValidationError('Claude API キーが設定されていません');
-    }
+    const { llmSettings } = createRepositories(supabase);
+    const resolvedLlmConfig = await resolveStoredLlmConfig(
+      user.id,
+      lmConfig,
+      llmSettings,
+      process.env.LLM_SETTINGS_ENCRYPTION_KEY,
+    );
 
     // Run all independent DB queries in parallel after auth
     const historyUseCase = createGetThreadHistoryUseCase(supabase);
@@ -106,7 +108,7 @@ export async function POST(req: Request) {
       : effectivePrompt;
 
     // Stream the LLM response
-    const adapter = createStreamingAdapter(lmConfig);
+    const adapter = createStreamingAdapter(resolvedLlmConfig);
     const encoder = new TextEncoder();
 
     const stream = new ReadableStream({

@@ -1,6 +1,6 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"main": ".open-next/worker.js",
+	"main": "worker.ts",
 	"name": "lustra-mvp-ui",
 	"compatibility_date": "2026-03-13",
 	"compatibility_flags": [
@@ -35,11 +35,49 @@
 			"preview_id": "ec9c007488be4477a1de8bb751815a94"
 		}
 	],
+	// ── 分析ジョブのための Cloudflare Queues ──────────────────────────────────
+	// Queue作成: npx wrangler queues create analysis-jobs
+	"queues": {
+		"producers": [
+			{
+				"queue": "analysis-jobs",
+				"binding": "ANALYSIS_QUEUE"
+			}
+		],
+		"consumers": [
+			{
+				"queue": "analysis-jobs",
+				"max_batch_size": 10,
+				"max_batch_timeout": 30,
+				"max_retries": 3,
+				"dead_letter_queue": "analysis-jobs-dead-letter"
+			}
+		]
+	},
 	// Smart placement: automatically routes Worker invocations to the CF region nearest
 	// to the origin database, minimizing round-trip latency between the Worker and Supabase.
 	// Set your Supabase project region to ap-northeast-1 (Tokyo) or whichever region is
 	// closest to your primary user base for best results.
-	"smart_placement": {
+	"placement": {
 		"mode": "smart"
+	},
+	// ── Production LLM environment defaults ────────────────────────────────
+	// These are used as the default LLM configuration in production.
+	// In production, user-managed LLM settings are disabled for security.
+	// For production deployments, set LLM_API_KEY as a secret:
+	//   npx wrangler secret put LLM_API_KEY
+	"vars": {
+		"APP_ENV": "production",
+		"LLM_PROVIDER": "openai",
+		"LLM_TYPE": "gpt",
+		"LLM_MODEL": "gpt-4.1-mini",
+		"LLM_BASE_URL": "https://api.openai.com/v1"
+	},
+	// ── Scheduled handlers for daily batch analysis ────────────────────────
+	// Daily analysis batch runs at 00:00 UTC every day
+	"triggers": {
+		"crons": [
+			"0 0 * * *"
+		]
 	}
 }

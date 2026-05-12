@@ -1,22 +1,17 @@
 import { NextResponse } from 'next/server';
-import { revalidateTag } from 'next/cache';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { createLogExperienceUseCase, createGetAnalyticsUseCase } from '@/container/createUseCases';
+import { createLogExperienceUseCase } from '@/container/createUseCases';
 import { VALID_DOMAINS, type Domain } from '@/core/domains/domain/Domain';
-import { InMemoryQueue } from '@/infrastructure/jobs/InMemoryQueue';
-import { createProcessExperienceWorkflow } from '@/container/createWorkflow';
 import { ValidationError } from '@/core/errors/ValidationError';
 import { AuthError } from '@/core/errors/AuthError';
 import { handleError, checkBodySize } from '@/lib/apiHelpers';
 import type { CreateExperienceDTO } from '@/application/dto/ExperienceDTO';
-import type { LMConfig } from '@/types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 interface LogRequestBody {
   date: string;
   obstacles: CreateExperienceDTO[];
-  lmConfig?: LMConfig;
 }
 
 type KVNamespaceLike = {
@@ -79,20 +74,16 @@ async function backgroundSave(
   displayName: string | null,
   body: LogRequestBody,
 ): Promise<void> {
-  // Step 1: Supabase への書き込み（既存のユースケースをそのまま利用）
+  // Step 1: Supabase への書き込み
   try {
-    const queue = new InMemoryQueue();
-    if (body.lmConfig) {
-      createProcessExperienceWorkflow(supabase, queue);
-    }
-    const useCase = createLogExperienceUseCase(supabase, queue);
-    await useCase.execute(userId, { displayName }, body.obstacles, body.date, body.lmConfig);
+    const useCase = createLogExperienceUseCase(supabase);
+    await useCase.execute(userId, { displayName }, body.obstacles, body.date);
   } catch (err) {
     console.error('[logs:bg] Supabase書き込み失敗:', err);
     return; // INSERT失敗時はキャッシュを触らない
   }
 
-  // Step 2: ユーザー固有ページの KV キャッシュを無効化
+  // Step 2: ユーザー固有ページの KV キャッシュを無効化（Log由来cacheのみ）
   try {
     await Promise.allSettled(
       INVALIDATED_PAGES.map((p) => kv.delete(buildCacheKey(userId, p))),
@@ -137,7 +128,7 @@ export async function POST(request: Request) {
       throw new ValidationError('LogRequestBodyの形式ではないJSONの形式です。');
     }
 
-    const { date, obstacles, lmConfig } = body;
+    const { date, obstacles } = body;
 
     if (!date || typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       throw new ValidationError('dateはYYYY-MM-DD形式で必須です');
@@ -182,7 +173,15 @@ export async function POST(request: Request) {
           backgroundSave(htmlCache, supabase, user.id, displayName, body),
         );
         return NextResponse.json(
-          { message: '記録を受け付けました。バックグラウンドで処理中です。' },
+          {
+            ok: true,
+            status: 'log_saved',
+            message: '記録しました。次回の分析対象に追加されました。',
+            analysis: {
+              status: 'pending',
+              next: 'daily_or_manual',
+            },
+          },
           { status: 202 },
         );
       }
@@ -193,22 +192,16 @@ export async function POST(request: Request) {
     }
 
     // ── ローカル next dev フォールバック（同期実行）──────────────────────────
-    const queue = new InMemoryQueue();
-    if (lmConfig) {
-      createProcessExperienceWorkflow(supabase, queue);
-    }
-    const useCase = createLogExperienceUseCase(supabase, queue);
-    await useCase.execute(user.id, { displayName }, obstacles, date, lmConfig);
+    const useCase = createLogExperienceUseCase(supabase);
+    await useCase.execute(user.id, { displayName }, obstacles, date);
 
-    revalidateTag('analytics');
-
-    const analytics = await createGetAnalyticsUseCase(supabase).execute(user.id);
     return NextResponse.json({
-      message: '記録を保存しました。今日の一歩が未来を変えます。',
-      summary: {
-        confrontationRate: analytics.confrontationRate,
-        avgStress7Days: analytics.avgStress7Days,
-        streakDays: analytics.streakDays,
+      ok: true,
+      status: 'log_saved',
+      message: '記録しました。次回の分析対象に追加されました。',
+      analysis: {
+        status: 'pending',
+        next: 'daily_or_manual',
       },
     });
   } catch (err) {

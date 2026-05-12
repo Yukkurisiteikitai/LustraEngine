@@ -2,37 +2,38 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { loadLMConfig } from '@/lib/lmConfig';
 import styles from './page.module.css';
+
+type AnalysisMode = 'quick' | 'full_3months' | null;
 
 export default function PatternDetectButton() {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
+  const [showModeSelection, setShowModeSelection] = useState(false);
+  const [selectedMode, setSelectedMode] = useState<AnalysisMode>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  async function handleDetect() {
-    const cfg = loadLMConfig();
-    if (!cfg) {
-      setMessage({ type: 'error', text: 'LM設定が見つかりません。設定ページでLMプロバイダーを設定してください。' });
-      return;
-    }
+  async function handleAnalyze(mode: AnalysisMode) {
+    if (!mode) return;
 
     setIsPending(true);
     setMessage(null);
+    setShowModeSelection(false);
     try {
-      const res = await fetch('/api/patterns/detect', {
+      const res = await fetch('/api/analysis/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lmConfig: cfg }),
+        body: JSON.stringify({ mode }),
       });
-      const json = (await res.json()) as { message?: string };
+      const json = (await res.json()) as { message?: string; ok?: boolean };
       if (!res.ok) throw new Error(json.message ?? '分析に失敗しました');
-      setMessage({ type: 'success', text: json.message ?? '分析が完了しました' });
+      setMessage({ type: 'success', text: json.message ?? '分析を開始しました' });
       router.refresh();
     } catch (err) {
       setMessage({ type: 'error', text: err instanceof Error ? err.message : '分析に失敗しました' });
     } finally {
       setIsPending(false);
+      setSelectedMode(null);
     }
   }
 
@@ -41,11 +42,55 @@ export default function PatternDetectButton() {
       <button
         type="button"
         className={styles.analyzeBtn}
-        onClick={handleDetect}
+        onClick={() => setShowModeSelection(!showModeSelection)}
         disabled={isPending}
       >
         {isPending ? '分析中...' : 'パターンを分析'}
       </button>
+
+      {showModeSelection && !isPending && (
+        <div className={styles.modeSelectionBox}>
+          <p className={styles.modeSelectionTitle}>分析を開始しますか？</p>
+
+          <div className={styles.modeOption}>
+            <button
+              type="button"
+              className={styles.modeButton}
+              onClick={() => handleAnalyze('quick')}
+            >
+              クイック分析
+            </button>
+            <p className={styles.modeDescription}>
+              直近1週間の記録をもとに、短時間で傾向を確認します。
+            </p>
+          </div>
+
+          <div className={styles.modeOption}>
+            <button
+              type="button"
+              className={styles.modeButton}
+              onClick={() => handleAnalyze('full_3months')}
+            >
+              3か月分析
+            </button>
+            <p className={styles.modeDescription}>
+              過去3か月の集約と直近ログを使い、より深く分析します。
+            </p>
+          </div>
+
+          <button
+            type="button"
+            className={styles.cancelButton}
+            onClick={() => {
+              setShowModeSelection(false);
+              setSelectedMode(null);
+            }}
+          >
+            キャンセル
+          </button>
+        </div>
+      )}
+
       {message && (
         <div className={message.type === 'success' ? styles.successBox : styles.errorBox}>
           {message.text}

@@ -3,10 +3,13 @@ import type { IClusterQueryRepository } from '@/core/domains/cluster/IClusterQue
 import type { ITraitRepository } from '@/core/domains/trait/ITraitRepository';
 import type { IPersonaRepository } from '@/core/domains/persona/IPersonaRepository';
 import type { IPsychologyRepository } from '@/core/ports/IPsychologyRepository';
+import type { ExperienceData } from '@/core/domains/experience/Experience';
+import type { ClusterData } from '@/core/domains/cluster/Cluster';
 import type { ILLMPort } from '@/application/ports/ILLMPort';
 import type { ILoggerPort } from '@/application/ports/ILoggerPort';
 import type { LLMRetryPolicy } from '@/application/llm/policies/LLMRetryPolicy';
 import type { LLMResponseValidator, BigFiveResponse } from '@/application/llm/policies/LLMResponseValidator';
+import type { AnalysisContext } from '@/application/analysis/AnalysisContextService';
 import { TRAIT_SYSTEM_PROMPT, buildTraitUserMessage } from '@/application/llm/traitInferencePrompt';
 import { buildFallbackTraits } from '@/core/domains/trait/Trait';
 import { buildPersonaJson } from '@/core/domains/persona/Persona';
@@ -37,11 +40,52 @@ export class InferTraitsUseCase {
     private readonly validator: LLMResponseValidator,
   ) {}
 
-  async execute(userId: string): Promise<{ traits: Record<TraitName, number> }> {
-    const [clusters, experiences] = await Promise.all([
-      this.clusterQuery.findByUser(userId),
-      this.expRepo.findRecent(userId, 20),
-    ]);
+  async execute(
+    userId: string,
+    context?: AnalysisContext,
+    options?: { strict?: boolean },
+  ): Promise<{ traits: Record<TraitName, number> }> {
+    const strict = options?.strict ?? false;
+    let clusters: ClusterData[] = [];
+    let experiences: ExperienceData[] = [];
+
+    // If context is provided (from AnalysisJobConsumer), use context data
+    // Otherwise, use traditional fetching for backward compatibility
+    if (context) {
+      // Use context data
+      if (context.previousPatterns) {
+        clusters = context.previousPatterns;
+      }
+      // Combine recent and unprocessed logs as experiences
+      experiences = [
+        ...context.recentLogs.map((log) => ({
+          id: log.id,
+          userId,
+          description: log.description,
+          stressLevel: log.stressLevel,
+          actionResult: 'CONFRONTED' as const,
+          date: log.loggedAt,
+          domainKey: String(log.domain),
+        })),
+        ...context.unprocessedLogs.map((log) => ({
+          id: log.id,
+          userId,
+          description: log.description,
+          stressLevel: log.stressLevel,
+          actionResult: 'CONFRONTED' as const,
+          date: log.loggedAt,
+          domainKey: String(log.domain),
+        })),
+      ];
+    } else {
+      // Backward compatibility: fetch clusters and recent experiences
+      const [queryClusters, recentExps] = await Promise.all([
+        this.clusterQuery.findByUser(userId),
+        this.expRepo.findRecent(userId, 20),
+      ]);
+      clusters = queryClusters;
+      experiences = recentExps;
+    }
 
     const userMessage = buildTraitUserMessage(clusters, experiences);
 
@@ -59,6 +103,7 @@ export class InferTraitsUseCase {
       }
     } catch (err) {
       this.logger.warn('infer:llm_failed', { userId, err });
+      if (strict) throw err;
       traitScores = buildFallbackTraits(clusters);
     }
 

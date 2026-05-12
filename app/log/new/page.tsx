@@ -6,7 +6,6 @@ import Footer from '@/components/Footer';
 import ObstacleForm, { type ObstacleDraft } from '@/components/ObstacleForm';
 import ActionSelector from '@/components/ActionSelector';
 import { useSubmitLogMutation } from '@/lib/mockQueryClient';
-import { loadLMConfig } from '@/lib/lmConfig';
 import type { ActionResult, Domain } from '@/types';
 import styles from './page.module.css';
 
@@ -90,20 +89,7 @@ export default function LogNewPage() {
       {
         onSuccess: (data) => {
           setMessageType('success');
-          setStatusMessage(
-            data.summary
-              ? `${data.message}（向き合い率: ${data.summary.confrontationRate}%）`
-              : data.message,
-          );
-          // Fire-and-forget pattern detection
-          const cfg = loadLMConfig();
-          if (cfg) {
-            void fetch('/api/patterns/detect', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ lmConfig: cfg }),
-            }).catch((err) => console.warn('[LogNewPage] Pattern detection failed:', err));
-          }
+          setStatusMessage('記録しました。次回の分析対象に追加されました。');
           // リセット
           setTimeout(() => {
             setStep(1);

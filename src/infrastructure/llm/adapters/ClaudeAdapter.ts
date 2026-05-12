@@ -2,7 +2,8 @@ import type { ILLMPort, LLMResult } from '@/application/ports/ILLMPort';
 import { LLMError } from '@/core/errors/LLMError';
 import { logger } from '@/infrastructure/observability/logger';
 
-const MODEL = 'claude-haiku-4-5-20251001';
+const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
+const DEFAULT_BASE_URL = 'https://api.anthropic.com/v1';
 
 function extractRateLimitHeaders(headers: Headers): Record<string, string | null> {
   return {
@@ -23,7 +24,11 @@ function extractRateLimitHeaders(headers: Headers): Record<string, string | null
 }
 
 export class ClaudeAdapter implements ILLMPort {
-  constructor(private readonly apiKey: string) {}
+  constructor(
+    private readonly apiKey: string,
+    private readonly model: string = DEFAULT_MODEL,
+    private readonly baseUrl: string = DEFAULT_BASE_URL,
+  ) {}
 
   async *generateStream(
     systemPrompt: string,
@@ -36,13 +41,13 @@ export class ClaudeAdapter implements ILLMPort {
 
     logger.info('llm:claude_stream_start', {
       layer: 'ClaudeAdapter',
-      model: MODEL,
+      model: this.model,
       maxTokens,
       systemPromptChars: systemLen,
       userMessageChars: userLen,
     });
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch(`${this.baseUrl.replace(/\/+$/, '')}/messages`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -50,7 +55,7 @@ export class ClaudeAdapter implements ILLMPort {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: MODEL,
+        model: this.model,
         max_tokens: maxTokens,
         system: systemPrompt,
         messages: [{ role: 'user', content: userMessage }],
@@ -66,7 +71,7 @@ export class ClaudeAdapter implements ILLMPort {
       logger.error('llm:claude_stream_error', {
         layer: 'ClaudeAdapter',
         status: res.status,
-        model: MODEL,
+        model: this.model,
         ttfbMs: ttfb,
         systemPromptChars: systemLen,
         userMessageChars: userLen,
@@ -112,13 +117,13 @@ export class ClaudeAdapter implements ILLMPort {
 
     logger.info('llm:claude_generate_start', {
       layer: 'ClaudeAdapter',
-      model: MODEL,
+      model: this.model,
       maxTokens,
       systemPromptChars: systemLen,
       userMessageChars: userLen,
     });
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch(`${this.baseUrl.replace(/\/+$/, '')}/messages`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -126,7 +131,7 @@ export class ClaudeAdapter implements ILLMPort {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: MODEL,
+        model: this.model,
         max_tokens: maxTokens,
         system: systemPrompt,
         messages: [{ role: 'user', content: userMessage }],
@@ -142,7 +147,7 @@ export class ClaudeAdapter implements ILLMPort {
         logger.error('llm:claude_rate_limited', {
           layer: 'ClaudeAdapter',
           status: 429,
-          model: MODEL,
+          model: this.model,
           ttfbMs,
           systemPromptChars: systemLen,
           userMessageChars: userLen,
@@ -153,7 +158,7 @@ export class ClaudeAdapter implements ILLMPort {
         logger.error('llm:claude_api_error', {
           layer: 'ClaudeAdapter',
           status: res.status,
-          model: MODEL,
+          model: this.model,
           ttfbMs,
           systemPromptChars: systemLen,
           userMessageChars: userLen,
