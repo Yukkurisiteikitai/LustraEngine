@@ -14,9 +14,16 @@ import { createRepositories } from '@/container/createRepositories';
 import { createWorkerLLM } from '@/infrastructure/llm/createWorkerLLM';
 import { logger } from '@/infrastructure/observability/logger';
 
-// Import the generated OpenNext worker
-// Note: This is a relative import that will be resolved at build time
-const openNextWorker = require('./.open-next/worker.js');
+// Lazily import the generated OpenNext worker to avoid sync `require()`
+// which fails when transitive deps use top-level await.
+let openNextWorker: any | null = null;
+async function ensureOpenNextWorker() {
+  if (!openNextWorker) {
+    // @ts-expect-error OpenNext generated worker has no TypeScript declaration file.
+    const mod = await import('./.open-next/worker.js');
+    openNextWorker = (mod && (mod.default ?? mod)) as any;
+  }
+}
 
 /**
  * Initialize Supabase service role client for worker context
@@ -42,6 +49,7 @@ async function handleFetch(
   env: CloudflareEnv,
   ctx: ExecutionContext,
 ): Promise<Response> {
+  await ensureOpenNextWorker();
   return openNextWorker.fetch(request, env, ctx);
 }
 
