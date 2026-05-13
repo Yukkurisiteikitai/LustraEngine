@@ -12,6 +12,7 @@ declare global {
   interface CloudflareEnv {
     SUPABASE_URL: string;
     SUPABASE_SERVICE_ROLE_KEY: string;
+    // Compatibility binding name; stores Analytics ViewModel JSON, not HTML.
     HTML_CACHE: KVNamespace;
     ANALYSIS_QUEUE: Queue<AnalysisQueueMessage>;
     LLM_PROVIDER?: 'openai' | 'anthropic' | 'gemini' | 'deepseek' | 'custom_openai_compatible' | 'claude' | 'lmstudio';

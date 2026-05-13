@@ -2,7 +2,7 @@ import ConfrontationChart from '@/components/ConfrontationChart';
 import StressChart from '@/components/StressChart';
 import ObstacleList from '@/components/ObstacleList';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { createGetAnalyticsUseCase } from '@/container/createUseCases';
+import { loadDashboardViewModel } from '@/container/loadAnalyticsViewModel';
 import type { ObstacleRecord } from '@/types';
 import styles from './page.module.css';
 
@@ -12,16 +12,24 @@ interface Props {
 
 export default async function DashboardContent({ userId }: Props) {
   const supabase = await createSupabaseServerClient();
-  const data = await createGetAnalyticsUseCase(supabase).execute(userId);
+  const viewModel = await loadDashboardViewModel(supabase, userId);
+  const recentExperiences: ObstacleRecord[] = viewModel.recentObstacles.map((item) => ({
+    id: item.id,
+    date: item.createdAt,
+    description: item.description,
+    domain: item.domain as ObstacleRecord['domain'],
+    stressLevel: item.stressLevel,
+    actionResult: item.actionResult,
+  }));
 
   return (
     <>
       <section className={styles.grid}>
-        <ConfrontationChart rate={data.confrontationRate} />
-        <StressChart points={data.stressTrend} />
+        <ConfrontationChart rate={viewModel.confrontRate} />
+        <StressChart points={viewModel.stressTrend} />
       </section>
 
-      <ObstacleList items={data.recentExperiences as unknown as ObstacleRecord[]} />
+      <ObstacleList items={recentExperiences} />
     </>
   );
 }

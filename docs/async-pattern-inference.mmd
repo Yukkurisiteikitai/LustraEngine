@@ -59,7 +59,7 @@ sequenceDiagram
 
         deactivate Workflow
     and HTTP Response
-        LogAPI->>KV: (Cloudflare only) cache invalidate
+        LogAPI->>KV: (Cloudflare only) put analytics:view:v1:{userId}:dashboard/home
         activate KV
         KV-->>LogAPI: ok
         deactivate KV

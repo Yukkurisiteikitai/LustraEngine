@@ -10,18 +10,19 @@ graph TB
     end
 
     subgraph SERVER["Server Component"]
-        HomePage["Home page.tsx<br/>createGetAnalyticsUseCase()"]
+        HomePage["Home page.tsx<br/>KV first Analytics ViewModel"]
+        Dashboard["DashboardContent<br/>KV first Analytics ViewModel"]
     end
 
     subgraph API["API Routes"]
-        LogAPI["POST /api/logs<br/>• Supabase insert<br/>• queue.enqueue"]
+        LogAPI["POST /api/logs<br/>• Supabase insert<br/>• Analytics View cache refresh"]
         ChatAPI["POST /api/chat<br/>• Rate limit check<br/>• StreamingLLM"]
         PatternsAPI["POST /api/patterns/detect<br/>• DetectPatternsUseCase<br/>• sync"]
         TraitsAPI["POST /api/traits/infer<br/>• InferTraitsUseCase"]
     end
 
     subgraph CACHE["キャッシング戦略"]
-        KV["Cloudflare KV<br/>（本番: KVNamespace）<br/>TTL: 1時間<br/>キー: ssr:v1:userId:path"]
+        KV["Cloudflare KV<br/>Analytics ViewModel JSON<br/>キー: analytics:view:v1:userId:target"]
         ISR["Next.js revalidateTag<br/>タグ: analytics<br/>patterns"]
     end
 
@@ -41,14 +42,17 @@ graph TB
     Chat -->|"lmConfig"| ChatAPI
     PatternBtn -->|"lmConfig"| PatternsAPI
     Settings -->|"saveLMConfig"| Chat
-    HomePage -->|"Analytics query"| Experiences
+    HomePage -->|"1. KV read"| KV
+    Dashboard -->|"1. KV read"| KV
+    HomePage -->|"miss: DB fallback"| Experiences
+    Dashboard -->|"miss: DB fallback"| Experiences
 
     LogAPI -->|"1. insert"| Experiences
-    LogAPI -->|"2. enqueue"| Queue
+    LogAPI -->|"2. regenerate home/dashboard JSON"| KV
     ChatAPI -->|"read history"| Experiences
     PatternsAPI -->|"read unclassified"| Experiences
     
-    LogAPI -->|"Cloudflare only"| KV
+    LogAPI -->|"Cloudflare waitUntil"| KV
     LogAPI -->|"always"| ISR
     ChatAPI -->|"invalidate"| ISR
     PatternsAPI -->|"invalidate"| ISR
@@ -134,7 +138,7 @@ sequenceDiagram
         
         deactivate Workflow
     and HTTP Response
-        LogAPI->>KV: (Cloudflare only) cache invalidate
+        LogAPI->>KV: (Cloudflare only) put analytics:view:v1:{userId}:dashboard/home
         activate KV
         KV-->>LogAPI: ✓
         deactivate KV
@@ -142,4 +146,3 @@ sequenceDiagram
         deactivate LogAPI
     end
 ```
-

@@ -5,6 +5,7 @@ import { LLMRetryPolicy } from '@/application/llm/policies/LLMRetryPolicy';
 import { LLMResponseValidator } from '@/application/llm/policies/LLMResponseValidator';
 import { LogExperienceUseCase } from '@/application/usecases/LogExperienceUseCase';
 import { GetAnalyticsUseCase } from '@/application/usecases/GetAnalyticsUseCase';
+import { BuildAnalyticsViewModelUseCase } from '@/application/usecases/BuildAnalyticsViewModelUseCase';
 import { DetectPatternsUseCase } from '@/application/usecases/DetectPatternsUseCase';
 import { InferTraitsUseCase } from '@/application/usecases/InferTraitsUseCase';
 import { CreateAnalysisJobUseCase } from '@/application/usecases/CreateAnalysisJobUseCase';
@@ -27,6 +28,11 @@ export function createLogExperienceUseCase(supabase: SupabaseClient) {
 export function createGetAnalyticsUseCase(supabase: SupabaseClient) {
   const { experience } = createRepositories(supabase);
   return new GetAnalyticsUseCase(experience);
+}
+
+export function createBuildAnalyticsViewModelUseCase(supabase: SupabaseClient) {
+  const { experience } = createRepositories(supabase);
+  return new BuildAnalyticsViewModelUseCase(experience);
 }
 
 export function createCreateAnalysisJobUseCase(supabase: SupabaseClient) {
