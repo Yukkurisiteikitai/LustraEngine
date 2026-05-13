@@ -1,34 +1,39 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
+import { Inter, Playfair_Display } from 'next/font/google';
 import './globals.css';
 import Providers from './providers';
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap',
+});
+
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  variable: '--font-serif',
+  display: 'swap',
+});
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#fcfcf9' },
+    { media: '(prefers-color-scheme: dark)', color: '#1a1c1c' },
+  ],
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.yourselflm.org'),
   title: 'YourselfLM',
-  description: 'YourselfLMは、LLMを活用して自己理解を深めるためのツールです。ユーザーは、LLMとの対話を通じて自己分析や目標設定を行い、自己成長を促進します。',
+  description: 'YourselfLMは、LLMを活用して自己理解を深めるためのツールです。',
   manifest: '/manifest.json',
   icons: {
     icon: '/favicon.ico',
     shortcut: '/favicon.ico',
     apple: '/apple-icon.png',
-  },
-  openGraph: {
-    title: 'YourselfLM',
-    description: 'YourselfLMは、LLMを活用して自己理解を深めるためのツールです。ユーザーは、LLMとの対話を通じて自己分析や目標設定を行い、自己成長を促進します。',
-    url: 'https://www.yourselflm.org/',
-    images: [
-      {
-        url: '/YourselfLM_OGP.jpg',
-        width: 1200,
-        height: 630,
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'YourselfLM',
-    description: 'YourselfLMは、LLMを活用して自己理解を深めるためのツールです。ユーザーは、LLMとの対話を通じて自己分析や目標設定を行い、自己成長を促進します。',
-    images: ['/YourselfLM_OGP.jpg'],
   },
 };
 
@@ -38,8 +43,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja">
-      <body>
+    <html lang="ja" className={`${inter.variable} ${playfair.variable}`}>
+      <body className="antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>

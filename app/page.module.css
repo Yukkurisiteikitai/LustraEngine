@@ -1,45 +1,74 @@
 .main {
-  max-width: 980px;
+  max-width: 1000px;
   margin: 0 auto;
-  padding: 1rem;
+  padding: 3rem 1.5rem;
   display: grid;
-  gap: 1rem;
+  gap: 3rem;
+  animation: fadeIn 0.8s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .hero {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 1rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 2rem;
+  padding: 4rem 2rem;
+  text-align: center;
+  box-shadow: var(--shadow);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hero:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
 }
 
 .title {
   margin: 0;
-  font-size: 1.4rem;
+  font-size: 2.5rem;
+  font-family: var(--font-serif);
+  color: var(--primary);
+  letter-spacing: -0.01em;
 }
 
 .subtitle {
-  margin: 0.5rem 0 0;
-  color: #4b5563;
+  margin: 1.5rem 0 2rem;
+  font-size: 1.1rem;
+  color: var(--muted-foreground);
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .cta {
   display: inline-block;
-  margin-top: 0.9rem;
-  background: #1d4ed8;
-  color: #ffffff;
-  border-radius: 8px;
-  padding: 0.7rem 1rem;
-  font-weight: 700;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-radius: 3rem;
+  padding: 1rem 2.5rem;
+  font-weight: 600;
+  font-size: 1.1rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px 0 rgba(90, 125, 108, 0.3);
+}
+
+.cta:hover {
+  background: #4a6a5b;
+  transform: scale(1.02);
+  box-shadow: 0 6px 20px 0 rgba(90, 125, 108, 0.4);
 }
 
 .summary {
   display: grid;
-  gap: 0.8rem;
+  gap: 1.5rem;
 }
 
 @media (min-width: 768px) {
   .summary {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(3, 1fr);
   }
 }
