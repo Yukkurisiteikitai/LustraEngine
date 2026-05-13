@@ -30,30 +30,30 @@
 
   --shadow-card:           0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
 
-  --font-sans: var(--font-inter), -apple-system, sans-serif;
+  --font-sans: var(--font-outfit), -apple-system, sans-serif;
   --font-serif: var(--font-playfair), serif;
   
   color-scheme: light;
 }
 
 [data-theme='dark'] {
-  --surface-page:          #0F0F0F; /* Slightly deeper for more contrast */
-  --surface-nav:           #1A1A18;
-  --surface-card:          #1A1A18;
-  --surface-input-box:     #242422;
-  --surface-input:         #2D2D2B;
-  --surface-elevated:      #2A2A28;
+  --surface-page:          #0A0A0A; /* Deeper black for premium feel */
+  --surface-nav:           #141412;
+  --surface-card:          #141412;
+  --surface-input-box:     #1E1E1C;
+  --surface-input:         #282826;
+  --surface-elevated:      #242422;
 
-  --text-primary:          #F0F0EB; /* High contrast off-white */
-  --text-secondary:        #A8A8A0;
-  --text-tertiary:         #707068;
+  --text-primary:          #F5F5F0;
+  --text-secondary:        #A0A098;
+  --text-tertiary:         #656560;
   --text-on-accent:        #FFFFFF;
-  --text-nav:              #D1D1CB;
+  --text-nav:              #C0C0B8;
   --text-nav-active:       #4ADE80;
 
-  --border-subtle:         rgba(255, 255, 255, 0.08);
-  --border-default:        rgba(255, 255, 255, 0.15); /* Stronger border */
-  --border-strong:         rgba(255, 255, 255, 0.25);
+  --border-subtle:         rgba(255, 255, 255, 0.05);
+  --border-default:        rgba(255, 255, 255, 0.12);
+  --border-strong:         rgba(255, 255, 255, 0.22);
 
   --accent-primary:        #1D9E75;
   --accent-primary-hover:  #22C55E;
@@ -62,10 +62,10 @@
   --semantic-error:        #F87171;
   --semantic-error-subtle: #451A1A;
 
-  --progress-track:        rgba(255, 255, 255, 0.15);
+  --progress-track:        rgba(255, 255, 255, 0.12);
   --progress-fill:         #1D9E75;
 
-  --shadow-card:           0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  --shadow-card:           0 20px 40px rgba(0, 0, 0, 0.6);
   
   color-scheme: dark;
 }
@@ -73,16 +73,16 @@
 /* Auto モード */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']):not([data-theme='dark']) {
-    --surface-page: #0F0F0F;
-    --surface-nav: #1A1A18;
-    --surface-card: #1A1A18;
-    --surface-input-box: #242422;
-    --surface-input: #2D2D2B;
-    --text-primary: #F0F0EB;
-    --text-secondary: #A8A8A0;
-    --text-nav: #D1D1CB;
-    --border-default: rgba(255, 255, 255, 0.15);
-    --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    --surface-page: #0A0A0A;
+    --surface-nav: #141412;
+    --surface-card: #141412;
+    --surface-input-box: #1E1E1C;
+    --surface-input: #282826;
+    --text-primary: #F5F5F0;
+    --text-secondary: #A0A098;
+    --text-nav: #C0C0B8;
+    --border-default: rgba(255, 255, 255, 0.12);
+    --shadow-card: 0 20px 40px rgba(0, 0, 0, 0.6);
     color-scheme: dark;
   }
 }
@@ -101,6 +101,7 @@ html, body {
   font-family: var(--font-sans);
   transition: background-color 0.2s ease, color 0.2s ease;
   min-height: 100vh;
+  letter-spacing: -0.015em; /* Standard premium tight letter spacing */
 }
 
 /* Ensure main containers also respect the theme background */
@@ -108,28 +109,29 @@ main, .main, #root {
   background-color: var(--surface-page);
 }
 
-/* Ensure all text elements inherit the primary text color */
+/* Typography scale for a stylish look */
 h1, h2, h3, h4, h5, h6 {
   color: var(--text-primary);
   font-family: var(--font-serif);
   font-weight: 500;
-  line-height: 1.2;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 
 p, span, li, label, div {
   color: var(--text-primary);
+  line-height: 1.6;
 }
 
-/* Button & Input Overrides for Theme Unity */
-button {
-  font-family: var(--font-sans);
+small {
+  font-size: 0.8em;
+  color: var(--text-secondary);
 }
 
-input, textarea, select {
+/* Unified styles for interactive elements */
+button, input, textarea, select {
   font-family: var(--font-sans);
-  background-color: var(--surface-input);
-  color: var(--text-primary);
-  border: 1px solid var(--border-default);
+  letter-spacing: inherit;
 }
 
 /* Page Transitions */

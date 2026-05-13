@@ -1,9 +1,9 @@
 .card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: 20px;
   padding: 1.5rem;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-card);
   transition: all 0.2s ease;
   display: flex;
   flex-direction: column;
@@ -12,14 +12,13 @@
 
 .card:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow);
-  border-color: var(--primary);
+  border-color: var(--accent-primary);
 }
 
 .title {
   margin: 0;
   font-size: 0.9rem;
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
   font-family: var(--font-sans);
   font-weight: 500;
   text-transform: uppercase;
@@ -29,13 +28,13 @@
 .value {
   margin: 0;
   font-size: 2rem;
-  font-weight: 700;
+  font-weight: 500;
   font-family: var(--font-serif);
-  color: var(--foreground);
+  color: var(--text-primary);
 }
 
 .note {
   margin: 0;
   font-size: 0.8rem;
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
 }

@@ -1,17 +1,16 @@
-import type { Metadata, Viewport } from 'next';
-import { Inter, Playfair_Display } from 'next/font/google';
+import { Outfit, Playfair_Display } from 'next/font/google';
 import './globals.css';
 import Providers from './providers';
 
-const inter = Inter({
+const outfit = Outfit({
   subsets: ['latin'],
-  variable: '--font-sans',
+  variable: '--font-outfit',
   display: 'swap',
 });
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
-  variable: '--font-serif',
+  variable: '--font-playfair',
   display: 'swap',
 });
 
@@ -43,7 +42,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" className={`${inter.variable} ${playfair.variable}`} suppressHydrationWarning>
+    <html lang="ja" className={`${outfit.variable} ${playfair.variable}`} suppressHydrationWarning>
       <body className="antialiased">
         <Providers>{children}</Providers>
       </body>

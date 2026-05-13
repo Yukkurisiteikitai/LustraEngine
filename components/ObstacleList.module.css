@@ -1,12 +1,15 @@
 .wrapper {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 1rem;
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-card);
 }
 
 .title {
-  margin: 0 0 0.8rem;
+  margin: 0 0 1.2rem;
+  font-size: 1.25rem;
+  color: var(--text-primary);
 }
 
 .list {
@@ -18,18 +21,20 @@
 }
 
 .item {
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 0.65rem;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  padding: 0.85rem;
+  background-color: var(--surface-input);
 }
 
 .desc {
   margin: 0;
-  font-weight: 600;
+  font-weight: 500;
+  color: var(--text-primary);
 }
 
 .meta {
   margin: 0.35rem 0 0;
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 0.9rem;
 }

@@ -27,7 +27,7 @@ export default function StressChart({ points }: StressChartProps) {
     <section className={styles.card} aria-label="ストレストレンドチャート">
       <h3 className={styles.title}>ストレストレンド</h3>
       <svg viewBox="0 0 300 100" className={styles.svg} role="img" aria-label="直近のストレス推移">
-        <line x1="20" y1="90" x2="280" y2="90" stroke="#d1d5db" strokeWidth="2" />
+        <line x1="20" y1="90" x2="280" y2="90" stroke="var(--border-strong)" strokeWidth="2" />
         <polyline
           fill="none"
           stroke={lineColor}
