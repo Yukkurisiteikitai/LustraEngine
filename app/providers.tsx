@@ -43,10 +43,14 @@ function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+import { ThemeProvider } from '@/components/ThemeProvider';
+
 export default function Providers({ children }: { children: ReactNode }) {
   return (
-    <AuthProvider>
-      <MockQueryProvider>{children}</MockQueryProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <MockQueryProvider>{children}</MockQueryProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

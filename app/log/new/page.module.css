@@ -1,26 +1,36 @@
 .main {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 1rem;
+  min-height: calc(100vh - 80px);
+  padding: 3rem 1.5rem;
+  background-color: var(--surface-page);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
 }
 
 .card {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 1rem;
+  width: 100%;
+  max-width: 800px;
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: 20px;
+  padding: 3rem;
+  box-shadow: var(--shadow-card);
   display: grid;
   gap: 0.9rem;
 }
 
 .title {
-  margin: 0;
+  margin: 0 0 1rem;
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .progress {
-  margin: 0;
-  color: #6b7280;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 2.5rem;
+  font-weight: 500;
 }
 
 .stepBlock {
@@ -29,36 +39,49 @@
 }
 
 .confirm {
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 0.8rem;
+  background-color: var(--surface-input);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  padding: 1.5rem;
+  color: var(--text-primary);
 }
 
 .confirmTitle {
-  margin: 0 0 0.5rem;
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .confirm p {
-  margin: 0.35rem 0;
+  margin: 0.5rem 0;
+  line-height: 1.6;
 }
 
 .actions {
   display: flex;
-  gap: 0.6rem;
+  gap: 1rem;
+  margin-top: 1rem;
 }
 
 .primary,
 .secondary {
   border: 0;
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
-  font-weight: 700;
+  border-radius: 2rem;
+  padding: 0.85rem 2rem;
+  font-weight: 500;
+  font-size: 1rem;
   cursor: pointer;
+  transition: all 0.15s ease;
 }
 
 .primary {
-  background: #1d4ed8;
-  color: #ffffff;
+  background-color: var(--accent-primary);
+  color: var(--text-on-accent);
+}
+
+.primary:hover:not(:disabled) {
+  background-color: var(--accent-primary-hover);
 }
 
 .primary:disabled {
@@ -67,8 +90,13 @@
 }
 
 .secondary {
-  background: #e5e7eb;
-  color: #111827;
+  background-color: var(--surface-input);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+}
+
+.secondary:hover {
+  background-color: var(--surface-elevated);
 }
 
 .liveRegion {

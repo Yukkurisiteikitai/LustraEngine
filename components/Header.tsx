@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useAuth } from '@/app/providers';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import ThemeToggle from './ThemeToggle';
 import styles from './Header.module.css';
 
 export default function Header() {
@@ -28,11 +29,15 @@ export default function Header() {
           <Link href="/persona">ペルソナ</Link>
           <Link href="/chat">チャット</Link>
           <Link href="/settings">設定</Link>
-          {!loading && user && (
-            <button type="button" className={styles.logoutBtn} onClick={handleLogout}>
-              ログアウト
-            </button>
-          )}
+          
+          <div className={styles.actions}>
+            <ThemeToggle />
+            {!loading && user && (
+              <button type="button" className={styles.logoutBtn} onClick={handleLogout}>
+                ログアウト
+              </button>
+            )}
+          </div>
         </nav>
       </div>
     </header>

@@ -1,10 +1,11 @@
 .wrapper {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 1rem;
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: 16px;
+  padding: 1.5rem;
   display: grid;
-  gap: 0.9rem;
+  gap: 1.2rem;
+  box-shadow: var(--shadow-card);
 }
 
 .fieldset {
@@ -12,38 +13,48 @@
   padding: 0;
   margin: 0;
   display: grid;
-  gap: 0.6rem;
+  gap: 0.8rem;
 }
 
 .legend {
-  font-weight: 700;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .radioRow {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  color: var(--text-primary);
 }
 
 .memo {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.5rem;
 }
 
 .label {
-  font-weight: 600;
+  font-weight: 500;
+  color: var(--text-primary);
 }
 
 .textarea {
   width: 100%;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  padding: 0.65rem;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  padding: 0.85rem;
   resize: vertical;
+  background-color: var(--surface-input);
+  color: var(--text-primary);
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--accent-primary);
 }
 
 .error {
   margin: 0;
-  color: #b91c1c;
+  color: var(--semantic-error);
   font-size: 0.9rem;
 }

@@ -1,36 +1,165 @@
 :root {
+  /* ─── Light Mode (デフォルト) ─── */
+  --surface-page:          #F5F5F2;
+  --surface-nav:           #FFFFFF;
+  --surface-card:          #FFFFFF;
+  --surface-input-box:     #F0F0ED;
+  --surface-input:         #E8E8E5;
+  --surface-elevated:      #FFFFFF;
+
+  --text-primary:          #1A1A18;
+  --text-secondary:        #5C5C58;
+  --text-tertiary:         #9A9A94;
+  --text-on-accent:        #FFFFFF;
+  --text-nav:              #3A3A36;
+  --text-nav-active:       #1D9E75;
+
+  --border-subtle:         rgba(0, 0, 0, 0.06);
+  --border-default:        rgba(0, 0, 0, 0.12);
+  --border-strong:         rgba(0, 0, 0, 0.20);
+
+  --accent-primary:        #1D9E75;
+  --accent-primary-hover:  #168A64;
+  --accent-primary-subtle: #E1F5EE;
+
+  --semantic-error:        #D85A30;
+  --semantic-error-subtle: #FAECE7;
+
+  --progress-track:        rgba(0, 0, 0, 0.10);
+  --progress-fill:         #1D9E75;
+
+  --shadow-card:           0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+
+  --font-sans: var(--font-outfit), -apple-system, sans-serif;
+  --font-serif: var(--font-playfair), serif;
+  
   color-scheme: light;
 }
 
-* {
-  box-sizing: border-box;
+[data-theme='dark'] {
+  --surface-page:          #0A0A0A; /* Deeper black for premium feel */
+  --surface-nav:           #141412;
+  --surface-card:          #141412;
+  --surface-input-box:     #1E1E1C;
+  --surface-input:         #282826;
+  --surface-elevated:      #242422;
+
+  --text-primary:          #F5F5F0;
+  --text-secondary:        #A0A098;
+  --text-tertiary:         #656560;
+  --text-on-accent:        #FFFFFF;
+  --text-nav:              #C0C0B8;
+  --text-nav-active:       #4ADE80;
+
+  --border-subtle:         rgba(255, 255, 255, 0.05);
+  --border-default:        rgba(255, 255, 255, 0.12);
+  --border-strong:         rgba(255, 255, 255, 0.22);
+
+  --accent-primary:        #1D9E75;
+  --accent-primary-hover:  #22C55E;
+  --accent-primary-subtle: #0A3D2E;
+
+  --semantic-error:        #F87171;
+  --semantic-error-subtle: #451A1A;
+
+  --progress-track:        rgba(255, 255, 255, 0.12);
+  --progress-fill:         #1D9E75;
+
+  --shadow-card:           0 20px 40px rgba(0, 0, 0, 0.6);
+  
+  color-scheme: dark;
 }
 
-html,
-body {
+/* Auto モード */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) {
+    --surface-page: #0A0A0A;
+    --surface-nav: #141412;
+    --surface-card: #141412;
+    --surface-input-box: #1E1E1C;
+    --surface-input: #282826;
+    --text-primary: #F5F5F0;
+    --text-secondary: #A0A098;
+    --text-nav: #C0C0B8;
+    --border-default: rgba(255, 255, 255, 0.12);
+    --shadow-card: 0 20px 40px rgba(0, 0, 0, 0.6);
+    color-scheme: dark;
+  }
+}
+
+/* Global Typography & Core reset */
+* {
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #f7f8fa;
-  color: #1f2937;
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
 }
 
+html, body {
+  background-color: var(--surface-page);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  transition: background-color 0.2s ease, color 0.2s ease;
+  min-height: 100vh;
+  letter-spacing: -0.015em; /* Standard premium tight letter spacing */
+}
+
+/* Ensure main containers also respect the theme background */
+main, .main, #root {
+  background-color: var(--surface-page);
+}
+
+/* Typography scale for a stylish look */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-primary);
+  font-family: var(--font-serif);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+p, span, li, label, div {
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+small {
+  font-size: 0.8em;
+  color: var(--text-secondary);
+}
+
+/* Unified styles for interactive elements */
+button, input, textarea, select {
+  font-family: var(--font-sans);
+  letter-spacing: inherit;
+}
+
+/* Page Transitions */
+.page-enter {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Base interactive elements */
 a {
   color: inherit;
   text-decoration: none;
+  transition: opacity 0.2s ease;
 }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
+a:hover {
+  opacity: 0.8;
 }
 
 button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 a:focus-visible {
-  outline: 3px solid #2563eb;
+  outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
 }
+

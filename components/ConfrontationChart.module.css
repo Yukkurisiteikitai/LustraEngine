@@ -1,13 +1,16 @@
 .card {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 1rem;
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-card);
 }
 
 .title {
-  margin: 0 0 0.6rem;
-  font-size: 1rem;
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--text-primary);
 }
 
 .svg {
@@ -18,5 +21,6 @@
 .value {
   margin: 0.5rem 0 0;
   font-size: 1.3rem;
-  font-weight: 700;
+  font-weight: 600;
+  color: var(--text-primary);
 }
