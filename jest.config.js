@@ -11,7 +11,8 @@ const customJestConfig = {
     '^@/(.*)$': '<rootDir>/$1',
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
   },
-  testPathIgnorePatterns: ['/node_modules/', '/.next/'],
+  modulePathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/.open-next/', '<rootDir>/.claude/'],
+  testPathIgnorePatterns: ['/node_modules/', '/.next/', '/.open-next/', '/.claude/'],
 };
 
 module.exports = createJestConfig(customJestConfig);
