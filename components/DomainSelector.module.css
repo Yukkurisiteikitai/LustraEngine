@@ -5,11 +5,11 @@
 }
 
 .legend {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 0.8rem;
-  color: var(--primary);
+  font-weight: 500;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
 }
 
 .chips {
@@ -19,32 +19,32 @@
 }
 
 .chip {
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--muted-foreground);
+  border: 1px solid var(--border-default);
+  background-color: var(--surface-card);
+  color: var(--text-secondary);
   border-radius: 999px;
-  padding: 0.6rem 1.2rem;
+  padding: 0.6rem 1.4rem;
   cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 0.9rem;
+  transition: all 0.15s ease;
+  font-size: 0.95rem;
   font-weight: 500;
 }
 
 .chip:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-  background: var(--muted);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background-color: var(--surface-input);
 }
 
 .active {
-  border-color: var(--primary);
-  background: var(--primary);
-  color: var(--primary-foreground);
-  box-shadow: 0 4px 10px rgba(90, 125, 108, 0.2);
+  border-color: var(--accent-primary);
+  background-color: var(--accent-primary);
+  color: var(--text-on-accent);
+  box-shadow: 0 4px 12px rgba(29, 158, 117, 0.25);
 }
 
 .error {
   margin: 0.6rem 0 0;
-  color: #b91c1c;
+  color: var(--semantic-error);
   font-size: 0.85rem;
 }

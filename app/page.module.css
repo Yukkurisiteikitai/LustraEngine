@@ -4,62 +4,51 @@
   padding: 3rem 1.5rem;
   display: grid;
   gap: 3rem;
-  animation: fadeIn 0.8s ease-out;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 .hero {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 2rem;
-  padding: 4rem 2rem;
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: 16px;
+  padding: 5rem 2rem;
   text-align: center;
-  box-shadow: var(--shadow);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.hero:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.2s ease;
 }
 
 .title {
   margin: 0;
-  font-size: 2.5rem;
+  font-size: 3rem;
   font-family: var(--font-serif);
-  color: var(--primary);
+  color: var(--text-primary);
   letter-spacing: -0.01em;
+  line-height: 1.2;
 }
 
 .subtitle {
-  margin: 1.5rem 0 2rem;
-  font-size: 1.1rem;
-  color: var(--muted-foreground);
+  margin: 1.5rem 0 3rem;
+  font-size: 1.15rem;
+  color: var(--text-secondary);
   max-width: 600px;
   margin-left: auto;
   margin-right: auto;
+  line-height: 1.6;
 }
 
 .cta {
   display: inline-block;
-  background: var(--primary);
-  color: var(--primary-foreground);
+  background-color: var(--accent-primary);
+  color: var(--text-on-accent);
   border-radius: 3rem;
-  padding: 1rem 2.5rem;
-  font-weight: 600;
+  padding: 1rem 3rem;
+  font-weight: 500;
   font-size: 1.1rem;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 14px 0 rgba(90, 125, 108, 0.3);
+  transition: background-color 0.15s ease, transform 0.1s active;
+  cursor: pointer;
 }
 
 .cta:hover {
-  background: #4a6a5b;
-  transform: scale(1.02);
-  box-shadow: 0 6px 20px 0 rgba(90, 125, 108, 0.4);
+  background-color: var(--accent-primary-hover);
 }
 
 .summary {

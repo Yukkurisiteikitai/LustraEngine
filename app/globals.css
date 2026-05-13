@@ -1,6 +1,5 @@
 :root {
   /* ─── Light Mode (デフォルト) ─── */
-  /* Surface / Background */
   --surface-page:          #F5F5F2;
   --surface-nav:           #FFFFFF;
   --surface-card:          #FFFFFF;
@@ -8,7 +7,6 @@
   --surface-input:         #E8E8E5;
   --surface-elevated:      #FFFFFF;
 
-  /* Typography */
   --text-primary:          #1A1A18;
   --text-secondary:        #5C5C58;
   --text-tertiary:         #9A9A94;
@@ -16,158 +14,132 @@
   --text-nav:              #3A3A36;
   --text-nav-active:       #1D9E75;
 
-  /* Border */
-  --border-subtle:         rgba(0, 0, 0, 0.08);
-  --border-default:        rgba(0, 0, 0, 0.14);
-  --border-strong:         rgba(0, 0, 0, 0.22);
+  --border-subtle:         rgba(0, 0, 0, 0.06);
+  --border-default:        rgba(0, 0, 0, 0.12);
+  --border-strong:         rgba(0, 0, 0, 0.20);
 
-  /* Accent */
   --accent-primary:        #1D9E75;
   --accent-primary-hover:  #168A64;
   --accent-primary-subtle: #E1F5EE;
 
-  /* Semantic */
   --semantic-error:        #D85A30;
   --semantic-error-subtle: #FAECE7;
 
-  /* Progress bar */
   --progress-track:        rgba(0, 0, 0, 0.10);
   --progress-fill:         #1D9E75;
 
-  /* Shadow */
   --shadow-card:           0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
 
-  /* Typography Base */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-serif: 'Playfair Display', Georgia, serif;
-  --radius: 1rem;
-
+  --font-sans: var(--font-inter), -apple-system, sans-serif;
+  --font-serif: var(--font-playfair), serif;
+  
   color-scheme: light;
 }
 
-/* ─── Dark Mode ─── */
 [data-theme='dark'] {
-  --surface-page:          #141413;
-  --surface-nav:           #1C1C1A;
-  --surface-card:          #1C1C1A;
-  --surface-input-box:     #2A2A27;
-  --surface-input:         #323230;
-  --surface-elevated:      #242422;
+  --surface-page:          #0F0F0F; /* Slightly deeper for more contrast */
+  --surface-nav:           #1A1A18;
+  --surface-card:          #1A1A18;
+  --surface-input-box:     #242422;
+  --surface-input:         #2D2D2B;
+  --surface-elevated:      #2A2A28;
 
-  --text-primary:          #F0EFE8;
-  --text-secondary:        #A8A89E;
-  --text-tertiary:         #6A6A62;
+  --text-primary:          #F0F0EB; /* High contrast off-white */
+  --text-secondary:        #A8A8A0;
+  --text-tertiary:         #707068;
   --text-on-accent:        #FFFFFF;
-  --text-nav:              #C8C8C0;
-  --text-nav-active:       #5DCAA5;
+  --text-nav:              #D1D1CB;
+  --text-nav-active:       #4ADE80;
 
-  --border-subtle:         rgba(255, 255, 255, 0.06);
-  --border-default:        rgba(255, 255, 255, 0.10);
-  --border-strong:         rgba(255, 255, 255, 0.18);
+  --border-subtle:         rgba(255, 255, 255, 0.08);
+  --border-default:        rgba(255, 255, 255, 0.15); /* Stronger border */
+  --border-strong:         rgba(255, 255, 255, 0.25);
 
   --accent-primary:        #1D9E75;
-  --accent-primary-hover:  #22B585;
+  --accent-primary-hover:  #22C55E;
   --accent-primary-subtle: #0A3D2E;
 
-  --semantic-error:        #F0997B;
-  --semantic-error-subtle: #3D1F14;
+  --semantic-error:        #F87171;
+  --semantic-error-subtle: #451A1A;
 
-  --progress-track:        rgba(255, 255, 255, 0.12);
+  --progress-track:        rgba(255, 255, 255, 0.15);
   --progress-fill:         #1D9E75;
 
-  --shadow-card:           0 1px 3px rgba(0,0,0,0.40), 0 1px 2px rgba(0,0,0,0.30);
+  --shadow-card:           0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
   
   color-scheme: dark;
 }
 
-/* Auto モード (OS設定に従う) */
+/* Auto モード */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']):not([data-theme='dark']) {
-    --surface-page:          #141413;
-    --surface-nav:           #1C1C1A;
-    --surface-card:          #1C1C1A;
-    --surface-input-box:     #2A2A27;
-    --surface-input:         #323230;
-    --surface-elevated:      #242422;
-    --text-primary:          #F0EFE8;
-    --text-secondary:        #A8A89E;
-    --text-tertiary:         #6A6A62;
-    --text-on-accent:        #FFFFFF;
-    --text-nav:              #C8C8C0;
-    --text-nav-active:       #5DCAA5;
-    --border-subtle:         rgba(255, 255, 255, 0.06);
-    --border-default:        rgba(255, 255, 255, 0.10);
-    --border-strong:         rgba(255, 255, 255, 0.18);
-    --accent-primary:        #1D9E75;
-    --accent-primary-hover:  #22B585;
-    --accent-primary-subtle: #0A3D2E;
-    --semantic-error:        #F0997B;
-    --semantic-error-subtle: #3D1F14;
-    --progress-track:        rgba(255, 255, 255, 0.12);
-    --progress-fill:         #1D9E75;
-    --shadow-card:           0 1px 3px rgba(0,0,0,0.40), 0 1px 2px rgba(0,0,0,0.30);
+    --surface-page: #0F0F0F;
+    --surface-nav: #1A1A18;
+    --surface-card: #1A1A18;
+    --surface-input-box: #242422;
+    --surface-input: #2D2D2B;
+    --text-primary: #F0F0EB;
+    --text-secondary: #A8A8A0;
+    --text-nav: #D1D1CB;
+    --border-default: rgba(255, 255, 255, 0.15);
+    --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
     color-scheme: dark;
   }
 }
 
-/* Global Reset & Base Typography */
+/* Global Typography & Core reset */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-}
-
-html {
-  background-color: var(--surface-page);
-  color: var(--text-primary);
-  font-family: var(--font-sans);
-  transition: background-color 0.15s ease, color 0.15s ease;
   -webkit-font-smoothing: antialiased;
 }
 
-body {
+html, body {
+  background-color: var(--surface-page);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  transition: background-color 0.2s ease, color 0.2s ease;
   min-height: 100vh;
 }
 
-h1, h2, h3, h4 {
+/* Ensure main containers also respect the theme background */
+main, .main, #root {
+  background-color: var(--surface-page);
+}
+
+/* Ensure all text elements inherit the primary text color */
+h1, h2, h3, h4, h5, h6 {
   color: var(--text-primary);
   font-family: var(--font-serif);
   font-weight: 500;
-  line-height: 1.3;
+  line-height: 1.2;
 }
 
-p, li, span {
+p, span, li, label, div {
   color: var(--text-primary);
-  line-height: 1.7;
 }
 
-a {
-  color: var(--accent-primary);
-  text-decoration: none;
-  transition: color 0.15s ease;
+/* Button & Input Overrides for Theme Unity */
+button {
+  font-family: var(--font-sans);
 }
 
-a:hover {
-  color: var(--accent-primary-hover);
+input, textarea, select {
+  font-family: var(--font-sans);
+  background-color: var(--surface-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
 }
 
-::placeholder {
-  color: var(--text-tertiary);
-}
-
-/* Functional Transitions */
-.transition-all {
-  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, opacity 0.2s ease;
-}
-
-/* Page Entry Animation */
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
+/* Page Transitions */
 .page-enter {
-  animation: fadeInUp 0.4s ease forwards;
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Optional Light Mode (swapped colors) */

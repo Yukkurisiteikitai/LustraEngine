@@ -1,23 +1,23 @@
 .wrapper {
   display: grid;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .label {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--foreground);
+  font-weight: 500;
+  color: var(--text-primary);
 }
 
 .slider {
   -webkit-appearance: none;
   width: 100%;
-  height: 10px;
-  background: var(--secondary);
-  border-radius: 5px;
+  height: 6px;
+  background-color: var(--progress-track);
+  border-radius: 999px;
   outline: none;
-  margin: 10px 0;
+  margin: 1.5rem 0;
 }
 
 .slider::-webkit-slider-thumb {
@@ -25,11 +25,12 @@
   appearance: none;
   width: 24px;
   height: 24px;
-  background: var(--primary);
+  background-color: var(--accent-primary);
+  border: 3px solid var(--surface-card);
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: transform 0.1s ease;
 }
 
 .slider::-webkit-slider-thumb:hover {
@@ -40,17 +41,18 @@
   display: flex;
   justify-content: space-between;
   font-size: 0.9rem;
-  color: var(--muted-foreground);
+  color: var(--text-secondary);
   padding: 0 5px;
+  font-weight: 500;
 }
 
 .description {
   font-size: 0.95rem;
-  color: var(--foreground);
+  color: var(--text-primary);
   margin-top: 0.5rem;
-  padding: 1rem;
-  background: var(--muted);
-  border-radius: 0.75rem;
-  border: 1px solid var(--border);
-  line-height: 1.5;
+  padding: 1.25rem;
+  background-color: var(--surface-input);
+  border-radius: 12px;
+  border: 1px solid var(--border-default);
+  line-height: 1.6;
 }
