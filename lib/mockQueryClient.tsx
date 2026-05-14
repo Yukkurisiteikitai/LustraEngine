@@ -6,7 +6,7 @@ import type {
   ChatMessage,
   LogPayload,
   LogResponse,
-  PersonaSnapshot,
+  UserModelSnapshot,
 } from '@/types';
 import { loadLMConfig } from '@/lib/lmConfig';
 
@@ -49,7 +49,7 @@ export function useSubmitLogMutation() {
   });
 }
 
-async function fetchPersona(): Promise<PersonaSnapshot | null> {
+async function fetchPersona(): Promise<UserModelSnapshot | null> {
   const response = await fetch('/api/persona');
 
   if (!response.ok) {
@@ -58,7 +58,7 @@ async function fetchPersona(): Promise<PersonaSnapshot | null> {
     throw new Error(errorMessage);
   }
 
-  const json = (await response.json()) as { snapshot: PersonaSnapshot | null };
+  const json = (await response.json()) as { snapshot: UserModelSnapshot | null };
   return json.snapshot;
 }
 
@@ -144,7 +144,15 @@ export function useChatMutation() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error((json as { message?: string }).message ?? 'チャットに失敗しました');
-      return json as { response: string; threadId?: string; pairNodeId?: string };
+      return json as {
+        response?: string;
+        threadId?: string;
+        pairNodeId?: string;
+        mode?: 'evidence_logging';
+        reason?: string;
+        questions?: string[];
+        suggestedTemplate?: string;
+      };
     },
   });
 }

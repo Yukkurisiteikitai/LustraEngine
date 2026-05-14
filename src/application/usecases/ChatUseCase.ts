@@ -1,14 +1,15 @@
 import type { IExperienceRepository } from '@/core/domains/experience/IExperienceRepository';
-import type { IPersonaRepository } from '@/core/domains/persona/IPersonaRepository';
 import type { IPsychologyRepository } from '@/core/ports/IPsychologyRepository';
 import type { ILLMPort, TokenUsage } from '@/application/ports/ILLMPort';
 import { buildChatSystemPrompt } from '@/application/llm/chatSystemPrompt';
 import type { ChatMessage } from '@/types';
+import type { ITraitHypothesisRepository } from '@/core/domains/trait/ITraitHypothesisRepository';
+import { buildEvidenceLoggingFallback, type EvidenceLoggingFallback } from '@/application/llm/evidenceLoggingFallback';
 
 export class ChatUseCase {
   constructor(
     private readonly expRepo: IExperienceRepository,
-    private readonly personaRepo: IPersonaRepository,
+    private readonly traitHypothesisRepo: ITraitHypothesisRepository,
     private readonly llm: ILLMPort,
     private readonly psychologyRepo: IPsychologyRepository | null = null,
   ) {}
@@ -17,13 +18,12 @@ export class ChatUseCase {
     userId: string,
     message: string,
     history: ChatMessage[],
-  ): Promise<{ response: string; tokenUsage?: TokenUsage; modelName?: string; personaMissing?: boolean }> {
-    const persona = await this.personaRepo.getLatest(userId);
-
-    if (!persona) {
+  ): Promise<{ response: string; tokenUsage?: TokenUsage; modelName?: string; fallback?: EvidenceLoggingFallback }> {
+    const activeHypotheses = await this.traitHypothesisRepo.findActiveByUser(userId);
+    if (activeHypotheses.length === 0) {
       return {
         response: '',
-        personaMissing: true,
+        fallback: buildEvidenceLoggingFallback(),
       };
     }
 
@@ -35,8 +35,8 @@ export class ChatUseCase {
     ]);
 
     const systemPrompt = buildChatSystemPrompt(
-      persona.personaJson,
       experiences,
+      activeHypotheses,
       bigFive,
       attachment,
       identityStatus,

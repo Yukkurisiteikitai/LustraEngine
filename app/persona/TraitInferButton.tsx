@@ -45,12 +45,12 @@ export default function TraitInferButton() {
         onClick={() => setShowModeSelection(!showModeSelection)}
         disabled={isPending}
       >
-        {isPending ? '分析中...' : 'トレイト推論を実行'}
+        {isPending ? '更新中...' : '仮説を更新'}
       </button>
 
       {showModeSelection && !isPending && (
         <div className={styles.modeSelectionBox}>
-          <p className={styles.modeSelectionTitle}>分析を開始しますか？</p>
+          <p className={styles.modeSelectionTitle}>仮説を更新しますか？</p>
 
           <div className={styles.modeOption}>
             <button
@@ -58,10 +58,10 @@ export default function TraitInferButton() {
               className={styles.modeButton}
               onClick={() => handleAnalyze('quick')}
             >
-              クイック分析
+              クイック更新
             </button>
             <p className={styles.modeDescription}>
-              直近1週間の記録をもとに、短時間で傾向を確認します。
+              直近1週間の記録をもとに、短時間で仮説を更新します。
             </p>
           </div>
 
@@ -71,10 +71,10 @@ export default function TraitInferButton() {
               className={styles.modeButton}
               onClick={() => handleAnalyze('full_3months')}
             >
-              3か月分析
+              3か月更新
             </button>
             <p className={styles.modeDescription}>
-              過去3か月の集約と直近ログを使い、より深く分析します。
+              過去3か月の集約と直近ログを使い、より深く仮説を更新します。
             </p>
           </div>
 

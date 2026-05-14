@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import ObstacleForm, { type ObstacleDraft } from '@/components/ObstacleForm';
 import ActionSelector from '@/components/ActionSelector';
 import { useSubmitLogMutation } from '@/lib/mockQueryClient';
 import type { ActionResult, Domain } from '@/types';
+import { consumeEvidenceLoggingDraft, type EvidenceLoggingDraft } from '@/lib/evidenceDraftStorage';
 import styles from './page.module.css';
 
 type Step = 1 | 2 | 3;
@@ -35,7 +37,17 @@ function domainToLabel(domain: Domain) {
   }
 }
 
-export default function LogNewClient() {
+interface LogNewClientProps {
+  evidenceTemplate?: string;
+  evidenceQuestions?: string[];
+  source?: 'chat_fallback' | 'manual';
+}
+
+export default function LogNewClient({
+  evidenceTemplate = '',
+  evidenceQuestions = [],
+  source = 'manual',
+}: LogNewClientProps) {
   const [step, setStep] = useState<Step>(1);
   const [obstacle, setObstacle] = useState<ConfirmObstacle | null>(null);
   const [actionResult, setActionResult] = useState<ActionResult | ''>('');
@@ -44,8 +56,37 @@ export default function LogNewClient() {
   const [actionError, setActionError] = useState<string>('');
   const [statusMessage, setStatusMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error'>('success');
+  const [restoredDraft, setRestoredDraft] = useState<EvidenceLoggingDraft | null>(null);
 
   const mutation = useSubmitLogMutation();
+  useEffect(() => {
+    const draft = consumeEvidenceLoggingDraft();
+    if (draft) {
+      setRestoredDraft(draft);
+      setObstacle(null);
+      setStep(1);
+    }
+  }, []);
+
+  const activeTemplate = restoredDraft?.template ?? evidenceTemplate;
+  const activeQuestions = restoredDraft?.questions ?? evidenceQuestions;
+  const activeSource = restoredDraft?.source ?? source;
+
+  const initialDraft = useMemo<ObstacleDraft>(() => ({
+    description: activeTemplate || '',
+    domain: undefined,
+    stressLevel: 3,
+    goal: '',
+    emotion: '',
+    context: '',
+  }), [activeTemplate]);
+
+  useEffect(() => {
+    if (activeTemplate) {
+      setObstacle(null);
+      setStep(1);
+    }
+  }, [activeTemplate, activeQuestions]);
 
   function resetForm() {
     setStep(1);
@@ -90,6 +131,7 @@ export default function LogNewClient() {
             action: actionBody || undefined,
             emotion: obstacle.emotion || undefined,
             context: obstacle.context || undefined,
+            ...(activeSource === 'chat_fallback' ? { source: 'chat_fallback' } : {}),
           },
         ],
       },
@@ -111,10 +153,36 @@ export default function LogNewClient() {
 
   return (
     <>
+      {activeTemplate ? (
+        <div className={styles.evidenceDraftBox}>
+          <p className={styles.evidenceDraftLabel}>Chat からの下書き</p>
+          <p className={styles.evidenceDraftMeta}>
+            evidenceType: {activeSource === 'chat_fallback' ? 'chat_fallback' : 'manual'} / domain: 未選択 / emotionalIntensity: 3 / reportDifficulty: 3
+          </p>
+          <p className={styles.evidenceDraftText}>{activeTemplate}</p>
+          {activeQuestions.length > 0 ? (
+            <ul className={styles.evidenceDraftList}>
+              {activeQuestions.map((question) => (
+                <li key={question}>{question}</li>
+              ))}
+            </ul>
+          ) : null}
+          <div className={styles.evidenceDraftActions}>
+            <Link href="/persona" className={styles.evidenceDraftLink}>
+              仮説を更新
+            </Link>
+          </div>
+        </div>
+      ) : null}
+
       <p className={styles.progress}>Step {step} / 3</p>
 
       {step === 1 ? (
-        <ObstacleForm onSubmit={handleObstacleSubmit} submitLabel="次へ" />
+        <ObstacleForm
+          initialValue={initialDraft}
+          onSubmit={handleObstacleSubmit}
+          submitLabel="次へ"
+        />
       ) : null}
 
       {step === 2 ? (
@@ -195,7 +263,19 @@ export default function LogNewClient() {
         }}
       >
         {statusMessage}
-      </p>
+  </p>
+
+      {messageType === 'success' && statusMessage ? (
+        <div className={styles.evidenceDraftBox}>
+          <p className={styles.evidenceDraftLabel}>次のステップ</p>
+          <p className={styles.evidenceDraftText}>記録を追加したら、仮説を更新して見直してください。</p>
+          <div className={styles.evidenceDraftActions}>
+            <Link href="/persona" className={styles.evidenceDraftLink}>
+              仮説を更新
+            </Link>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }

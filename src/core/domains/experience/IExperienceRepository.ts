@@ -5,6 +5,7 @@ export interface CreateExperienceInput {
   stressLevel: number;
   domain: string;
   actionResult: 'AVOIDED' | 'CONFRONTED';
+  source?: string;
   actionMemo?: string;
   goal?: string;
   action?: string;

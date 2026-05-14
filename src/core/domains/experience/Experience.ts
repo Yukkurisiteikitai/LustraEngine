@@ -4,6 +4,7 @@ export interface ExperienceData {
   description: string;
   stressLevel: number;
   actionResult: 'AVOIDED' | 'CONFRONTED';
+  source?: string;
   actionMemo?: string;
   goal?: string;
   action?: string;

@@ -8,6 +8,7 @@ import { InferTraitsUseCase } from '@/application/usecases/InferTraitsUseCase';
 import { LLMRetryPolicy } from '@/application/llm/policies/LLMRetryPolicy';
 import { LLMResponseValidator } from '@/application/llm/policies/LLMResponseValidator';
 import { logger } from '@/infrastructure/observability/logger';
+import type { TraitHypothesisResult } from '@/core/domains/trait/TraitHypothesis';
 
 /**
  * Processes analysis jobs from the Cloudflare Queue
@@ -19,8 +20,7 @@ export class AnalysisJobConsumer {
     private readonly experienceRepo: IExperienceRepository,
     private readonly clusterCommandRepo: any,
     private readonly clusterQueryRepo: any,
-    private readonly traitRepo: any,
-    private readonly personaRepo: any,
+    private readonly traitHypothesisRepo: any,
     private readonly psychologyRepo: any,
     private readonly createLlm: (userId: string) => Promise<ILLMPort>,
   ) {}
@@ -50,7 +50,11 @@ export class AnalysisJobConsumer {
       }
 
       // Step 2: Build analysis context
-      const contextService = new AnalysisContextService(this.supabase, this.experienceRepo);
+      const contextService = new AnalysisContextService(
+        this.supabase,
+        this.experienceRepo,
+        this.traitHypothesisRepo,
+      );
       const context = await contextService.buildContext(userId, mode);
       const llm = await this.createLlm(userId);
 
@@ -72,15 +76,13 @@ export class AnalysisJobConsumer {
       logger.info(`[AnalysisJobConsumer] DetectPatterns completed: ${detectResult.classified} classified`);
 
       // Step 4: Run infer traits (if not quick mode)
-      let inferResult: { traits: Record<string, number> } | null = null;
+      let inferResult: TraitHypothesisResult | null = null;
       if (mode !== 'quick') {
         logger.info(`[AnalysisJobConsumer] Running InferTraits for job ${jobId}`);
         const inferUseCase = new InferTraitsUseCase(
           this.experienceRepo,
           this.clusterQueryRepo,
-          this.traitRepo,
-          this.personaRepo,
-          this.psychologyRepo,
+          this.traitHypothesisRepo,
           llm,
           logger,
           new LLMRetryPolicy(),
@@ -123,7 +125,8 @@ export class AnalysisJobConsumer {
             },
             inferResult: inferResult
               ? {
-                  traitsUpdated: true,
+                  hypothesesGenerated: inferResult.summary.generatedCount,
+                  evidenceCount: inferResult.summary.evidenceCount,
                 }
               : null,
           },

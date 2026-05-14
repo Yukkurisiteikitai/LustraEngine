@@ -66,7 +66,7 @@ async function handleQueue(
 
   // Initialize service role client for worker
   const supabase = createServiceRoleClient(env);
-  const { experience, clusterCommand, clusterQuery, trait, persona, psychology, llmSettings } =
+  const { experience, clusterCommand, clusterQuery, traitHypothesis, psychology, llmSettings } =
     createRepositories(supabase);
 
   for (const message of typedBatch.messages) {
@@ -81,8 +81,7 @@ async function handleQueue(
         experience,
         clusterCommand,
         clusterQuery,
-        trait,
-        persona,
+        traitHypothesis,
         psychology,
         (userId: string) => createWorkerLLM(env, userId, llmSettings),
       );

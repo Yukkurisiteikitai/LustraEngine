@@ -19,6 +19,64 @@
   gap: 0.9rem;
 }
 
+.evidenceDraftBox {
+  border: 1px solid #c7d2fe;
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+  background: linear-gradient(180deg, #eef2ff 0%, #ffffff 100%);
+  display: grid;
+  gap: 0.5rem;
+}
+
+.evidenceDraftLabel {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #4338ca;
+  text-transform: uppercase;
+}
+
+.evidenceDraftText {
+  margin: 0;
+  white-space: pre-wrap;
+  color: var(--text-primary);
+}
+
+.evidenceDraftMeta {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.evidenceDraftList {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.35rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.evidenceDraftActions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.evidenceDraftLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.25rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  background-color: #4338ca;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
 .title {
   margin: 0 0 1rem;
   font-size: 2rem;

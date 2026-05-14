@@ -1,8 +1,6 @@
 import type { IExperienceRepository } from '@/core/domains/experience/IExperienceRepository';
 import type { IClusterQueryRepository } from '@/core/domains/cluster/IClusterQueryRepository';
-import type { ITraitRepository } from '@/core/domains/trait/ITraitRepository';
-import type { IPersonaRepository } from '@/core/domains/persona/IPersonaRepository';
-import type { IPsychologyRepository } from '@/core/ports/IPsychologyRepository';
+import type { ITraitHypothesisRepository } from '@/core/domains/trait/ITraitHypothesisRepository';
 import type { ExperienceData } from '@/core/domains/experience/Experience';
 import type { ClusterData } from '@/core/domains/cluster/Cluster';
 import type { ILLMPort } from '@/application/ports/ILLMPort';
@@ -12,8 +10,13 @@ import type { LLMResponseValidator, BigFiveResponse } from '@/application/llm/po
 import type { AnalysisContext } from '@/application/analysis/AnalysisContextService';
 import { TRAIT_SYSTEM_PROMPT, buildTraitUserMessage } from '@/application/llm/traitInferencePrompt';
 import { buildFallbackTraits } from '@/core/domains/trait/Trait';
-import { buildPersonaJson } from '@/core/domains/persona/Persona';
 import type { TraitName } from '@/types';
+import { randomUUID } from 'node:crypto';
+import type {
+  TraitHypothesisInsert,
+  TraitHypothesisRecord,
+  TraitHypothesisResult,
+} from '@/core/domains/trait/TraitHypothesis';
 
 function deriveLegacyTraitsFromBigFive(bf: BigFiveResponse['bigFive']): Record<TraitName, number> {
   const clamp = (v: number) => Math.max(0, Math.min(1, v));
@@ -27,13 +30,79 @@ function deriveLegacyTraitsFromBigFive(bf: BigFiveResponse['bigFive']): Record<T
   };
 }
 
+function scoreLabel(score: number): string {
+  if (score >= 0.67) return 'high';
+  if (score <= 0.33) return 'low';
+  return 'medium';
+}
+
+function buildHypothesisText(traitKey: TraitName, score: number): string {
+  const labels: Record<TraitName, string> = {
+    introversion: '内向性',
+    discipline: '自律性',
+    curiosity: '好奇心',
+    risk_tolerance: 'リスク許容度',
+    self_criticism: '自己批判',
+    social_anxiety: '社会不安',
+  };
+
+  const tendency = scoreLabel(score) === 'high' ? '高め' : scoreLabel(score) === 'low' ? '低め' : '中程度';
+  return `現時点のログ上、${labels[traitKey]}が${tendency}という仮説があります。`;
+}
+
+function buildHypotheses(
+  userId: string,
+  traitScores: Record<TraitName, number>,
+  evidenceIds: string[],
+  patternIds: string[],
+  modelName: string,
+  modelVersion: string,
+  promptVersion: string,
+  confidence: number,
+  analysisJobId?: string | null,
+): { inserts: TraitHypothesisInsert[]; records: TraitHypothesisRecord[] } {
+  const createdAt = new Date().toISOString();
+
+  const records = (Object.entries(traitScores) as [TraitName, number][])
+    .map(([traitKey, score]) => {
+      const id = randomUUID();
+      const hypothesisLabel = scoreLabel(score);
+      const hypothesisText = buildHypothesisText(traitKey, score);
+      const uncertainty = Math.max(0, Math.min(1, 1 - confidence));
+      const record: TraitHypothesisRecord = {
+        id,
+        userId,
+        traitKey,
+        hypothesisLabel,
+        hypothesisText,
+        score,
+        confidence,
+        uncertainty,
+        evidenceIds,
+        sourcePatternIds: patternIds,
+        modelName,
+        modelVersion,
+        promptVersion,
+        status: 'active',
+        supersedesHypothesisId: null,
+        supersededByHypothesisId: null,
+        analysisJobId: analysisJobId ?? null,
+        createdAt,
+      };
+      return record;
+    });
+
+  return {
+    records,
+    inserts: records.map(({ id, createdAt, ...rest }) => rest),
+  };
+}
+
 export class InferTraitsUseCase {
   constructor(
     private readonly expRepo: IExperienceRepository,
     private readonly clusterQuery: IClusterQueryRepository,
-    private readonly traitRepo: ITraitRepository,
-    private readonly personaRepo: IPersonaRepository,
-    private readonly psychologyRepo: IPsychologyRepository,
+    private readonly traitHypothesisRepo: ITraitHypothesisRepository,
     private readonly llm: ILLMPort,
     private readonly logger: ILoggerPort,
     private readonly retry: LLMRetryPolicy,
@@ -44,10 +113,11 @@ export class InferTraitsUseCase {
     userId: string,
     context?: AnalysisContext,
     options?: { strict?: boolean },
-  ): Promise<{ traits: Record<TraitName, number> }> {
+  ): Promise<TraitHypothesisResult> {
     const strict = options?.strict ?? false;
     let clusters: ClusterData[] = [];
     let experiences: ExperienceData[] = [];
+    let activeHypotheses: TraitHypothesisRecord[] = [];
 
     // If context is provided (from AnalysisJobConsumer), use context data
     // Otherwise, use traditional fetching for backward compatibility
@@ -77,6 +147,7 @@ export class InferTraitsUseCase {
           domainKey: String(log.domain),
         })),
       ];
+      activeHypotheses = context.activeHypotheses ?? [];
     } else {
       // Backward compatibility: fetch clusters and recent experiences
       const [queryClusters, recentExps] = await Promise.all([
@@ -85,16 +156,19 @@ export class InferTraitsUseCase {
       ]);
       clusters = queryClusters;
       experiences = recentExps;
+      activeHypotheses = await this.traitHypothesisRepo.findActiveByUser(userId);
     }
 
-    const userMessage = buildTraitUserMessage(clusters, experiences);
+    const userMessage = buildTraitUserMessage(clusters, experiences, activeHypotheses);
 
     let traitScores: Record<TraitName, number>;
     let bigFiveResult: BigFiveResponse | null = null;
+    let usedModel = 'unknown';
     try {
-      const { text } = await this.retry.execute(() =>
+      const { text, modelName } = await this.retry.execute(() =>
         this.llm.generate(TRAIT_SYSTEM_PROMPT, userMessage, 1024),
       );
+      usedModel = modelName;
       bigFiveResult = this.validator.validateBigFiveResponse(text);
       if (bigFiveResult) {
         traitScores = deriveLegacyTraitsFromBigFive(bigFiveResult.bigFive);
@@ -107,72 +181,33 @@ export class InferTraitsUseCase {
       traitScores = buildFallbackTraits(clusters);
     }
 
-    // 既存のtraitsテーブルへの書き込み（後方互換）
-    await this.traitRepo.save(userId, traitScores);
+    const evidenceIds = [...experiences.map((e) => e.id), ...clusters.map((c) => c.id)];
+    const patternIds = clusters.map((c) => c.id);
+    const confidence = bigFiveResult?.bigFive.confidence ?? 0.5;
+    const promptVersion = 'v004';
+    const { inserts, records } = buildHypotheses(
+      userId,
+      traitScores,
+      evidenceIds,
+      patternIds,
+      usedModel,
+      usedModel,
+      promptVersion,
+      confidence,
+    );
 
-    const traitsHash = JSON.stringify(Object.entries(traitScores).sort());
-    const personaJson = buildPersonaJson(traitScores, clusters, experiences);
-    try {
-      await this.personaRepo.saveSnapshot(userId, personaJson, traitsHash);
-    } catch (err) {
-      this.logger.warn('infer:snapshot_failed', { userId, err });
-    }
+    await this.traitHypothesisRepo.appendMany(inserts);
 
-    // Big Five スコアを big_five_scores テーブルに保存
-    if (bigFiveResult) {
-      try {
-        await this.psychologyRepo.upsertBigFiveScore({
-          userId,
-          openness: bigFiveResult.bigFive.openness,
-          conscientiousness: bigFiveResult.bigFive.conscientiousness,
-          extraversion: bigFiveResult.bigFive.extraversion,
-          agreeableness: bigFiveResult.bigFive.agreeableness,
-          neuroticism: bigFiveResult.bigFive.neuroticism,
-          confidence: bigFiveResult.bigFive.confidence,
-          evidenceCount: experiences.length,
-          applyCulturalAdjustment: true,
-        });
-
-        await Promise.all(
-          bigFiveResult.facets.map((facet) =>
-            this.psychologyRepo.upsertBigFiveFacet({
-              userId,
-              domain: facet.domain,
-              facetName: facet.facetName,
-              score: facet.score,
-              confidence: facet.confidence,
-            })
-          )
-        );
-
-        if (bigFiveResult.attachmentHints) {
-          const { anxietyScore, avoidanceScore } = bigFiveResult.attachmentHints;
-          if (anxietyScore !== null || avoidanceScore !== null) {
-            await this.psychologyRepo.upsertAttachmentProfile({
-              userId,
-              anxietyScore: anxietyScore ?? undefined,
-              avoidanceScore: avoidanceScore ?? undefined,
-              confidence: bigFiveResult.bigFive.confidence,
-              evidenceCount: experiences.length,
-            });
-          }
-        }
-
-        await Promise.all(
-          bigFiveResult.identityStatus.map((is_) =>
-            this.psychologyRepo.upsertIdentityStatus({
-              userId,
-              domain: is_.domain,
-              explorationScore: is_.explorationScore,
-              commitmentScore: is_.commitmentScore,
-            })
-          )
-        );
-      } catch (err) {
-        this.logger.warn('infer:big_five_save_failed', { userId, err });
-      }
-    }
-
-    return { traits: traitScores };
+    return {
+      hypotheses: records,
+      summary: {
+        generatedCount: records.length,
+        acceptedCount: records.length,
+        rejectedCount: 0,
+        evidenceCount: evidenceIds.length,
+        usedModel,
+        usedPromptVersion: promptVersion,
+      },
+    };
   }
 }

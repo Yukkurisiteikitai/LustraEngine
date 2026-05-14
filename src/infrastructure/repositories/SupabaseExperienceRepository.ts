@@ -19,6 +19,7 @@ export class SupabaseExperienceRepository implements IExperienceRepository {
       description: o.description,
       stress_level: o.stressLevel,
       action_result: o.actionResult,
+      source: o.source ?? null,
       action_memo: o.actionMemo ?? null,
       goal: o.goal ?? null,
       action: o.action ?? null,

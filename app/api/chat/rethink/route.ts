@@ -11,6 +11,7 @@ import { handleError, checkBodySize } from '@/lib/apiHelpers';
 import { createChatRateLimiter } from '@/infrastructure/rate-limiting/rateLimiterSingleton';
 import { resolveStoredLlmConfig } from '@/infrastructure/llm/resolveStoredLlmConfig';
 import type { LMConfig } from '@/types';
+import { buildEvidenceLoggingFallback } from '@/application/llm/evidenceLoggingFallback';
 
 interface RethinkRequestBody {
   pairNodeId: string;
@@ -61,11 +62,11 @@ export async function POST(req: Request) {
 
     // Run all independent DB queries in parallel after auth
     const historyUseCase = createGetThreadHistoryUseCase(supabase);
-    const { persona, experience, psychology } = createRepositories(supabase);
-    const [allMessages, personaSnapshot, experiences, bigFive, attachment, identityStatus] =
+    const { experience, psychology, traitHypothesis } = createRepositories(supabase);
+    const [allMessages, activeHypotheses, experiences, bigFive, attachment, identityStatus] =
       await Promise.all([
         historyUseCase.getMessages(threadId),
-        persona.getLatest(user.id),
+        traitHypothesis.findActiveByUser(user.id),
         experience.findRecent(user.id, 5),
         psychology.getBigFiveScore(user.id),
         psychology.getAttachmentProfile(user.id),
@@ -86,16 +87,13 @@ export async function POST(req: Request) {
       .slice(0, pairNodeUserMsgIdx)
       .map((m) => ({ role: m.role, content: m.content }));
 
-    // Build system prompt from persona + recent experiences + psychology profile
-    if (!personaSnapshot) {
-      return NextResponse.json(
-        { message: 'ペルソナスナップショットが見つかりません。先にペルソナページでトレイト推論を実行してください。' },
-        { status: 422 },
-      );
+    // Build system prompt from active trait hypotheses + recent experiences + psychology profile
+    if (activeHypotheses.length === 0) {
+      return NextResponse.json(buildEvidenceLoggingFallback());
     }
     const systemPrompt = buildChatSystemPrompt(
-      personaSnapshot.personaJson,
       experiences,
+      activeHypotheses,
       bigFive,
       attachment,
       identityStatus,

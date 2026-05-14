@@ -5,7 +5,14 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import LogNewClient from './LogNewClient';
 import styles from './page.module.css';
 
-export default async function LogNewPage() {
+type LogNewPageProps = {
+  searchParams?: Promise<{
+    template?: string;
+    questions?: string;
+  }>;
+};
+
+export default async function LogNewPage({ searchParams }: LogNewPageProps) {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },

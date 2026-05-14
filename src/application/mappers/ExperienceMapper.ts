@@ -26,6 +26,7 @@ export class ExperienceMapper {
       description: row.description as string,
       stressLevel: row.stress_level as number,
       actionResult: row.action_result as 'AVOIDED' | 'CONFRONTED',
+      source: (row.source as string | null) ?? undefined,
       actionMemo: (row.action_memo as string | null) ?? undefined,
       goal: (row.goal as string | null) ?? undefined,
       action: (row.action as string | null) ?? undefined,

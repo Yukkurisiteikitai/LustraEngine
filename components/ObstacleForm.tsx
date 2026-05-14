@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import styles from './ObstacleForm.module.css';
 import DomainSelector from './DomainSelector';
 import StressSlider from './StressSlider';
@@ -43,6 +43,10 @@ export default function ObstacleForm({
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<ObstacleDraft>(initialValue);
   const [errors, setErrors] = useState<ObstacleFormErrors>({});
+
+  useEffect(() => {
+    setForm(initialValue);
+  }, [initialValue]);
 
   const totalSteps = 3;
 

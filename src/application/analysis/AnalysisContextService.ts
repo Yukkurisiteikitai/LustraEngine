@@ -2,13 +2,15 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { IExperienceRepository } from '@/core/domains/experience/IExperienceRepository';
 import type { AnalysisJobMode } from '@/core/domains/analysis/AnalysisJob';
 import type { ClusterData } from '@/core/domains/cluster/Cluster';
+import type { ITraitHypothesisRepository } from '@/core/domains/trait/ITraitHypothesisRepository';
+import type { TraitHypothesisRecord } from '@/core/domains/trait/TraitHypothesis';
 
 export interface AnalysisContext {
   mode: AnalysisJobMode;
   recentLogs: Array<{ id: string; description: string; domain: string; stressLevel: number; loggedAt: string }>;
   unprocessedLogs: Array<{ id: string; description: string; domain: string; stressLevel: number; loggedAt: string }>;
   threeMonthSummary?: Array<{ date: string; count: number; avgStress: number }>;
-  previousTraits?: Record<string, unknown>;
+  activeHypotheses?: TraitHypothesisRecord[];
   previousPatterns?: ClusterData[];
 }
 
@@ -22,6 +24,7 @@ export class AnalysisContextService {
   constructor(
     private readonly supabase: SupabaseClient,
     private readonly experienceRepo: IExperienceRepository,
+    private readonly traitHypothesisRepo: ITraitHypothesisRepository,
   ) {}
 
   private readDomain(row: Record<string, unknown>): string {
@@ -65,6 +68,8 @@ export class AnalysisContextService {
       recentLogs: mappedRecentLogs,
       unprocessedLogs: [],
     };
+
+    context.activeHypotheses = await this.traitHypothesisRepo.findActiveByUser(userId);
 
     // For quick mode, return just recent logs
     if (mode === 'quick') {
@@ -124,21 +129,6 @@ export class AnalysisContextService {
       count,
       avgStress: totalStress / count,
     }));
-
-    // Fetch previous traits (latest)
-    const { data: traits, error: traitsError } = await this.supabase
-      .from('traits')
-      .select('*')
-      .eq('user_id', userId)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (traitsError && traitsError.code !== 'PGRST116') {
-      console.warn(`Failed to fetch traits: ${traitsError.message}`);
-    } else if (traits) {
-      context.previousTraits = traits as Record<string, unknown>;
-    }
 
     // Fetch previous patterns (latest clusters)
     const { data: patterns, error: patternsError } = await this.supabase

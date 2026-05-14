@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import LogNewClient from '@/app/log/new/LogNewClient';
 import { useSubmitLogMutation } from '@/lib/mockQueryClient';
@@ -39,10 +39,13 @@ describe('LogNewClient', () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date('2026-05-13T00:00:00.000Z'));
     jest.clearAllMocks();
+    window.sessionStorage.clear();
   });
 
   afterEach(() => {
-    jest.runOnlyPendingTimers();
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
     jest.useRealTimers();
   });
 
@@ -114,5 +117,44 @@ describe('LogNewClient', () => {
     expect(screen.getByText('上司に相談する')).toBeInTheDocument();
     expect(screen.getByText('メールした')).toBeInTheDocument();
     consoleError.mockRestore();
+  });
+
+  it('pre-fills chat fallback drafts and preserves source on submit', async () => {
+    const mutate = jest.fn();
+    setupMutation(mutate);
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+    window.sessionStorage.setItem(
+      'ylm:evidence_logging_draft',
+      JSON.stringify({
+        template: '出来事 / 感情 / 避けたこと or 向き合ったこと / 関係する領域',
+        questions: [
+          '直近で強く気になった出来事は何でしたか？',
+          'そのとき避けたこと、向き合ったことは何でしたか？',
+        ],
+        source: 'chat_fallback',
+      }),
+    );
+
+    render(<LogNewClient />);
+
+    await waitFor(() => {
+      expect(screen.getByText('直近で強く気になった出来事は何でしたか？')).toBeInTheDocument();
+    });
+    expect(screen.getByLabelText('いま、どのような障害に向き合っていますか？')).toHaveValue(
+      '出来事 / 感情 / 避けたこと or 向き合ったこと / 関係する領域',
+    );
+    expect(window.sessionStorage.getItem('ylm:evidence_logging_draft')).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: '次へ' }));
+    await user.click(screen.getByRole('button', { name: '仕事' }));
+    await user.click(screen.getByRole('button', { name: '次へ' }));
+    await user.click(screen.getByRole('button', { name: '次へ' }));
+    await user.click(screen.getByRole('radio', { name: '回避した' }));
+    await user.click(screen.getByRole('button', { name: '次へ' }));
+    await user.click(screen.getByRole('button', { name: '送信する' }));
+
+    expect(mutate).toHaveBeenCalledTimes(1);
+    expect(mutate.mock.calls[0][0].obstacles[0].source).toBe('chat_fallback');
   });
 });

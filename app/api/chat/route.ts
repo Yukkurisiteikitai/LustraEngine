@@ -142,25 +142,23 @@ export async function POST(req: Request) {
     const useCase = createChatUseCase(supabase, createLLM(resolvedLlmConfig, { waitForSlot: false, endpoint: '/api/chat' }));
     const result = await useCase.execute(user.id, message, history ?? []);
 
+    if (result.fallback) {
+      return NextResponse.json({
+        mode: result.fallback.mode,
+        reason: result.fallback.reason,
+        questions: result.fallback.questions,
+        suggestedTemplate: result.fallback.suggestedTemplate,
+      });
+    }
+
     logger.info('api:chat_llm_call_done', {
       layer: 'ChatRoute',
       reqId,
       userId: user.id,
       llmMs: Date.now() - tLlm,
-      personaMissing: result.personaMissing ?? false,
       modelName: result.modelName,
       tokenUsage: result.tokenUsage,
     });
-
-    if (result.personaMissing) {
-      return NextResponse.json(
-        {
-          message:
-            'ペルソナスナップショットが見つかりません。先にペルソナページでトレイト推論を実行してください。',
-        },
-        { status: 422 },
-      );
-    }
 
     // Record token usage for Claude. LLM already ran — always record, never reject.
     // The next pre-flight predictive check will block future requests if over budget.

@@ -1,7 +1,10 @@
 import type { ClusterData } from '@/core/domains/cluster/Cluster';
 import type { ExperienceData } from '@/core/domains/experience/Experience';
+import type { TraitHypothesisRecord } from '@/core/domains/trait/TraitHypothesis';
+import type { TraitName } from '@/types';
 
-export const TRAIT_SYSTEM_PROMPT = `あなたはユーザーの経験データを分析して、Big Five性格特性を推定する専門家です。
+export const TRAIT_SYSTEM_PROMPT = `あなたはユーザーの経験データから、UserModelSnapshot に反映するための TraitHypothesis を生成する分析支援者です。
+これはラベル付けではなく、現時点のログに基づく仮説要約を更新する作業です。
 
 ## 入力データ
 - 直近の経験ログ（description, emotion, action_result等）
@@ -57,7 +60,27 @@ Big Fiveはアメリカの大学生を主なサンプルとして開発された
 export function buildTraitUserMessage(
   clusters: ClusterData[],
   experiences: ExperienceData[],
+  activeHypotheses: TraitHypothesisRecord[] = [],
 ): string {
+  const traitLabels: Record<TraitName, string> = {
+    introversion: '内向性',
+    discipline: '自律性',
+    curiosity: '好奇心',
+    risk_tolerance: 'リスク許容度',
+    self_criticism: '自己批判',
+    social_anxiety: '社会不安',
+  };
+
+  const hypothesisSummary = activeHypotheses.length > 0
+    ? activeHypotheses
+        .map((h) => {
+          const label = traitLabels[h.traitKey as TraitName] ?? h.traitKey;
+          const scoreText = typeof h.score === 'number' ? `, score=${Math.round(h.score * 100)}点` : '';
+          return `- ${label}: ${h.hypothesisText}（confidence=${Math.round(h.confidence * 100)}%, uncertainty=${Math.round(h.uncertainty * 100)}%${scoreText}）`;
+        })
+        .join('\n')
+    : '- 十分な仮説がありません';
+
   const clusterSummary = clusters
     .map((c) => `- ${c.clusterType} (detected ${c.detectedCount}x, strength ${c.strength})`)
     .join('\n');
@@ -74,6 +97,9 @@ export function buildTraitUserMessage(
     .join('\n');
 
   return [
+    '## 現在のTrait仮説（active）:',
+    hypothesisSummary,
+    '',
     '## 検出済みパターン（episode_clusters）:',
     clusterSummary || '(まだ検出されていません)',
     '',

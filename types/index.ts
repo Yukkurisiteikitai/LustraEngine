@@ -9,6 +9,7 @@ export interface ExperienceInput {
   stressLevel: number;
   domain: Domain;
   actionResult: ActionResult;
+  source?: string;
   actionMemo?: string;
   // 構造化フィールド（任意）
   goal?: string;
@@ -148,12 +149,30 @@ export interface PersonaJson {
   domainBreakdown: Record<string, number>;
 }
 
-export interface PersonaSnapshot {
+export interface UserModelHypothesisSummary {
+  traitKey: TraitName | string;
+  hypothesisLabel: string;
+  hypothesisText: string;
+  score?: number;
+  confidence: number;
+  uncertainty: number;
+}
+
+export interface UserModelSnapshot {
   id: string;
   userId: string;
-  personaJson: PersonaJson;
+  snapshotKind: 'hypothesis_summary';
+  activeHypothesisCount: number;
+  topHypotheses: UserModelHypothesisSummary[];
+  summaryText: string;
+  evidenceCount: number;
+  modelName?: string;
+  modelVersion?: string;
+  promptVersion?: string;
   createdAt: string;
 }
+
+export type PersonaSnapshot = UserModelSnapshot;
 
 // --- L5 Interaction Layer ---
 export interface ChatMessage {
