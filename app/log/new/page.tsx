@@ -25,6 +25,9 @@ export default async function LogNewPage({ searchParams }: LogNewPageProps) {
       <main className={styles.main}>
         <section className={styles.card}>
           <h1 className={styles.title}>今日の記録</h1>
+          <p className={styles.intro}>
+            ここでは出来事を記録します。書き終えたら、そのまま仮説更新へ戻れます。
+          </p>
           <LogNewClient />
         </section>
       </main>

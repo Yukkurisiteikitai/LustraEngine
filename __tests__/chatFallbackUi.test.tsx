@@ -100,8 +100,11 @@ describe('Chat fallback UI', () => {
     });
 
     expect(screen.getByRole('heading', { name: 'ユーザーモデル' })).toBeInTheDocument();
+    expect(screen.getByText(/ここは現在の仮説要約です/)).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Evidence Logging' })).toBeInTheDocument();
-    expect(screen.getByText('次の3問に答えると、判断材料として記録できます。')).toBeInTheDocument();
+    expect(
+      screen.getByText('次の3問に答えると、判断材料として記録できます。書き終えたら、そのまま仮説更新へ進めます。'),
+    ).toBeInTheDocument();
     expect(screen.getByText('直近で強く気になった出来事は何でしたか？')).toBeInTheDocument();
     expect(screen.getByText('出来事 / 感情 / 避けたこと or 向き合ったこと / 関係する領域')).toBeInTheDocument();
 

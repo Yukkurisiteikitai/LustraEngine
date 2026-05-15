@@ -1,6 +1,8 @@
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
+const LOCAL_DEV_LLM_SETTINGS_SECRET = 'local-dev-llm-settings-key';
+
 function toBase64(bytes: Uint8Array): string {
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);
@@ -49,4 +51,16 @@ export async function decryptApiKey(encryptedApiKey: string, secret: string): Pr
     cipher,
   );
   return decoder.decode(plain);
+}
+
+export function resolveLlmSettingsEncryptionKey(): string {
+  const key = process.env.LLM_SETTINGS_ENCRYPTION_KEY;
+  if (key) return key;
+
+  if (process.env.APP_ENV === 'production') {
+    throw new Error('LLM_SETTINGS_ENCRYPTION_KEY is missing');
+  }
+
+  // Local debugging fallback: avoid breaking app flows when the secret is not set.
+  return LOCAL_DEV_LLM_SETTINGS_SECRET;
 }

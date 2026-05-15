@@ -34,58 +34,31 @@ const mockCreateSupabaseServerClient = createSupabaseServerClient as jest.Mock;
 const mockCreateRepositories = createRepositories as jest.Mock;
 const mockRedirect = redirect as unknown as jest.Mock;
 
-describe('persona UI wording', () => {
+describe('persona page fallback', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('renders the model summary wording instead of personality assertions', async () => {
-    const findActiveByUser = jest.fn().mockResolvedValue([
-      {
-        id: 'th-1',
-        userId: 'user-1',
-        traitKey: 'discipline',
-        hypothesisLabel: 'medium',
-        hypothesisText: '現時点のログ上、自律性は中程度という仮説があります。',
-        score: 0.5,
-        confidence: 0.8,
-        uncertainty: 0.2,
-        evidenceIds: ['exp-1'],
-        sourcePatternIds: [],
-        modelName: 'model-a',
-        modelVersion: '1',
-        promptVersion: 'v004',
-        status: 'active',
-        supersedesHypothesisId: null,
-        supersededByHypothesisId: null,
-        analysisJobId: null,
-        createdAt: '2026-05-14T00:00:00.000Z',
-      },
-    ]);
-
+  it('renders an empty summary and warning when active hypotheses cannot be loaded', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     mockCreateSupabaseServerClient.mockResolvedValue({
       auth: {
         getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }),
       },
     });
     mockCreateRepositories.mockReturnValue({
-      traitHypothesis: { findActiveByUser },
+      traitHypothesis: {
+        findActiveByUser: jest.fn().mockRejectedValue(new Error('db unavailable')),
+      },
     });
 
     render(await PersonaPage());
 
     expect(screen.getByRole('heading', { name: 'ユーザーモデル' })).toBeInTheDocument();
-    expect(screen.getByText(/Evidence 由来のモデル要約/)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '現在の仮説要約' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'モデル要約' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '仮説を更新' })).toBeInTheDocument();
-    expect(screen.getByText(/現在の仮説は 1 件あります/)).toBeInTheDocument();
-    expect(screen.getByText(/自律性は中程度/)).toBeInTheDocument();
-    expect(screen.queryByText(/あなたは/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/ペルソナ/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/人格/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/性格/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/診断/)).not.toBeInTheDocument();
+    expect(screen.getByText(/仮説要約の読み込みに失敗しました/)).toBeInTheDocument();
+    expect(screen.getByText(/まだ仮説は少なめです/)).toBeInTheDocument();
     expect(mockRedirect).not.toHaveBeenCalled();
+    consoleSpy.mockRestore();
   });
 });

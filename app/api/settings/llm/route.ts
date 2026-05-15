@@ -4,7 +4,11 @@ import { createRepositories } from '@/container/createRepositories';
 import { AuthError } from '@/core/errors/AuthError';
 import { ValidationError } from '@/core/errors/ValidationError';
 import { handleError } from '@/lib/apiHelpers';
-import { encryptApiKey, decryptApiKey } from '@/infrastructure/llm/llmSettingsCrypto';
+import {
+  encryptApiKey,
+  decryptApiKey,
+  resolveLlmSettingsEncryptionKey,
+} from '@/infrastructure/llm/llmSettingsCrypto';
 import { validateLLMConfig } from '@/infrastructure/llm/providerRegistry';
 import type { LMConfig } from '@/types';
 
@@ -25,14 +29,6 @@ type ErrorResponse = {
   ok: false;
   error: string;
 };
-
-function readEncryptionKey(): string {
-  const key = process.env.LLM_SETTINGS_ENCRYPTION_KEY;
-  if (!key) {
-    throw new Error('LLM_SETTINGS_ENCRYPTION_KEY is missing');
-  }
-  return key;
-}
 
 function toResponse(setting: {
   provider: string;
@@ -110,8 +106,10 @@ export async function POST(req: Request) {
     const existing = await llmSettings.getActiveByUser(user.id);
 
     const requestedApiKey = typeof body.apiKey === 'string' ? body.apiKey.trim() : '';
-    const encryptionKey = readEncryptionKey();
-    const preservedApiKey = !requestedApiKey && existing?.encryptedApiKey
+    const encryptionKey = requestedApiKey || existing?.encryptedApiKey
+      ? resolveLlmSettingsEncryptionKey()
+      : null;
+    const preservedApiKey = !requestedApiKey && existing?.encryptedApiKey && encryptionKey
       ? await decryptApiKey(existing.encryptedApiKey, encryptionKey)
       : '';
 
@@ -131,7 +129,7 @@ export async function POST(req: Request) {
 
     const resolved = validateLLMConfig(config);
     const encryptedApiKey = requestedApiKey
-      ? await encryptApiKey(requestedApiKey, encryptionKey)
+      ? await encryptApiKey(requestedApiKey, encryptionKey ?? resolveLlmSettingsEncryptionKey())
       : existing?.encryptedApiKey ?? null;
 
     const saved = await llmSettings.upsertActive(

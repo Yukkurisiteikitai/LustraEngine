@@ -38,6 +38,13 @@
   margin: 0;
 }
 
+.sidebarLead {
+  margin: -0.25rem 0 0.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--text-muted, #6b7280);
+}
+
 .traitList {
   display: flex;
   flex-direction: column;
@@ -249,6 +256,7 @@
   margin: 0;
   font-size: 0.875rem;
   color: var(--text-muted, #6b7280);
+  line-height: 1.7;
 }
 
 .evidenceQuestionList {

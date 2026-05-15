@@ -293,6 +293,9 @@ export default function ChatPage() {
           {/* Left sidebar: model summary */}
           <aside className={styles.sidebar}>
             <h2 className={styles.sidebarTitle}>ユーザーモデル</h2>
+            <p className={styles.sidebarLead}>
+              ここは現在の仮説要約です。確定プロフィールではなく、Evidence から更新されるメモです。
+            </p>
 
             {personaLoading && <p className={styles.loading}>読み込み中...</p>}
 
@@ -467,7 +470,7 @@ export default function ChatPage() {
                 <p className={styles.evidenceLabel}>Evidence Logging</p>
                 <h3 className={styles.evidenceTitle}>まだ仮説を作る材料が足りません。</h3>
                 <p className={styles.evidenceDescription}>
-                  次の3問に答えると、判断材料として記録できます。
+                  次の3問に答えると、判断材料として記録できます。書き終えたら、そのまま仮説更新へ進めます。
                 </p>
                 <ol className={styles.evidenceQuestionList}>
                   {activeEvidenceFallback.questions.map((question) => (

@@ -66,6 +66,7 @@ describe('LogNewPage', () => {
     render(await LogNewPage({}));
 
     expect(screen.getByRole('heading', { name: '今日の記録' })).toBeInTheDocument();
+    expect(screen.getByText(/ここでは出来事を記録します/)).toBeInTheDocument();
     expect(screen.getByText('Chat からの下書き')).toBeInTheDocument();
     expect(screen.getByText('q1')).toBeInTheDocument();
     expect(screen.getByLabelText('いま、どのような障害に向き合っていますか？')).toHaveValue('foo');

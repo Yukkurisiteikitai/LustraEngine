@@ -4,7 +4,6 @@ import { SupabaseClusterQueryRepository } from '@/infrastructure/repositories/Su
 import { SupabaseClusterCommandRepository } from '@/infrastructure/repositories/SupabaseClusterCommandRepository';
 import { SupabaseTraitRepository } from '@/infrastructure/repositories/SupabaseTraitRepository';
 import { SupabaseTraitHypothesisRepository } from '@/infrastructure/repositories/SupabaseTraitHypothesisRepository';
-import { SupabasePersonaRepository } from '@/infrastructure/repositories/SupabasePersonaRepository';
 import { SupabaseUserRepository } from '@/infrastructure/repositories/SupabaseUserRepository';
 import { SupabaseThreadRepository } from '@/infrastructure/repositories/SupabaseThreadRepository';
 import { SupabaseMessageRepository } from '@/infrastructure/repositories/SupabaseMessageRepository';
@@ -21,7 +20,6 @@ export function createRepositories(supabase: SupabaseClient) {
     clusterCommand: new SupabaseClusterCommandRepository(supabase),
     trait: new SupabaseTraitRepository(supabase),
     traitHypothesis: new SupabaseTraitHypothesisRepository(supabase),
-    persona: new SupabasePersonaRepository(supabase),
     user: new SupabaseUserRepository(supabase),
     thread: new SupabaseThreadRepository(supabase),
     message: new SupabaseMessageRepository(supabase),

@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createRepositories } from '@/container/createRepositories';
 import styles from './page.module.css';
 import { buildUserModelSnapshot } from '@/application/mappers/UserModelSnapshotMapper';
+import type { TraitHypothesisRecord } from '@/core/domains/trait/TraitHypothesis';
 
 export default async function PersonaPage() {
   const supabase = await createSupabaseServerClient();
@@ -15,7 +16,19 @@ export default async function PersonaPage() {
   if (!user) redirect('/login');
 
   const { traitHypothesis } = createRepositories(supabase);
-  const hypotheses = await traitHypothesis.findActiveByUser(user.id);
+
+  let loadWarning: string | null = null;
+  let hypotheses: TraitHypothesisRecord[] = [];
+  try {
+    hypotheses = await traitHypothesis.findActiveByUser(user.id);
+  } catch (error) {
+    console.error('persona_page_hypothesis_load_failed', {
+      userId: user.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    loadWarning = '仮説要約の読み込みに失敗しました。少し時間を置いて再読み込みしてください。';
+  }
+
   const snapshot = buildUserModelSnapshot(user.id, hypotheses);
 
   return (
@@ -28,11 +41,17 @@ export default async function PersonaPage() {
             <TraitInferButton />
           </div>
 
+          <p className={styles.pageLead}>
+            直近の記録から仮説を更新し、その要約を表示します。ここは確定ではなく、Evidence 由来のモデル要約です。
+          </p>
+
+          {loadWarning ? <div className={styles.errorBox}>{loadWarning}</div> : null}
+
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>現在の仮説要約</h2>
             {snapshot.activeHypothesisCount === 0 ? (
               <p className={styles.empty}>
-                まだ十分な仮説がありません。記録を追加するとモデル要約が更新されます。
+                まだ仮説は少なめです。記録を追加すると、ここに要約が並びます。
               </p>
             ) : (
               <div className={styles.traitList}>

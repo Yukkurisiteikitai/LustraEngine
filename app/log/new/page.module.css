@@ -19,6 +19,13 @@
   gap: 0.9rem;
 }
 
+.intro {
+  margin: -0.25rem 0 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
 .evidenceDraftBox {
   border: 1px solid #c7d2fe;
   border-radius: 14px;

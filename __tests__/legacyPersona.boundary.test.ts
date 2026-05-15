@@ -17,23 +17,34 @@ function walkFiles(dir: string, acc: string[] = []): string[] {
 }
 
 describe('legacy persona boundary', () => {
-  it('keeps legacy persona APIs confined to the compatibility layer', () => {
+  it('keeps legacy persona APIs out of app/src code and keeps deleted files deleted', () => {
     const root = process.cwd();
-    const allowedFiles = new Set([
+    const createRepositoriesPath = path.join(root, 'src/container/createRepositories.ts');
+    const deletedFiles = [
       path.join(root, 'src/core/domains/persona/IPersonaRepository.ts'),
       path.join(root, 'src/infrastructure/repositories/SupabasePersonaRepository.ts'),
       path.join(root, 'src/core/domains/persona/Persona.ts'),
       path.join(root, 'src/application/mappers/PersonaMapper.ts'),
-      path.join(root, 'src/application/usecases/InferTraitsUseCase.ts'),
-      path.join(root, 'src/container/createRepositories.ts'),
-      path.join(root, 'app/api/traits/infer/route.ts'),
-    ]);
+    ];
+    deletedFiles.forEach((file) => {
+      expect(fs.existsSync(file)).toBe(false);
+    });
 
-    const forbiddenPatterns = ['saveSnapshot(', 'getLatest(', 'PersonaMapper', 'IPersonaRepository', 'SupabasePersonaRepository'];
+    const forbiddenPatterns = [
+      'saveSnapshot(',
+      'getLatest(',
+      'PersonaMapper',
+      'IPersonaRepository',
+      'SupabasePersonaRepository',
+      'persona:',
+    ];
+
+    const createRepositoriesText = fs.readFileSync(createRepositoriesPath, 'utf8');
+    expect(createRepositoriesText).not.toContain('SupabasePersonaRepository');
+    expect(createRepositoriesText).not.toContain('persona:');
 
     const hits = walkFiles(root)
       .filter((file) => file.includes(`${path.sep}app${path.sep}`) || file.includes(`${path.sep}src${path.sep}`))
-      .filter((file) => !allowedFiles.has(file))
       .map((file) => {
         const text = fs.readFileSync(file, 'utf8');
         const matched = forbiddenPatterns.find((pattern) => text.includes(pattern));
