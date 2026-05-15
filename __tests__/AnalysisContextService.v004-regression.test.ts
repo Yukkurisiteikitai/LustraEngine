@@ -10,7 +10,7 @@ function makeQuery(result: unknown) {
     is: jest.fn().mockReturnThis(),
     limit: jest.fn().mockReturnThis(),
     single: jest.fn().mockResolvedValue(result),
-    maybeSingle: jest.fn(),
+    maybeSingle: jest.fn().mockResolvedValue(result),
   };
 }
 
@@ -37,6 +37,7 @@ describe('AnalysisContextService V-004 regression', () => {
 
     const supabase = {
       from: jest.fn((table: string) => {
+        if (table === 'user_settings') return makeQuery({ data: { analysis_enabled: true }, error: null });
         if (table === 'traits') {
           throw new Error('traits table should not be queried');
         }
@@ -78,6 +79,9 @@ describe('AnalysisContextService V-004 regression', () => {
     expect(traitHypothesisRepo.findActiveByUser).toHaveBeenCalledWith('user-1');
     expect(context.activeHypotheses).toHaveLength(1);
     expect(context.activeHypotheses?.[0].traitKey).toBe('discipline');
+    expect(supabase.from).toHaveBeenCalledWith('user_settings');
     expect(supabase.from).toHaveBeenCalledWith('experiences');
+    expect(experienceQuery.eq).toHaveBeenCalledWith('visibility', 'analysis_allowed');
+    expect(experienceQuery.is).toHaveBeenCalledWith('soft_deleted_at', null);
   });
 });

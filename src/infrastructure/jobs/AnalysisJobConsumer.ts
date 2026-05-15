@@ -56,6 +56,31 @@ export class AnalysisJobConsumer {
         this.traitHypothesisRepo,
       );
       const context = await contextService.buildContext(userId, mode);
+      if (!context.analysisEnabled) {
+        const { error: completeError } = await this.supabase
+          .from('analysis_jobs')
+          .update({
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+            result: {
+              mode,
+              trigger,
+              skipped: true,
+              reason: 'analysis_disabled',
+            },
+          })
+          .eq('id', jobId)
+          .eq('user_id', userId);
+
+        if (completeError) {
+          logger.error(
+            `[AnalysisJobConsumer] Failed to mark skipped job as completed: ${completeError.message}`,
+          );
+        }
+
+        logger.info(`[AnalysisJobConsumer] Analysis disabled for user ${userId}; skipping job ${jobId}`);
+        return;
+      }
       const llm = await this.createLlm(userId);
 
       // Step 3: Run detect patterns

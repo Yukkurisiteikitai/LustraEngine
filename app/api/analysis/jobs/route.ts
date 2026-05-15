@@ -96,6 +96,26 @@ export async function POST(request: Request) {
     }
 
     const jobSupabase = createServiceRoleClient();
+    const { data: userSettings, error: settingsError } = await jobSupabase
+      .from('user_settings')
+      .select('analysis_enabled')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (settingsError) {
+      throw new Error(`Failed to load user settings: ${settingsError.message}`);
+    }
+
+    if (userSettings?.analysis_enabled === false) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: '分析は現在無効です。設定から有効化してください。',
+        },
+        { status: 403 },
+      );
+    }
+
     const useCase = createCreateAnalysisJobUseCase(jobSupabase);
     const jobId = await useCase.execute(user.id, { mode });
 

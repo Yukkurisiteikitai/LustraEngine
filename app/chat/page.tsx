@@ -37,7 +37,7 @@ function persistedToUI(msg: PersistedMessage): UIChatMessage {
 }
 
 export default function ChatPage() {
-  const { data: snapshot, isLoading: personaLoading } = usePersona();
+  const { data: personaPayload, isLoading: personaLoading } = usePersona();
   const chatMutation = useChatMutation();
 
   const [messages, setMessages] = useState<UIChatMessage[]>([]);
@@ -99,11 +99,18 @@ export default function ChatPage() {
   }
 
   const isBusy = chatMutation.isPending || rethinkingPairNodeId !== null;
+  const snapshot = personaPayload?.snapshot ?? null;
+  const snapshotGenerationEnabled = personaPayload?.snapshotGenerationEnabled ?? true;
   const hasPersona = !personaLoading && !!snapshot;
   const canSend = hasConfig && hasPersona && !isBusy && input.trim() !== '';
   const activeHypothesisCount = snapshot?.activeHypothesisCount ?? 0;
   const activeEvidenceFallback =
-    evidenceFallback ?? (activeHypothesisCount === 0 ? buildEvidenceLoggingFallback() : null);
+    evidenceFallback ??
+    (activeHypothesisCount === 0
+      ? buildEvidenceLoggingFallback({
+          allowChatFallbackDraft: personaPayload?.allowChatFallbackDraft ?? true,
+        })
+      : null);
 
   useEffect(() => {
     if (activeHypothesisCount > 0 && evidenceFallback) {
@@ -113,6 +120,8 @@ export default function ChatPage() {
 
   function handleSaveEvidenceDraft() {
     if (!activeEvidenceFallback) return;
+    if (personaPayload?.allowChatFallbackDraft === false) return;
+    if (!activeEvidenceFallback.suggestedTemplate) return;
     saveEvidenceLoggingDraft({
       template: activeEvidenceFallback.suggestedTemplate,
       questions: activeEvidenceFallback.questions,
@@ -144,7 +153,7 @@ export default function ChatPage() {
         const formatted = [
           '仮説を作るために、次の点を記録してください。',
           ...(result.questions ?? []).map((q) => `- ${q}`),
-          `テンプレート: ${result.suggestedTemplate ?? ''}`,
+          ...(result.suggestedTemplate ? [`テンプレート: ${result.suggestedTemplate}`] : []),
         ].join('\n');
         setMessages([...newHistory, { role: 'assistant', content: formatted }]);
       } else {
@@ -204,7 +213,7 @@ export default function ChatPage() {
           const formatted = [
             '仮説を作るために、次の点を記録してください。',
             ...(json.questions ?? []).map((q) => `- ${q}`),
-            `テンプレート: ${json.suggestedTemplate ?? ''}`,
+            ...(json.suggestedTemplate ? [`テンプレート: ${json.suggestedTemplate}`] : []),
           ].join('\n');
           setMessages((prev) =>
             prev.map((msg) =>
@@ -299,7 +308,19 @@ export default function ChatPage() {
 
             {personaLoading && <p className={styles.loading}>読み込み中...</p>}
 
-            {!personaLoading && !hasPersona && (
+            {!personaLoading && !snapshotGenerationEnabled && (
+              <div className={styles.warningBox}>
+                <p>
+                  モデル要約は無効です。
+                  <Link href="/settings" className={styles.link}>
+                    設定ページ
+                  </Link>
+                  で有効化できます。
+                </p>
+              </div>
+            )}
+
+            {!personaLoading && snapshotGenerationEnabled && !hasPersona && (
               <div className={styles.warningBox}>
                 <p>
                   モデル要約がありません。
@@ -479,15 +500,23 @@ export default function ChatPage() {
                     </li>
                   ))}
                 </ol>
-                <div className={styles.evidenceTemplateBox}>
-                  <span className={styles.evidenceTemplateLabel}>下書き</span>
-                  <p className={styles.evidenceTemplateText}>{activeEvidenceFallback.suggestedTemplate}</p>
-                </div>
+                {activeEvidenceFallback.suggestedTemplate ? (
+                  <div className={styles.evidenceTemplateBox}>
+                    <span className={styles.evidenceTemplateLabel}>下書き</span>
+                    <p className={styles.evidenceTemplateText}>{activeEvidenceFallback.suggestedTemplate}</p>
+                  </div>
+                ) : (
+                  <div className={styles.evidenceTemplateBox}>
+                    <span className={styles.evidenceTemplateLabel}>下書き</span>
+                    <p className={styles.evidenceTemplateText}>下書きは無効です。質問だけを参考にしてください。</p>
+                  </div>
+                )}
                 <div className={styles.evidenceActions}>
                   <Link
                     href="/log/new"
                     onClick={handleSaveEvidenceDraft}
                     className={styles.evidencePrimaryBtn}
+                    aria-disabled={personaPayload?.allowChatFallbackDraft === false}
                   >
                     記録を追加する
                   </Link>

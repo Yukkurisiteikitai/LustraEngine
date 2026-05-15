@@ -133,6 +133,12 @@ export async function POST(request: Request) {
       if (typeof obs.stressLevel !== 'number' || obs.stressLevel < 1 || obs.stressLevel > 5) {
         throw new ValidationError('stressLevelは1〜5の数値で指定してください');
       }
+      if (obs.reportDifficulty !== undefined && (typeof obs.reportDifficulty !== 'number' || obs.reportDifficulty < 1 || obs.reportDifficulty > 5)) {
+        throw new ValidationError('reportDifficultyは1〜5の数値で指定してください');
+      }
+      if (obs.careful !== undefined && typeof obs.careful !== 'boolean') {
+        throw new ValidationError('carefulはbooleanで指定してください');
+      }
       if (obs.actionResult !== 'AVOIDED' && obs.actionResult !== 'CONFRONTED') {
         throw new ValidationError('actionResultはAVOIDEDまたはCONFRONTEDで指定してください');
       }
@@ -163,7 +169,7 @@ export async function POST(request: Request) {
           {
             ok: true,
             status: 'log_saved',
-            message: '記録しました。次回の分析対象に追加されました。',
+            message: '記録しました。',
             analysis: {
               status: 'pending',
               next: 'daily_or_manual',
@@ -191,7 +197,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       status: 'log_saved',
-      message: '記録しました。次回の分析対象に追加されました。',
+      message: '記録しました。',
       analysis: {
         status: 'pending',
         next: 'daily_or_manual',

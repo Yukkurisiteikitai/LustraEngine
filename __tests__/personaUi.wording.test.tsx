@@ -69,6 +69,12 @@ describe('persona UI wording', () => {
       },
     });
     mockCreateRepositories.mockReturnValue({
+      userSettings: {
+        ensureDefaultByUser: jest.fn().mockResolvedValue({
+          allowModelSnapshotGeneration: true,
+          allowChatFallbackDraft: true,
+        }),
+      },
       traitHypothesis: { findActiveByUser },
     });
 

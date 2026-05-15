@@ -41,7 +41,7 @@ describe('ChatUseCase V-004 regression', () => {
     const result = await useCase.execute('user-1', 'hello', []);
 
     expect(traitHypothesisRepo.findActiveByUser).toHaveBeenCalledWith('user-1');
-    expect(expRepo.findRecent).toHaveBeenCalledWith('user-1', 5);
+    expect(expRepo.findRecent).toHaveBeenCalledWith('user-1', 5, { visibility: 'analysis_allowed' });
     expect(llm.generate).toHaveBeenCalled();
     expect(result.fallback).toBeUndefined();
     expect(result.response).toBe('response');

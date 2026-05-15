@@ -25,6 +25,8 @@ export class DailyAnalysisScheduler {
         .from('experiences')
         .select('user_id')
         .is('processed_at', null)
+        .is('soft_deleted_at', null)
+        .eq('visibility', 'analysis_allowed')
         .order('user_id');
 
       if (queryError) {
@@ -40,6 +42,23 @@ export class DailyAnalysisScheduler {
 
       for (const userId of userIds) {
         try {
+          const { data: settings, error: settingsError } = await this.supabase
+            .from('user_settings')
+            .select('analysis_enabled')
+            .eq('user_id', userId)
+            .maybeSingle();
+
+          if (settingsError) {
+            errors.push(`Failed to check user settings for user ${userId}: ${settingsError.message}`);
+            continue;
+          }
+
+          if (settings?.analysis_enabled === false) {
+            console.log(`[DailyScheduler] Analysis disabled for user ${userId}; skipping`);
+            usersProcessed += 1;
+            continue;
+          }
+
           const idempotencyKey = `analysis:${userId}:daily:${today}`;
 
           // Check if active daily job exists

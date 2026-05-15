@@ -5,7 +5,9 @@ export interface EvidenceLoggingFallback {
   suggestedTemplate: string;
 }
 
-export function buildEvidenceLoggingFallback(): EvidenceLoggingFallback {
+export function buildEvidenceLoggingFallback(
+  options: { allowChatFallbackDraft?: boolean } = {},
+): EvidenceLoggingFallback {
   return {
     mode: 'evidence_logging',
     reason: 'active_hypotheses_empty',
@@ -14,6 +16,8 @@ export function buildEvidenceLoggingFallback(): EvidenceLoggingFallback {
       'そのとき避けたこと、向き合ったことは何でしたか？',
       'その出来事は仕事・人間関係・健康・お金・自己のどれに近いですか？',
     ],
-    suggestedTemplate: '出来事 / 感情 / 避けたこと or 向き合ったこと / 関係する領域',
+    suggestedTemplate: options.allowChatFallbackDraft === false
+      ? ''
+      : '出来事 / 感情 / 避けたこと or 向き合ったこと / 関係する領域',
   };
 }

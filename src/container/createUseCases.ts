@@ -21,8 +21,8 @@ import { DiscordWebhookAdapter } from '@/infrastructure/notifications/DiscordWeb
 import { logger } from '@/infrastructure/observability/logger';
 
 export function createLogExperienceUseCase(supabase: SupabaseClient) {
-  const { experience, user } = createRepositories(supabase);
-  return new LogExperienceUseCase(experience, user);
+  const { experience, user, userSettings } = createRepositories(supabase);
+  return new LogExperienceUseCase(experience, user, userSettings);
 }
 
 export function createGetAnalyticsUseCase(supabase: SupabaseClient) {
@@ -53,7 +53,7 @@ export function createDetectPatternsUseCase(supabase: SupabaseClient, llm: ILLMP
   );
 }
 export function createInferTraitsUseCase(supabase: SupabaseClient, llm: ILLMPort) {
-  const { experience, clusterQuery, traitHypothesis } = createRepositories(supabase);
+  const { experience, clusterQuery, traitHypothesis, userSettings } = createRepositories(supabase);
   return new InferTraitsUseCase(
     experience,
     clusterQuery,
@@ -62,12 +62,13 @@ export function createInferTraitsUseCase(supabase: SupabaseClient, llm: ILLMPort
     logger,
     new LLMRetryPolicy(),
     new LLMResponseValidator(),
+    userSettings,
   );
 }
 
 export function createChatUseCase(supabase: SupabaseClient, llm: ILLMPort) {
-  const { experience, traitHypothesis, psychology } = createRepositories(supabase);
-  return new ChatUseCase(experience, traitHypothesis, llm, psychology);
+  const { experience, traitHypothesis, psychology, userSettings } = createRepositories(supabase);
+  return new ChatUseCase(experience, traitHypothesis, llm, psychology, userSettings);
 }
 
 export function createThreadUseCase(supabase: SupabaseClient) {

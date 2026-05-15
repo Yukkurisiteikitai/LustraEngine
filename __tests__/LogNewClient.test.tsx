@@ -72,6 +72,7 @@ describe('LogNewClient', () => {
       "domain": "WORK",
       "emotion": "不安",
       "goal": "英語の勉強",
+      "reportDifficulty": 3,
       "stressLevel": 3,
     },
   ],
@@ -90,7 +91,7 @@ describe('LogNewClient', () => {
     await completeWizard(user);
     await user.click(screen.getByRole('button', { name: '送信する' }));
 
-    expect(screen.getByText('記録しました。次回の分析対象に追加されました。')).toBeInTheDocument();
+    expect(screen.getByText('記録しました。必要に応じて設定から分析対象を調整してください。')).toBeInTheDocument();
 
     act(() => {
       jest.advanceTimersByTime(2000);

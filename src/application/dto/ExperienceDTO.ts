@@ -4,6 +4,9 @@ export interface CreateExperienceDTO {
   domain: string;
   actionResult: 'AVOIDED' | 'CONFRONTED';
   source?: string;
+  visibility?: 'private' | 'analysis_allowed' | 'excluded';
+  reportDifficulty?: number;
+  careful?: boolean;
   actionMemo?: string;
   goal?: string;
   action?: string;
@@ -18,4 +21,7 @@ export interface ExperienceResponseDTO {
   stressLevel: number;
   actionResult: 'AVOIDED' | 'CONFRONTED';
   domain?: string;
+  visibility?: 'private' | 'analysis_allowed' | 'excluded';
+  reportDifficulty?: number;
+  careful?: boolean;
 }

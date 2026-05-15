@@ -63,14 +63,17 @@ describe('Chat fallback UI', () => {
     mockLoadLMConfig.mockReturnValue({ provider: 'openai', model: 'gpt-4.1' });
     mockUsePersona.mockReturnValue({
       data: {
-        id: 'snapshot-1',
-        userId: 'user-1',
-        snapshotKind: 'hypothesis_summary',
-        activeHypothesisCount: 0,
-        topHypotheses: [],
-        summaryText: '十分な仮説がありません。記録を追加するとモデル要約を更新できます。',
-        evidenceCount: 0,
-        createdAt: '2026-05-14T00:00:00.000Z',
+        snapshot: {
+          id: 'snapshot-1',
+          userId: 'user-1',
+          snapshotKind: 'hypothesis_summary',
+          activeHypothesisCount: 0,
+          topHypotheses: [],
+          summaryText: '十分な仮説がありません。記録を追加するとモデル要約を更新できます。',
+          evidenceCount: 0,
+          createdAt: '2026-05-14T00:00:00.000Z',
+        },
+        allowChatFallbackDraft: true,
       },
       isLoading: false,
     });
@@ -133,5 +136,45 @@ describe('Chat fallback UI', () => {
     expect(raw).toContain('直近で強く気になった出来事は何でしたか？');
     expect(raw).not.toContain('?template=');
     expect(screen.getByRole('link', { name: '記録を追加する' })).toHaveAttribute('href', '/log/new');
+  });
+
+  it('does not store the draft when fallback drafts are disabled', async () => {
+    const user = userEvent.setup();
+    mockUsePersona.mockReturnValue({
+      data: {
+        snapshot: {
+          id: 'snapshot-1',
+          userId: 'user-1',
+          snapshotKind: 'hypothesis_summary',
+          activeHypothesisCount: 0,
+          topHypotheses: [],
+          summaryText: '十分な仮説がありません。記録を追加するとモデル要約を更新できます。',
+          evidenceCount: 0,
+          createdAt: '2026-05-14T00:00:00.000Z',
+        },
+        allowChatFallbackDraft: false,
+      },
+      isLoading: false,
+    });
+
+    render(<ChatPage />);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith('/api/chat/threads');
+    });
+
+    const setItemSpy = jest.spyOn(window.sessionStorage.__proto__, 'setItem');
+    setItemSpy.mockClear();
+
+    await user.click(screen.getByRole('link', { name: '記録を追加する' }));
+
+    expect(setItemSpy).not.toHaveBeenCalled();
+    expect(window.sessionStorage.getItem('ylm:evidence_logging_draft')).toBeNull();
+    expect(screen.getByRole('link', { name: '記録を追加する' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+
+    setItemSpy.mockRestore();
   });
 });

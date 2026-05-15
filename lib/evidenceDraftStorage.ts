@@ -39,3 +39,8 @@ export function consumeEvidenceLoggingDraft(): EvidenceLoggingDraft | null {
 
   return null;
 }
+
+export function clearEvidenceLoggingDraft(): void {
+  if (typeof window === 'undefined') return;
+  window.sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+}

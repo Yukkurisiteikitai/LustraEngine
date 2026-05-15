@@ -61,6 +61,7 @@ describe('rethink fallback', () => {
       ]),
     });
     mockCreateRepositories.mockReturnValue({
+      llmSettings: {},
       experience: {
         findRecent: jest.fn().mockResolvedValue([]),
       },
@@ -68,6 +69,11 @@ describe('rethink fallback', () => {
         getBigFiveScore: jest.fn().mockResolvedValue(null),
         getAttachmentProfile: jest.fn().mockResolvedValue(null),
         getIdentityStatus: jest.fn().mockResolvedValue([]),
+      },
+      userSettings: {
+        ensureDefaultByUser: jest.fn().mockResolvedValue({
+          allowChatFallbackDraft: true,
+        }),
       },
       traitHypothesis: {
         findActiveByUser: jest.fn().mockResolvedValue([]),

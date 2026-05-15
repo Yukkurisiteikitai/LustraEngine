@@ -53,6 +53,12 @@ describe('persona route contract', () => {
       ]),
     };
     mockCreateRepositories.mockReturnValue({
+      userSettings: {
+        ensureDefaultByUser: jest.fn().mockResolvedValue({
+          allowModelSnapshotGeneration: true,
+          allowChatFallbackDraft: true,
+        }),
+      },
       traitHypothesis,
       psychology: {
         getBigFiveScore: jest.fn().mockResolvedValue(null),

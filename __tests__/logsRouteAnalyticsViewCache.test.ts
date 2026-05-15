@@ -104,7 +104,7 @@ describe('/api/logs Analytics View cache refresh', () => {
     expect(json).toMatchObject({
       ok: true,
       status: 'log_saved',
-      message: '記録しました。次回の分析対象に追加されました。',
+      message: '記録しました。',
     });
     expect(kv.put).toHaveBeenCalledTimes(2);
     expect(kv.put).toHaveBeenCalledWith(

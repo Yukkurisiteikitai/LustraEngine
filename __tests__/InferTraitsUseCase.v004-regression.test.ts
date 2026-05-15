@@ -4,7 +4,17 @@ import { LLMResponseValidator } from '@/application/llm/policies/LLMResponseVali
 describe('InferTraitsUseCase V-004 regression', () => {
   it('does not keep the old upsert-first flow as the primary output path', async () => {
     const expRepo = {
-      findRecent: jest.fn().mockResolvedValue([]),
+      findRecent: jest.fn().mockResolvedValue([
+        {
+          id: 'exp-1',
+          userId: 'user-1',
+          description: '会議で発言できなかった',
+          stressLevel: 4,
+          actionResult: 'AVOIDED',
+          visibility: 'analysis_allowed',
+          date: '2026-05-14',
+        },
+      ]),
     };
     const clusterQuery = {
       findByUser: jest.fn().mockResolvedValue([]),
@@ -53,6 +63,7 @@ describe('InferTraitsUseCase V-004 regression', () => {
 
     await useCase.execute('user-1', undefined, { strict: true });
 
+    expect(expRepo.findRecent).toHaveBeenCalledWith('user-1', 20, { visibility: 'analysis_allowed' });
     expect(traitHypothesisRepo.appendMany).toHaveBeenCalledTimes(1);
     expect(traitHypothesisRepo.appendMany).toHaveBeenCalledWith(
       expect.arrayContaining([

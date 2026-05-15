@@ -6,7 +6,11 @@ import styles from './page.module.css';
 
 type AnalysisMode = 'quick' | 'full_3months' | null;
 
-export default function TraitInferButton() {
+interface TraitInferButtonProps {
+  disabled?: boolean;
+}
+
+export default function TraitInferButton({ disabled = false }: TraitInferButtonProps) {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
   const [showModeSelection, setShowModeSelection] = useState(false);
@@ -43,12 +47,12 @@ export default function TraitInferButton() {
         type="button"
         className={styles.inferBtn}
         onClick={() => setShowModeSelection(!showModeSelection)}
-        disabled={isPending}
+        disabled={isPending || disabled}
       >
-        {isPending ? '更新中...' : '仮説を更新'}
+        {disabled ? '更新は無効です' : isPending ? '更新中...' : '仮説を更新'}
       </button>
 
-      {showModeSelection && !isPending && (
+      {showModeSelection && !isPending && !disabled && (
         <div className={styles.modeSelectionBox}>
           <p className={styles.modeSelectionTitle}>仮説を更新しますか？</p>
 

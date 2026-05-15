@@ -6,6 +6,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createRepositories } from '@/container/createRepositories';
 import styles from './page.module.css';
 import { buildUserModelSnapshot } from '@/application/mappers/UserModelSnapshotMapper';
+import { buildFallbackUserSettings } from '@/core/domains/user-settings/UserSettings';
 import type { TraitHypothesisRecord } from '@/core/domains/trait/TraitHypothesis';
 
 export default async function PersonaPage() {
@@ -15,7 +16,48 @@ export default async function PersonaPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { traitHypothesis } = createRepositories(supabase);
+  const { traitHypothesis, userSettings } = createRepositories(supabase);
+
+  let settings = buildFallbackUserSettings(user.id);
+  let settingsWarning: string | null = null;
+  try {
+    settings = await userSettings.ensureDefaultByUser(user.id);
+  } catch (error) {
+    console.error('persona_page_settings_load_failed', {
+      userId: user.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    settingsWarning = 'ユーザー設定の読み込みに失敗したため、既定設定で表示しています。';
+  }
+
+  const allowSnapshotGeneration = settings.allowSnapshotGeneration ?? settings.allowModelSnapshotGeneration;
+
+  if (!allowSnapshotGeneration) {
+    const disabledSnapshot = buildUserModelSnapshot(user.id, [], {
+      disabledMessage: 'ユーザーモデル要約の生成は無効です。設定で有効化すると仮説要約を表示できます。',
+    });
+
+    return (
+      <>
+        <Header />
+        <main className={styles.main}>
+          <div className={styles.container}>
+            <div className={styles.pageHeader}>
+              <h1 className={styles.title}>ユーザーモデル</h1>
+              <TraitInferButton disabled />
+            </div>
+
+            <p className={styles.pageLead}>
+              直近の記録から仮説を更新し、その要約を表示します。ここは確定ではなく、Evidence 由来のモデル要約です。
+            </p>
+
+            <div className={styles.errorBox}>{disabledSnapshot.summaryText}</div>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
 
   let loadWarning: string | null = null;
   let hypotheses: TraitHypothesisRecord[] = [];
@@ -45,6 +87,7 @@ export default async function PersonaPage() {
             直近の記録から仮説を更新し、その要約を表示します。ここは確定ではなく、Evidence 由来のモデル要約です。
           </p>
 
+          {settingsWarning ? <div className={styles.errorBox}>{settingsWarning}</div> : null}
           {loadWarning ? <div className={styles.errorBox}>{loadWarning}</div> : null}
 
           <section className={styles.section}>

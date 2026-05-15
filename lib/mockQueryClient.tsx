@@ -10,6 +10,12 @@ import type {
 } from '@/types';
 import { loadLMConfig } from '@/lib/lmConfig';
 
+export interface PersonaPayload {
+  snapshot: UserModelSnapshot | null;
+  snapshotGenerationEnabled?: boolean;
+  allowChatFallbackDraft?: boolean;
+}
+
 export function MockQueryProvider({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
     () =>
@@ -49,7 +55,7 @@ export function useSubmitLogMutation() {
   });
 }
 
-async function fetchPersona(): Promise<UserModelSnapshot | null> {
+async function fetchPersona(): Promise<PersonaPayload | null> {
   const response = await fetch('/api/persona');
 
   if (!response.ok) {
@@ -58,8 +64,8 @@ async function fetchPersona(): Promise<UserModelSnapshot | null> {
     throw new Error(errorMessage);
   }
 
-  const json = (await response.json()) as { snapshot: UserModelSnapshot | null };
-  return json.snapshot;
+  const json = (await response.json()) as PersonaPayload;
+  return json;
 }
 
 export function usePersona() {

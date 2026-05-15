@@ -6,7 +6,11 @@ import ObstacleForm, { type ObstacleDraft } from '@/components/ObstacleForm';
 import ActionSelector from '@/components/ActionSelector';
 import { useSubmitLogMutation } from '@/lib/mockQueryClient';
 import type { ActionResult, Domain } from '@/types';
-import { consumeEvidenceLoggingDraft, type EvidenceLoggingDraft } from '@/lib/evidenceDraftStorage';
+import {
+  consumeEvidenceLoggingDraft,
+  clearEvidenceLoggingDraft,
+  type EvidenceLoggingDraft,
+} from '@/lib/evidenceDraftStorage';
 import styles from './page.module.css';
 
 type Step = 1 | 2 | 3;
@@ -15,6 +19,7 @@ type ConfirmObstacle = {
   description: string;
   domain: Domain;
   stressLevel: number;
+  reportDifficulty: number;
   goal?: string;
   emotion?: string;
   context?: string;
@@ -41,12 +46,14 @@ interface LogNewClientProps {
   evidenceTemplate?: string;
   evidenceQuestions?: string[];
   source?: 'chat_fallback' | 'manual';
+  allowChatFallbackDraft?: boolean;
 }
 
 export default function LogNewClient({
   evidenceTemplate = '',
   evidenceQuestions = [],
   source = 'manual',
+  allowChatFallbackDraft = true,
 }: LogNewClientProps) {
   const [step, setStep] = useState<Step>(1);
   const [obstacle, setObstacle] = useState<ConfirmObstacle | null>(null);
@@ -60,13 +67,17 @@ export default function LogNewClient({
 
   const mutation = useSubmitLogMutation();
   useEffect(() => {
+    if (!allowChatFallbackDraft) {
+      clearEvidenceLoggingDraft();
+      return;
+    }
     const draft = consumeEvidenceLoggingDraft();
     if (draft) {
       setRestoredDraft(draft);
       setObstacle(null);
       setStep(1);
     }
-  }, []);
+  }, [allowChatFallbackDraft]);
 
   const activeTemplate = restoredDraft?.template ?? evidenceTemplate;
   const activeQuestions = restoredDraft?.questions ?? evidenceQuestions;
@@ -76,6 +87,7 @@ export default function LogNewClient({
     description: activeTemplate || '',
     domain: undefined,
     stressLevel: 3,
+    reportDifficulty: 3,
     goal: '',
     emotion: '',
     context: '',
@@ -125,6 +137,7 @@ export default function LogNewClient({
             description: obstacle.description,
             domain: obstacle.domain,
             stressLevel: obstacle.stressLevel,
+            reportDifficulty: obstacle.reportDifficulty,
             actionResult,
             actionMemo: actionText || undefined,
             goal: obstacle.goal || undefined,
@@ -138,7 +151,7 @@ export default function LogNewClient({
       {
         onSuccess: () => {
           setMessageType('success');
-          setStatusMessage('記録しました。次回の分析対象に追加されました。');
+          setStatusMessage('記録しました。必要に応じて設定から分析対象を調整してください。');
           setTimeout(resetForm, 2000);
         },
         onError: (error) => {
@@ -223,6 +236,9 @@ export default function LogNewClient({
             <p>
               <strong>ストレス:</strong> {obstacle.stressLevel}
             </p>
+            <p>
+              <strong>記録の慎重さ:</strong> {obstacle.reportDifficulty}
+            </p>
             {obstacle.goal ? <p><strong>ゴール:</strong> {obstacle.goal}</p> : null}
             {obstacle.emotion ? <p><strong>感情:</strong> {obstacle.emotion}</p> : null}
             {obstacle.context ? <p><strong>状況:</strong> {obstacle.context}</p> : null}
@@ -265,10 +281,10 @@ export default function LogNewClient({
         {statusMessage}
   </p>
 
-      {messageType === 'success' && statusMessage ? (
+        {messageType === 'success' && statusMessage ? (
         <div className={styles.evidenceDraftBox}>
           <p className={styles.evidenceDraftLabel}>次のステップ</p>
-          <p className={styles.evidenceDraftText}>記録を追加したら、仮説を更新して見直してください。</p>
+          <p className={styles.evidenceDraftText}>記録を追加したら、必要に応じて仮説を更新して見直してください。</p>
           <div className={styles.evidenceDraftActions}>
             <Link href="/persona" className={styles.evidenceDraftLink}>
               仮説を更新

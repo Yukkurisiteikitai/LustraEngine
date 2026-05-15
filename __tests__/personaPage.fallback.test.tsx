@@ -47,6 +47,15 @@ describe('persona page fallback', () => {
       },
     });
     mockCreateRepositories.mockReturnValue({
+      userSettings: {
+        ensureDefaultByUser: jest.fn().mockResolvedValue({
+          allowSnapshotGeneration: true,
+          allowModelSnapshotGeneration: true,
+          allowChatFallbackDraft: true,
+          allowChatHistorySave: false,
+          requireConfirmationBeforeReanalysis: true,
+        }),
+      },
       traitHypothesis: {
         findActiveByUser: jest.fn().mockRejectedValue(new Error('db unavailable')),
       },
@@ -57,6 +66,31 @@ describe('persona page fallback', () => {
     expect(screen.getByRole('heading', { name: 'ユーザーモデル' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '現在の仮説要約' })).toBeInTheDocument();
     expect(screen.getByText(/仮説要約の読み込みに失敗しました/)).toBeInTheDocument();
+    expect(screen.getByText(/まだ仮説は少なめです/)).toBeInTheDocument();
+    expect(mockRedirect).not.toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
+
+  it('falls back to default settings when user settings cannot be loaded', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    mockCreateSupabaseServerClient.mockResolvedValue({
+      auth: {
+        getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }),
+      },
+    });
+    mockCreateRepositories.mockReturnValue({
+      userSettings: {
+        ensureDefaultByUser: jest.fn().mockRejectedValue(new Error('user_settings missing')),
+      },
+      traitHypothesis: {
+        findActiveByUser: jest.fn().mockResolvedValue([]),
+      },
+    });
+
+    render(await PersonaPage());
+
+    expect(screen.getByRole('heading', { name: 'ユーザーモデル' })).toBeInTheDocument();
+    expect(screen.getByText(/ユーザー設定の読み込みに失敗したため、既定設定で表示しています/)).toBeInTheDocument();
     expect(screen.getByText(/まだ仮説は少なめです/)).toBeInTheDocument();
     expect(mockRedirect).not.toHaveBeenCalled();
     consoleSpy.mockRestore();

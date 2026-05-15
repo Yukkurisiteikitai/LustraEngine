@@ -52,7 +52,7 @@ export async function POST(req: Request) {
 
     if (!pairNodeId) throw new ValidationError('pairNodeId が必要です');
     if (!threadId) throw new ValidationError('threadId が必要です');
-    const { llmSettings } = createRepositories(supabase);
+    const { llmSettings, userSettings } = createRepositories(supabase);
     const resolvedLlmConfig = await resolveStoredLlmConfig(
       user.id,
       lmConfig,
@@ -63,11 +63,12 @@ export async function POST(req: Request) {
     // Run all independent DB queries in parallel after auth
     const historyUseCase = createGetThreadHistoryUseCase(supabase);
     const { experience, psychology, traitHypothesis } = createRepositories(supabase);
+    const settings = await userSettings.ensureDefaultByUser(user.id);
     const [allMessages, activeHypotheses, experiences, bigFive, attachment, identityStatus] =
       await Promise.all([
         historyUseCase.getMessages(threadId),
         traitHypothesis.findActiveByUser(user.id),
-        experience.findRecent(user.id, 5),
+        experience.findRecent(user.id, 5, { visibility: 'analysis_allowed' }),
         psychology.getBigFiveScore(user.id),
         psychology.getAttachmentProfile(user.id),
         psychology.getIdentityStatus(user.id),
@@ -89,7 +90,11 @@ export async function POST(req: Request) {
 
     // Build system prompt from active trait hypotheses + recent experiences + psychology profile
     if (activeHypotheses.length === 0) {
-      return NextResponse.json(buildEvidenceLoggingFallback());
+      return NextResponse.json(
+        buildEvidenceLoggingFallback({
+          allowChatFallbackDraft: settings.allowChatFallbackDraft,
+        }),
+      );
     }
     const systemPrompt = buildChatSystemPrompt(
       experiences,
@@ -119,8 +124,10 @@ export async function POST(req: Request) {
           }
 
           // DB save after streaming completes (before sending done event)
-          const rethinkUseCase = createRethinkMessageUseCase(supabase);
-          await rethinkUseCase.execute(pairNodeId, user.id, fullText);
+          if (settings.allowChatHistorySave) {
+            const rethinkUseCase = createRethinkMessageUseCase(supabase);
+            await rethinkUseCase.execute(pairNodeId, user.id, fullText);
+          }
 
           // Atomically check budget and record usage to prevent concurrent over-spend
           const estimatedTokens = Math.ceil(fullText.length / 3);

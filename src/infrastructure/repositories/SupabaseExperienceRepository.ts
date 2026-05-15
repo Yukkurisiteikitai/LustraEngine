@@ -1,8 +1,19 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { IExperienceRepository, CreateExperienceInput } from '@/core/domains/experience/IExperienceRepository';
+import type {
+  IExperienceRepository,
+  CreateExperienceInput,
+  ExperienceQueryOptions,
+} from '@/core/domains/experience/IExperienceRepository';
 import type { ExperienceData } from '@/core/domains/experience/Experience';
 import { ExperienceMapper } from '@/application/mappers/ExperienceMapper';
 import { InfrastructureError } from '@/core/errors/InfrastructureError';
+
+function normalizeVisibility(
+  visibility?: ExperienceQueryOptions['visibility'],
+): string[] | null {
+  if (!visibility) return null;
+  return Array.isArray(visibility) ? visibility : [visibility];
+}
 
 export class SupabaseExperienceRepository implements IExperienceRepository {
   constructor(private readonly supabase: SupabaseClient) {}
@@ -20,6 +31,9 @@ export class SupabaseExperienceRepository implements IExperienceRepository {
       stress_level: o.stressLevel,
       action_result: o.actionResult,
       source: o.source ?? null,
+      visibility: o.visibility ?? 'private',
+      report_difficulty: o.reportDifficulty ?? 3,
+      careful: o.careful ?? (o.reportDifficulty ?? 3) >= 4,
       action_memo: o.actionMemo ?? null,
       goal: o.goal ?? null,
       action: o.action ?? null,
@@ -37,13 +51,25 @@ export class SupabaseExperienceRepository implements IExperienceRepository {
     return (data ?? []).map((r) => ExperienceMapper.fromRow(r as Record<string, unknown>));
   }
 
-  async findSince(userId: string, fromDate: string): Promise<ExperienceData[]> {
-    const { data, error } = await this.supabase
+  async findSince(
+    userId: string,
+    fromDate: string,
+    options?: ExperienceQueryOptions,
+  ): Promise<ExperienceData[]> {
+    let query = this.supabase
       .from('experiences')
       .select('*, domains(description)')
       .eq('user_id', userId)
+      .is('soft_deleted_at', null)
       .gte('logged_at', fromDate)
       .order('logged_at', { ascending: false });
+
+    const visibility = normalizeVisibility(options?.visibility);
+    if (visibility) {
+      query = query.in('visibility', visibility);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw new InfrastructureError('experience:findSince failed', error);
     return (data ?? []).map((r) => ExperienceMapper.fromRow(r as Record<string, unknown>));
@@ -54,27 +80,46 @@ export class SupabaseExperienceRepository implements IExperienceRepository {
       .from('experiences')
       .select('logged_at')
       .eq('user_id', userId)
+      .is('soft_deleted_at', null)
       .order('logged_at', { ascending: false });
 
     if (error) throw new InfrastructureError('experience:findAllDates failed', error);
     return (data ?? []).map((d) => d.logged_at as string);
   }
 
-  async findUnclassified(userId: string): Promise<ExperienceData[]> {
-    const { data, error } = await this.supabase
-      .rpc('get_unclassified_experiences', { p_user_id: userId, p_limit: 10 });
+  async findUnclassified(
+    userId: string,
+    options?: ExperienceQueryOptions,
+  ): Promise<ExperienceData[]> {
+    const { data, error } = await this.supabase.rpc('get_unclassified_experiences', {
+      p_user_id: userId,
+      p_limit: 10,
+      p_visibility: normalizeVisibility(options?.visibility)?.[0] ?? null,
+    });
 
     if (error) throw new InfrastructureError('experience:findUnclassified failed', error);
     return (data ?? []).map((r: Record<string, unknown>) => ExperienceMapper.fromRow(r));
   }
 
-  async findRecent(userId: string, limit: number): Promise<ExperienceData[]> {
-    const { data, error } = await this.supabase
+  async findRecent(
+    userId: string,
+    limit: number,
+    options?: ExperienceQueryOptions,
+  ): Promise<ExperienceData[]> {
+    let query = this.supabase
       .from('experiences')
       .select('*, domains(description)')
       .eq('user_id', userId)
+      .is('soft_deleted_at', null)
       .order('logged_at', { ascending: false })
       .limit(limit);
+
+    const visibility = normalizeVisibility(options?.visibility);
+    if (visibility) {
+      query = query.in('visibility', visibility);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw new InfrastructureError('experience:findRecent failed', error);
     return (data ?? []).map((r) => ExperienceMapper.fromRow(r as Record<string, unknown>));

@@ -17,6 +17,7 @@ import type {
   TraitHypothesisRecord,
   TraitHypothesisResult,
 } from '@/core/domains/trait/TraitHypothesis';
+import type { IUserSettingsRepository } from '@/core/domains/user-settings/IUserSettingsRepository';
 
 function deriveLegacyTraitsFromBigFive(bf: BigFiveResponse['bigFive']): Record<TraitName, number> {
   const clamp = (v: number) => Math.max(0, Math.min(1, v));
@@ -107,6 +108,7 @@ export class InferTraitsUseCase {
     private readonly logger: ILoggerPort,
     private readonly retry: LLMRetryPolicy,
     private readonly validator: LLMResponseValidator,
+    private readonly userSettingsRepo: IUserSettingsRepository | null = null,
   ) {}
 
   async execute(
@@ -115,6 +117,22 @@ export class InferTraitsUseCase {
     options?: { strict?: boolean },
   ): Promise<TraitHypothesisResult> {
     const strict = options?.strict ?? false;
+    const userSettings = this.userSettingsRepo
+      ? await this.userSettingsRepo.ensureDefaultByUser(userId)
+      : { analysisEnabled: true } as const;
+    if (!userSettings.analysisEnabled) {
+      return {
+        hypotheses: [],
+        summary: {
+          generatedCount: 0,
+          acceptedCount: 0,
+          rejectedCount: 0,
+          evidenceCount: 0,
+          usedModel: 'analysis_disabled',
+          usedPromptVersion: 'v004',
+        },
+      };
+    }
     let clusters: ClusterData[] = [];
     let experiences: ExperienceData[] = [];
     let activeHypotheses: TraitHypothesisRecord[] = [];
@@ -133,7 +151,10 @@ export class InferTraitsUseCase {
           userId,
           description: log.description,
           stressLevel: log.stressLevel,
+          reportDifficulty: 3,
+          careful: false,
           actionResult: 'CONFRONTED' as const,
+          visibility: 'analysis_allowed' as const,
           date: log.loggedAt,
           domainKey: String(log.domain),
         })),
@@ -142,7 +163,10 @@ export class InferTraitsUseCase {
           userId,
           description: log.description,
           stressLevel: log.stressLevel,
+          reportDifficulty: 3,
+          careful: false,
           actionResult: 'CONFRONTED' as const,
+          visibility: 'analysis_allowed' as const,
           date: log.loggedAt,
           domainKey: String(log.domain),
         })),
@@ -152,11 +176,25 @@ export class InferTraitsUseCase {
       // Backward compatibility: fetch clusters and recent experiences
       const [queryClusters, recentExps] = await Promise.all([
         this.clusterQuery.findByUser(userId),
-        this.expRepo.findRecent(userId, 20),
+        this.expRepo.findRecent(userId, 20, { visibility: 'analysis_allowed' }),
       ]);
       clusters = queryClusters;
       experiences = recentExps;
       activeHypotheses = await this.traitHypothesisRepo.findActiveByUser(userId);
+    }
+
+    if (experiences.length === 0) {
+      return {
+        hypotheses: [],
+        summary: {
+          generatedCount: 0,
+          acceptedCount: 0,
+          rejectedCount: 0,
+          evidenceCount: 0,
+          usedModel: 'no_analysis_allowed_evidence',
+          usedPromptVersion: 'v004',
+        },
+      };
     }
 
     const userMessage = buildTraitUserMessage(clusters, experiences, activeHypotheses);

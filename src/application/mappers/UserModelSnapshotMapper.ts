@@ -15,7 +15,21 @@ function toSummary(h: TraitHypothesisRecord): UserModelHypothesisSummary {
 export function buildUserModelSnapshot(
   userId: string,
   hypotheses: TraitHypothesisRecord[],
+  options?: { disabledMessage?: string },
 ): UserModelSnapshot {
+  if (options?.disabledMessage) {
+    return {
+      id: `user-model-${userId}`,
+      userId,
+      snapshotKind: 'hypothesis_summary',
+      activeHypothesisCount: 0,
+      topHypotheses: [],
+      summaryText: options.disabledMessage,
+      evidenceCount: 0,
+      createdAt: new Date().toISOString(),
+    };
+  }
+
   const topHypotheses = hypotheses.slice(0, 6).map(toSummary);
   const createdAt = hypotheses[0]?.createdAt ?? new Date().toISOString();
   const summaryText =

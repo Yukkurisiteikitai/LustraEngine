@@ -12,6 +12,7 @@ import { SupabaseLlmModelRepository } from '@/infrastructure/repositories/Supaba
 import { SupabasePsychologyRepository } from '@/infrastructure/repositories/SupabasePsychologyRepository';
 import { SupabaseAnalysisJobRepository } from '@/infrastructure/repositories/SupabaseAnalysisJobRepository';
 import { SupabaseUserLlmSettingsRepository } from '@/infrastructure/repositories/SupabaseUserLlmSettingsRepository';
+import { SupabaseUserSettingsRepository } from '@/infrastructure/repositories/SupabaseUserSettingsRepository';
 
 export function createRepositories(supabase: SupabaseClient) {
   return {
@@ -27,6 +28,7 @@ export function createRepositories(supabase: SupabaseClient) {
     psychology: new SupabasePsychologyRepository(supabase),
     analysisJob: new SupabaseAnalysisJobRepository(supabase),
     llmSettings: new SupabaseUserLlmSettingsRepository(supabase),
+    userSettings: new SupabaseUserSettingsRepository(supabase),
   };
 }
 
