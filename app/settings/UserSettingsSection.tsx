@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import styles from './page.module.css';
 import type {
   UserSettingsData,
@@ -294,6 +295,32 @@ export default function UserSettingsSection() {
           >
             削除をリクエスト
           </button>
+        </div>
+      </div>
+
+      <div className={styles.field}>
+        <p className={styles.label}>データ制御</p>
+        <p className={styles.notice}>
+          データを書き出して確認したり、記録を個別に削除・除外するページへ移動できます。
+        </p>
+        <div className={styles.actions}>
+          <a
+            className={styles.primary}
+            href="/api/export"
+            target="_blank"
+            rel="noreferrer"
+            aria-disabled={settings?.dataExportEnabled === false}
+            onClick={(event) => {
+              if (settings?.dataExportEnabled === false) {
+                event.preventDefault();
+              }
+            }}
+          >
+            データを書き出す
+          </a>
+          <Link className={styles.secondary} href="/logs">
+            記録を削除する
+          </Link>
         </div>
       </div>
 

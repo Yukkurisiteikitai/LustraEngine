@@ -115,4 +115,24 @@ export class SupabaseTraitHypothesisRepository implements ITraitHypothesisReposi
 
     if (error) throw new InfrastructureError('traitHypothesis:markRevised failed', error);
   }
+
+  async markStatusByEvidenceIds(
+    evidenceIds: string[],
+    status: TraitHypothesisRecord['status'],
+  ): Promise<void> {
+    if (evidenceIds.length === 0) return;
+
+    const { error } = await this.supabase
+      .from('trait_hypothesis_history')
+      .update({
+        status,
+        updated_at: new Date().toISOString(),
+      })
+      .contains('evidence_ids', evidenceIds)
+      .eq('status', 'active');
+
+    if (error) {
+      throw new InfrastructureError('traitHypothesis:markStatusByEvidenceIds failed', error);
+    }
+  }
 }

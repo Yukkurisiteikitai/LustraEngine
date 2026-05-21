@@ -18,6 +18,17 @@ function normalizeVisibility(
 export class SupabaseExperienceRepository implements IExperienceRepository {
   constructor(private readonly supabase: SupabaseClient) {}
 
+  async findAllByUser(userId: string): Promise<ExperienceData[]> {
+    const { data, error } = await this.supabase
+      .from('experiences')
+      .select('*, domains(description)')
+      .eq('user_id', userId)
+      .order('logged_at', { ascending: false });
+
+    if (error) throw new InfrastructureError('experience:findAllByUser failed', error);
+    return (data ?? []).map((r) => ExperienceMapper.fromRow(r as Record<string, unknown>));
+  }
+
   async save(
     userId: string,
     inputs: CreateExperienceInput[],
@@ -122,6 +133,42 @@ export class SupabaseExperienceRepository implements IExperienceRepository {
     const { data, error } = await query;
 
     if (error) throw new InfrastructureError('experience:findRecent failed', error);
+    return (data ?? []).map((r) => ExperienceMapper.fromRow(r as Record<string, unknown>));
+  }
+
+  async softDelete(userId: string, experienceIds: string[]): Promise<ExperienceData[]> {
+    if (experienceIds.length === 0) return [];
+
+    const now = new Date().toISOString();
+    const { data, error } = await this.supabase
+      .from('experiences')
+      .update({
+        soft_deleted_at: now,
+        updated_at: now,
+      })
+      .eq('user_id', userId)
+      .in('id', experienceIds)
+      .select('*, domains(description)');
+
+    if (error) throw new InfrastructureError('experience:softDelete failed', error);
+    return (data ?? []).map((r) => ExperienceMapper.fromRow(r as Record<string, unknown>));
+  }
+
+  async exclude(userId: string, experienceIds: string[]): Promise<ExperienceData[]> {
+    if (experienceIds.length === 0) return [];
+
+    const now = new Date().toISOString();
+    const { data, error } = await this.supabase
+      .from('experiences')
+      .update({
+        visibility: 'excluded',
+        updated_at: now,
+      })
+      .eq('user_id', userId)
+      .in('id', experienceIds)
+      .select('*, domains(description)');
+
+    if (error) throw new InfrastructureError('experience:exclude failed', error);
     return (data ?? []).map((r) => ExperienceMapper.fromRow(r as Record<string, unknown>));
   }
 }

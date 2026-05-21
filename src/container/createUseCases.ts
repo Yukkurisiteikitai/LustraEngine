@@ -14,6 +14,8 @@ import { CreateThreadUseCase } from '@/application/usecases/CreateThreadUseCase'
 import { GetThreadHistoryUseCase } from '@/application/usecases/GetThreadHistoryUseCase';
 import { SaveChatMessageUseCase } from '@/application/usecases/SaveChatMessageUseCase';
 import { RethinkMessageUseCase } from '@/application/usecases/RethinkMessageUseCase';
+import { ManageExperienceDispositionUseCase } from '@/application/usecases/ManageExperienceDispositionUseCase';
+import { ExportUserDataUseCase } from '@/application/usecases/ExportUserDataUseCase';
 import { createAdminClient } from '@/infrastructure/supabase/createAdminClient';
 import { CheckDbLimitsUseCase } from '@/application/usecases/CheckDbLimitsUseCase';
 import { SupabaseMonitoringRepository } from '@/infrastructure/repositories/SupabaseMonitoringRepository';
@@ -104,5 +106,24 @@ export function createCheckDbLimitsUseCase(): CheckDbLimitsUseCase {
     new SupabaseMonitoringRepository(adminClient),
     new DiscordWebhookAdapter(webhookUrl),
     { warnMb, criticalMb },
+  );
+}
+
+export function createManageExperienceDispositionUseCase(supabase: SupabaseClient) {
+  const { experience, traitHypothesis } = createRepositories(supabase);
+  return new ManageExperienceDispositionUseCase(experience, traitHypothesis);
+}
+
+export function createExportUserDataUseCase(supabase: SupabaseClient) {
+  const { experience, traitHypothesis, userSettings, llmSettings, thread, pairNode, message } =
+    createRepositories(supabase);
+  return new ExportUserDataUseCase(
+    experience,
+    traitHypothesis,
+    userSettings,
+    llmSettings,
+    thread,
+    pairNode,
+    message,
   );
 }

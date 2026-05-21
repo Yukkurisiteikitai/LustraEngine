@@ -1,6 +1,12 @@
 import type { TraitName } from '@/types';
 
-export type TraitHypothesisStatus = 'active' | 'revised' | 'rejected' | 'archived';
+export type TraitHypothesisStatus =
+  | 'active'
+  | 'revised'
+  | 'rejected'
+  | 'archived'
+  | 'needs_review'
+  | 'stale_due_to_evidence_deletion';
 
 export interface TraitHypothesisRecord {
   id: string;

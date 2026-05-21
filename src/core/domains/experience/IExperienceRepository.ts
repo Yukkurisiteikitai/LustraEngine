@@ -28,8 +28,11 @@ export interface IExperienceRepository {
     date: string,
     domainMap: Map<string, string>,
   ): Promise<ExperienceData[]>;
+  findAllByUser(userId: string): Promise<ExperienceData[]>;
   findSince(userId: string, fromDate: string, options?: ExperienceQueryOptions): Promise<ExperienceData[]>;
   findAllDates(userId: string): Promise<string[]>;
   findUnclassified(userId: string, options?: ExperienceQueryOptions): Promise<ExperienceData[]>;
   findRecent(userId: string, limit: number, options?: ExperienceQueryOptions): Promise<ExperienceData[]>;
+  softDelete(userId: string, experienceIds: string[]): Promise<ExperienceData[]>;
+  exclude(userId: string, experienceIds: string[]): Promise<ExperienceData[]>;
 }

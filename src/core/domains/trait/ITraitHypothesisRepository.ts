@@ -6,4 +6,8 @@ export interface ITraitHypothesisRepository {
   findByUser(userId: string, limit?: number): Promise<TraitHypothesisRecord[]>;
   findActiveByUser(userId: string): Promise<TraitHypothesisRecord[]>;
   markRevised(ids: string[], supersededById?: string | null): Promise<void>;
+  markStatusByEvidenceIds(
+    evidenceIds: string[],
+    status: TraitHypothesisRecord['status'],
+  ): Promise<void>;
 }

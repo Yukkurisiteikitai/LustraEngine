@@ -91,6 +91,7 @@ export async function GET() {
       .from('experiences')
       .select('*')
       .eq('user_id', user.id)
+      .is('soft_deleted_at', null)
       .gte('logged_at', new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10))
       .order('logged_at', { ascending: false });
 
