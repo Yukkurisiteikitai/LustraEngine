@@ -8,6 +8,8 @@ export class SupabaseMessageRepository implements IMessageRepository {
   constructor(private supabase: SupabaseClient) {}
 
   async findByPairNodes(pairNodeIds: string[]): Promise<MessageData[]> {
+    if (pairNodeIds.length === 0) return [];
+
     const { data, error } = await this.supabase
       .from('messages')
       .select('*')

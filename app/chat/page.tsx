@@ -4,36 +4,12 @@ import { useState, useEffect, useRef, FormEvent, KeyboardEvent, useCallback } fr
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import TraitBar from '@/components/TraitBar';
 import { usePersona, useChatMutation } from '@/lib/mockQueryClient';
 import { loadLMConfig } from '@/lib/lmConfig';
-import type { ChatMessage, TraitName } from '@/types';
+import type { ChatMessage } from '@/types';
+import { buildEvidenceLoggingFallback, type EvidenceLoggingFallback } from '@/application/llm/evidenceLoggingFallback';
+import { saveEvidenceLoggingDraft } from '@/lib/evidenceDraftStorage';
 import styles from './page.module.css';
-
-const TRAIT_LABELS: Record<TraitName, string> = {
-  introversion: '内向性',
-  discipline: '自律性',
-  curiosity: '好奇心',
-  risk_tolerance: 'リスク許容度',
-  self_criticism: '自己批判',
-  social_anxiety: '社会不安',
-};
-
-const CLUSTER_LABELS: Record<string, string> = {
-  procrastination: '先延ばし傾向',
-  social_avoidance: '社会的回避',
-  authority_anxiety: '権威不安',
-  perfectionism: '完璧主義',
-};
-
-const TRAIT_ORDER: TraitName[] = [
-  'introversion',
-  'discipline',
-  'curiosity',
-  'risk_tolerance',
-  'self_criticism',
-  'social_anxiety',
-];
 
 interface ThreadSummary {
   id: string;
@@ -61,7 +37,7 @@ function persistedToUI(msg: PersistedMessage): UIChatMessage {
 }
 
 export default function ChatPage() {
-  const { data: snapshot, isLoading: personaLoading } = usePersona();
+  const { data: personaPayload, isLoading: personaLoading } = usePersona();
   const chatMutation = useChatMutation();
 
   const [messages, setMessages] = useState<UIChatMessage[]>([]);
@@ -70,6 +46,7 @@ export default function ChatPage() {
   const [currentThreadId, setCurrentThreadId] = useState<string | undefined>(undefined);
   const [threads, setThreads] = useState<ThreadSummary[]>([]);
   const [threadsLoading, setThreadsLoading] = useState(false);
+  const [evidenceFallback, setEvidenceFallback] = useState<EvidenceLoggingFallback | null>(null);
 
   // Rethink state
   const [rethinkActivePairNodeId, setRethinkActivePairNodeId] = useState<string | null>(null);
@@ -83,7 +60,9 @@ export default function ChatPage() {
   }, []);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (typeof bottomRef.current?.scrollIntoView === 'function') {
+      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages, chatMutation.isPending, rethinkingPairNodeId]);
 
   const fetchThreads = useCallback(async () => {
@@ -120,8 +99,35 @@ export default function ChatPage() {
   }
 
   const isBusy = chatMutation.isPending || rethinkingPairNodeId !== null;
-  const hasPersona = !personaLoading && !!snapshot?.personaJson;
+  const snapshot = personaPayload?.snapshot ?? null;
+  const snapshotGenerationEnabled = personaPayload?.snapshotGenerationEnabled ?? true;
+  const hasPersona = !personaLoading && !!snapshot;
   const canSend = hasConfig && hasPersona && !isBusy && input.trim() !== '';
+  const activeHypothesisCount = snapshot?.activeHypothesisCount ?? 0;
+  const activeEvidenceFallback =
+    evidenceFallback ??
+    (activeHypothesisCount === 0
+      ? buildEvidenceLoggingFallback({
+          allowChatFallbackDraft: personaPayload?.allowChatFallbackDraft ?? true,
+        })
+      : null);
+
+  useEffect(() => {
+    if (activeHypothesisCount > 0 && evidenceFallback) {
+      setEvidenceFallback(null);
+    }
+  }, [activeHypothesisCount, evidenceFallback]);
+
+  function handleSaveEvidenceDraft() {
+    if (!activeEvidenceFallback) return;
+    if (personaPayload?.allowChatFallbackDraft === false) return;
+    if (!activeEvidenceFallback.suggestedTemplate) return;
+    saveEvidenceLoggingDraft({
+      template: activeEvidenceFallback.suggestedTemplate,
+      questions: activeEvidenceFallback.questions,
+      source: 'chat_fallback',
+    });
+  }
 
   async function handleSend() {
     const message = input.trim();
@@ -137,7 +143,25 @@ export default function ChatPage() {
         history: messages.slice(-20).map((m): ChatMessage => ({ role: m.role, content: m.content })),
         threadId: currentThreadId,
       });
-      setMessages([...newHistory, { role: 'assistant', content: result.response, pairNodeId: result.pairNodeId }]);
+      if (result.mode === 'evidence_logging') {
+        setEvidenceFallback({
+          mode: 'evidence_logging',
+          reason: 'active_hypotheses_empty',
+          questions: result.questions ?? [],
+          suggestedTemplate: result.suggestedTemplate ?? '',
+        });
+        const formatted = [
+          '仮説を作るために、次の点を記録してください。',
+          ...(result.questions ?? []).map((q) => `- ${q}`),
+          ...(result.suggestedTemplate ? [`テンプレート: ${result.suggestedTemplate}`] : []),
+        ].join('\n');
+        setMessages([...newHistory, { role: 'assistant', content: formatted }]);
+      } else {
+        setMessages([
+          ...newHistory,
+          { role: 'assistant', content: result.response ?? '', pairNodeId: result.pairNodeId },
+        ]);
+      }
 
       if (result.threadId && result.threadId !== currentThreadId) {
         setCurrentThreadId(result.threadId);
@@ -174,6 +198,33 @@ export default function ChatPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pairNodeId, newPrompt, threadId: currentThreadId, lmConfig: cfg }),
       });
+
+      const contentType = res.headers.get('content-type') ?? '';
+      if (contentType.includes('application/json')) {
+        const json = (await res.json()) as { mode?: string; questions?: string[]; suggestedTemplate?: string; message?: string };
+        if (!res.ok) throw new Error(json.message ?? 'やり直しに失敗しました');
+        if (json.mode === 'evidence_logging') {
+          setEvidenceFallback({
+            mode: 'evidence_logging',
+            reason: 'active_hypotheses_empty',
+            questions: json.questions ?? [],
+            suggestedTemplate: json.suggestedTemplate ?? '',
+          });
+          const formatted = [
+            '仮説を作るために、次の点を記録してください。',
+            ...(json.questions ?? []).map((q) => `- ${q}`),
+            ...(json.suggestedTemplate ? [`テンプレート: ${json.suggestedTemplate}`] : []),
+          ].join('\n');
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.pairNodeId === pairNodeId && msg.role === 'assistant'
+                ? { ...msg, content: formatted }
+                : msg,
+            ),
+          );
+          return;
+        }
+      }
 
       if (!res.ok) {
         const json = (await res.json()) as { message?: string };
@@ -243,60 +294,60 @@ export default function ChatPage() {
     void handleSend();
   }
 
-  const traitMap = snapshot?.personaJson?.traits ?? null;
-
   return (
     <>
       <Header />
       <main className={styles.main}>
         <div className={styles.layout}>
-          {/* Left sidebar: persona info */}
+          {/* Left sidebar: model summary */}
           <aside className={styles.sidebar}>
-            <h2 className={styles.sidebarTitle}>ペルソナ</h2>
+            <h2 className={styles.sidebarTitle}>ユーザーモデル</h2>
+            <p className={styles.sidebarLead}>
+              ここは現在の仮説要約です。確定プロフィールではなく、Evidence から更新されるメモです。
+            </p>
 
             {personaLoading && <p className={styles.loading}>読み込み中...</p>}
 
-            {!personaLoading && !hasPersona && (
+            {!personaLoading && !snapshotGenerationEnabled && (
               <div className={styles.warningBox}>
                 <p>
-                  ペルソナスナップショットがありません。
-                  <Link href="/persona" className={styles.link}>
-                    ペルソナページ
+                  モデル要約は無効です。
+                  <Link href="/settings" className={styles.link}>
+                    設定ページ
                   </Link>
-                  でトレイト推論を実行してください。
+                  で有効化できます。
                 </p>
               </div>
             )}
 
-            {traitMap && (
+            {!personaLoading && snapshotGenerationEnabled && !hasPersona && (
+              <div className={styles.warningBox}>
+                <p>
+                  モデル要約がありません。
+                  <Link href="/persona" className={styles.link}>
+                    モデル要約ページ
+                  </Link>
+                  で仮説を更新してください。
+                </p>
+              </div>
+            )}
+
+            {snapshot && (
               <>
+                <p className={styles.loading}>{snapshot.summaryText}</p>
                 <div className={styles.traitList}>
-                  {TRAIT_ORDER.map((name) => (
-                    <TraitBar
-                      key={name}
-                      name={name}
-                      label={TRAIT_LABELS[name]}
-                      score={traitMap[name] ?? 0.5}
-                    />
+                  {snapshot.topHypotheses.map((h) => (
+                    <div key={`${h.traitKey}-${h.hypothesisLabel}`} className={styles.clusterItem}>
+                      <span>{h.hypothesisText}</span>
+                      <span className={styles.clusterCount}>
+                        {Math.round(h.confidence * 100)}%
+                      </span>
+                    </div>
                   ))}
                 </div>
 
-                {snapshot?.personaJson.dominantClusters && snapshot.personaJson.dominantClusters.length > 0 && (
-                  <div className={styles.clusters}>
-                    <h3 className={styles.clusterTitle}>主要パターン</h3>
-                    <ul className={styles.clusterList}>
-                      {snapshot.personaJson.dominantClusters.map((c) => (
-                        <li key={c.type} className={styles.clusterItem}>
-                          <span>{CLUSTER_LABELS[c.type] ?? c.type}</span>
-                          <span className={styles.clusterCount}>{c.detectedCount}回</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
                 <p className={styles.snapshotDate}>
-                  {new Date(snapshot!.createdAt).toLocaleString('ja-JP')}
+                  {new Date(snapshot.createdAt).toLocaleString('ja-JP')}
                 </p>
               </>
             )}
@@ -347,13 +398,15 @@ export default function ChatPage() {
           <div className={styles.chatColumn}>
             <div className={styles.chatWindow}>
               {messages.length === 0 && (
-                <p className={styles.empty}>
-                  {hasPersona && hasConfig
+              <p className={styles.empty}>
+                {activeEvidenceFallback
+                  ? 'まだ仮説を作る材料が足りません。下の質問に答えるか、記録を追加してください。'
+                  : hasPersona && hasConfig
                     ? 'メッセージを送信して対話を始めましょう。'
                     : hasPersona
-                    ? 'AI設定を行うとチャットを開始できます。'
-                    : 'ペルソナ推論を先に実行してください。'}
-                </p>
+                      ? 'AI設定を行うとチャットを開始できます。'
+                      : '仮説を更新するとチャットを開始できます。'}
+              </p>
               )}
 
               {messages.map((msg, i) => (
@@ -433,6 +486,47 @@ export default function ChatPage() {
               <div ref={bottomRef} />
             </div>
 
+            {activeEvidenceFallback && (
+              <section className={styles.evidencePanel} aria-label="Evidence Logging">
+                <p className={styles.evidenceLabel}>Evidence Logging</p>
+                <h3 className={styles.evidenceTitle}>まだ仮説を作る材料が足りません。</h3>
+                <p className={styles.evidenceDescription}>
+                  次の3問に答えると、判断材料として記録できます。書き終えたら、そのまま仮説更新へ進めます。
+                </p>
+                <ol className={styles.evidenceQuestionList}>
+                  {activeEvidenceFallback.questions.map((question) => (
+                    <li key={question} className={styles.evidenceQuestion}>
+                      {question}
+                    </li>
+                  ))}
+                </ol>
+                {activeEvidenceFallback.suggestedTemplate ? (
+                  <div className={styles.evidenceTemplateBox}>
+                    <span className={styles.evidenceTemplateLabel}>下書き</span>
+                    <p className={styles.evidenceTemplateText}>{activeEvidenceFallback.suggestedTemplate}</p>
+                  </div>
+                ) : (
+                  <div className={styles.evidenceTemplateBox}>
+                    <span className={styles.evidenceTemplateLabel}>下書き</span>
+                    <p className={styles.evidenceTemplateText}>下書きは無効です。質問だけを参考にしてください。</p>
+                  </div>
+                )}
+                <div className={styles.evidenceActions}>
+                  <Link
+                    href="/log/new"
+                    onClick={handleSaveEvidenceDraft}
+                    className={styles.evidencePrimaryBtn}
+                    aria-disabled={personaPayload?.allowChatFallbackDraft === false}
+                  >
+                    記録を追加する
+                  </Link>
+                  <Link href="/persona" className={styles.evidenceSecondaryBtn}>
+                    仮説を更新
+                  </Link>
+                </div>
+              </section>
+            )}
+
             <form className={styles.inputArea} onSubmit={handleSubmit}>
               <textarea
                 className={styles.textarea}
@@ -443,7 +537,7 @@ export default function ChatPage() {
                   !hasConfig
                     ? 'AI設定が必要です'
                     : !hasPersona
-                    ? 'ペルソナ推論を先に実行してください'
+                    ? 'ユーザーモデルを更新してください'
                     : 'メッセージを入力（Enter で送信、Shift+Enter で改行）'
                 }
                 disabled={!hasConfig || !hasPersona || isBusy}

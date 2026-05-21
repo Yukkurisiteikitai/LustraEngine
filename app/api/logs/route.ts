@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createLogExperienceUseCase } from '@/container/createUseCases';
+import { refreshAnalyticsViewCache } from '@/container/loadAnalyticsViewModel';
+import {
+  getAnalyticsViewCacheKV,
+  type AnalyticsViewCacheKV,
+} from '@/infrastructure/cache/AnalyticsViewCache';
 import { VALID_DOMAINS, type Domain } from '@/core/domains/domain/Domain';
 import { ValidationError } from '@/core/errors/ValidationError';
 import { AuthError } from '@/core/errors/AuthError';
@@ -14,12 +19,6 @@ interface LogRequestBody {
   obstacles: CreateExperienceDTO[];
 }
 
-type KVNamespaceLike = {
-  get: (...args: unknown[]) => unknown;
-  put: (...args: unknown[]) => unknown;
-  delete: (...args: unknown[]) => unknown;
-};
-
 type CloudflareContextLike = {
   env: {
     HTML_CACHE?: unknown;
@@ -29,13 +28,12 @@ type CloudflareContextLike = {
   };
 };
 
-function isKVNamespaceLike(value: unknown): value is KVNamespaceLike {
+function isAnalyticsViewCacheKV(value: unknown): value is AnalyticsViewCacheKV {
   return (
     typeof value === 'object' &&
     value !== null &&
-    typeof (value as KVNamespaceLike).get === 'function' &&
-    typeof (value as KVNamespaceLike).put === 'function' &&
-    typeof (value as KVNamespaceLike).delete === 'function'
+    typeof (value as AnalyticsViewCacheKV).get === 'function' &&
+    typeof (value as AnalyticsViewCacheKV).put === 'function'
   );
 }
 
@@ -58,17 +56,8 @@ function isCloudflareContextLike(value: unknown): value is CloudflareContextLike
   );
 }
 
-// キャッシュキー: ssr:v1:{userId}:{encodedPath}
-function buildCacheKey(userId: string, pathname: string): string {
-  const normalizedPath = pathname === '/' ? '/' : pathname.replace(/\/$/, '') || '/';
-  const pathKey = encodeURIComponent(normalizedPath);
-  return `ssr:v1:${userId}:${pathKey}`;
-}
-
-const INVALIDATED_PAGES = ['/dashboard', '/logs', '/analytics'];
-
 async function backgroundSave(
-  kv: KVNamespaceLike,
+  kv: AnalyticsViewCacheKV,
   supabase: SupabaseClient,
   userId: string,
   displayName: string | null,
@@ -83,14 +72,12 @@ async function backgroundSave(
     return; // INSERT失敗時はキャッシュを触らない
   }
 
-  // Step 2: ユーザー固有ページの KV キャッシュを無効化（Log由来cacheのみ）
+  // Step 2: Home/Dashboard用の軽量Analytics View JSONを再生成してKVへ保存
   try {
-    await Promise.allSettled(
-      INVALIDATED_PAGES.map((p) => kv.delete(buildCacheKey(userId, p))),
-    );
+    await refreshAnalyticsViewCache(supabase, userId, kv);
   } catch (err) {
-    console.error('[logs:bg] KVキャッシュ無効化失敗:', err);
-    // 非致命的: TTL（1時間）経過で自動削除される
+    console.error('[logs:bg] Analytics View cache更新失敗:', err);
+    // 非致命的: 次回表示時はDB fallbackでViewModelを再生成できる
   }
 }
 
@@ -104,6 +91,7 @@ export async function GET() {
       .from('experiences')
       .select('*')
       .eq('user_id', user.id)
+      .is('soft_deleted_at', null)
       .gte('logged_at', new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10))
       .order('logged_at', { ascending: false });
 
@@ -146,6 +134,12 @@ export async function POST(request: Request) {
       if (typeof obs.stressLevel !== 'number' || obs.stressLevel < 1 || obs.stressLevel > 5) {
         throw new ValidationError('stressLevelは1〜5の数値で指定してください');
       }
+      if (obs.reportDifficulty !== undefined && (typeof obs.reportDifficulty !== 'number' || obs.reportDifficulty < 1 || obs.reportDifficulty > 5)) {
+        throw new ValidationError('reportDifficultyは1〜5の数値で指定してください');
+      }
+      if (obs.careful !== undefined && typeof obs.careful !== 'boolean') {
+        throw new ValidationError('carefulはbooleanで指定してください');
+      }
       if (obs.actionResult !== 'AVOIDED' && obs.actionResult !== 'CONFRONTED') {
         throw new ValidationError('actionResultはAVOIDEDまたはCONFRONTEDで指定してください');
       }
@@ -167,16 +161,16 @@ export async function POST(request: Request) {
     }
 
     if (isCloudflareContextLike(cfContext)) {
-      const htmlCache = cfContext.env.HTML_CACHE;
-      if (isKVNamespaceLike(htmlCache)) {
+      const analyticsViewCache = cfContext.env.HTML_CACHE;
+      if (isAnalyticsViewCacheKV(analyticsViewCache)) {
         cfContext.ctx.waitUntil(
-          backgroundSave(htmlCache, supabase, user.id, displayName, body),
+          backgroundSave(analyticsViewCache, supabase, user.id, displayName, body),
         );
         return NextResponse.json(
           {
             ok: true,
             status: 'log_saved',
-            message: '記録しました。次回の分析対象に追加されました。',
+            message: '記録しました。',
             analysis: {
               status: 'pending',
               next: 'daily_or_manual',
@@ -187,18 +181,24 @@ export async function POST(request: Request) {
       }
 
       console.warn(
-        'Cloudflare KV binding "HTML_CACHE" is missing or invalid; falling back to synchronous log processing.',
+        'Cloudflare Analytics View cache binding is missing or invalid; falling back to synchronous log processing.',
       );
     }
 
     // ── ローカル next dev フォールバック（同期実行）──────────────────────────
     const useCase = createLogExperienceUseCase(supabase);
     await useCase.execute(user.id, { displayName }, obstacles, date);
+    try {
+      const analyticsViewCache = await getAnalyticsViewCacheKV();
+      await refreshAnalyticsViewCache(supabase, user.id, analyticsViewCache);
+    } catch (err) {
+      console.error('[logs] Analytics View cache更新失敗:', err);
+    }
 
     return NextResponse.json({
       ok: true,
       status: 'log_saved',
-      message: '記録しました。次回の分析対象に追加されました。',
+      message: '記録しました。',
       analysis: {
         status: 'pending',
         next: 'daily_or_manual',

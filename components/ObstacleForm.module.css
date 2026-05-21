@@ -77,6 +77,13 @@
   outline: none;
 }
 
+.scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;

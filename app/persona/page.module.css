@@ -16,6 +16,13 @@
   gap: 1rem;
 }
 
+.pageLead {
+  margin: 0 0 1.5rem;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
 .title {
   font-size: 1.5rem;
   font-weight: 600;

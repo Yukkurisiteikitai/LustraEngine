@@ -55,13 +55,14 @@ export async function POST(req: Request) {
       throw new ValidationError('LLM設定が必要です');
     }
 
-    const { llmSettings } = createRepositories(supabase);
+    const { llmSettings, userSettings } = createRepositories(supabase);
     const resolvedLlmConfig = await resolveStoredLlmConfig(
       user.id,
       lmConfig,
       llmSettings,
       process.env.LLM_SETTINGS_ENCRYPTION_KEY,
     );
+    const permissionSettings = await userSettings.ensureDefaultByUser(user.id);
 
     // Rate limiting applies to Claude only.
     // Local LLM (LM Studio) is exempt — no token budget tracking.
@@ -142,25 +143,23 @@ export async function POST(req: Request) {
     const useCase = createChatUseCase(supabase, createLLM(resolvedLlmConfig, { waitForSlot: false, endpoint: '/api/chat' }));
     const result = await useCase.execute(user.id, message, history ?? []);
 
+    if (result.fallback) {
+      return NextResponse.json({
+        mode: result.fallback.mode,
+        reason: result.fallback.reason,
+        questions: result.fallback.questions,
+        suggestedTemplate: result.fallback.suggestedTemplate,
+      });
+    }
+
     logger.info('api:chat_llm_call_done', {
       layer: 'ChatRoute',
       reqId,
       userId: user.id,
       llmMs: Date.now() - tLlm,
-      personaMissing: result.personaMissing ?? false,
       modelName: result.modelName,
       tokenUsage: result.tokenUsage,
     });
-
-    if (result.personaMissing) {
-      return NextResponse.json(
-        {
-          message:
-            'ペルソナスナップショットが見つかりません。先にペルソナページでトレイト推論を実行してください。',
-        },
-        { status: 422 },
-      );
-    }
 
     // Record token usage for Claude. LLM already ran — always record, never reject.
     // The next pre-flight predictive check will block future requests if over budget.
@@ -173,31 +172,36 @@ export async function POST(req: Request) {
       });
     }
 
-    // Persist messages to DB (fire-and-forget errors don't fail the response)
-    let resolvedThreadId = threadId;
+    // Persist messages to DB only when the user allows chat history saving.
+    let resolvedThreadId: string | null = permissionSettings.allowChatHistorySave ? threadId ?? null : null;
     let resolvedPairNodeId: string | undefined;
-    try {
-      const saveUseCase = createSaveChatMessageUseCase(supabase);
+    if (permissionSettings.allowChatHistorySave) {
+      try {
+        const saveUseCase = createSaveChatMessageUseCase(supabase);
 
-      if (!resolvedThreadId) {
-        const threadUseCase = createThreadUseCase(supabase);
-        const thread = await threadUseCase.execute(user.id, message.slice(0, 50));
-        resolvedThreadId = thread.id;
+        if (!resolvedThreadId) {
+          const threadUseCase = createThreadUseCase(supabase);
+          const thread = await threadUseCase.execute(user.id, message.slice(0, 50));
+          resolvedThreadId = thread.id;
+        }
+
+        const { pairNodeId } = await saveUseCase.execute(
+          resolvedThreadId!,
+          user.id,
+          message,
+          result.response,
+          { tokenUsage: result.tokenUsage, modelName: result.modelName },
+        );
+        resolvedPairNodeId = pairNodeId;
+      } catch (persistErr) {
+        logger.error('api:chat_persist_failed', {
+          layer: 'ChatRoute',
+          reqId,
+          userId: user.id,
+          err: persistErr instanceof Error ? persistErr.message : String(persistErr),
+          stack: persistErr instanceof Error ? persistErr.stack : undefined,
+        });
       }
-
-      const { pairNodeId } = await saveUseCase.execute(
-        resolvedThreadId, user.id, message, result.response,
-        { tokenUsage: result.tokenUsage, modelName: result.modelName },
-      );
-      resolvedPairNodeId = pairNodeId;
-    } catch (persistErr) {
-      logger.error('api:chat_persist_failed', {
-        layer: 'ChatRoute',
-        reqId,
-        userId: user.id,
-        err: persistErr instanceof Error ? persistErr.message : String(persistErr),
-        stack: persistErr instanceof Error ? persistErr.stack : undefined,
-      });
     }
 
     logger.info('api:chat_request_done', {
@@ -208,7 +212,11 @@ export async function POST(req: Request) {
       threadId: resolvedThreadId,
     });
 
-    return NextResponse.json({ response: result.response, threadId: resolvedThreadId, pairNodeId: resolvedPairNodeId });
+    return NextResponse.json({
+      response: result.response,
+      threadId: resolvedThreadId ?? undefined,
+      pairNodeId: resolvedPairNodeId,
+    });
   } catch (err) {
     logger.error('api:chat_request_failed', {
       layer: 'ChatRoute',

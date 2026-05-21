@@ -2,13 +2,16 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { IExperienceRepository } from '@/core/domains/experience/IExperienceRepository';
 import type { AnalysisJobMode } from '@/core/domains/analysis/AnalysisJob';
 import type { ClusterData } from '@/core/domains/cluster/Cluster';
+import type { ITraitHypothesisRepository } from '@/core/domains/trait/ITraitHypothesisRepository';
+import type { TraitHypothesisRecord } from '@/core/domains/trait/TraitHypothesis';
 
 export interface AnalysisContext {
   mode: AnalysisJobMode;
+  analysisEnabled: boolean;
   recentLogs: Array<{ id: string; description: string; domain: string; stressLevel: number; loggedAt: string }>;
   unprocessedLogs: Array<{ id: string; description: string; domain: string; stressLevel: number; loggedAt: string }>;
   threeMonthSummary?: Array<{ date: string; count: number; avgStress: number }>;
-  previousTraits?: Record<string, unknown>;
+  activeHypotheses?: TraitHypothesisRecord[];
   previousPatterns?: ClusterData[];
 }
 
@@ -22,6 +25,7 @@ export class AnalysisContextService {
   constructor(
     private readonly supabase: SupabaseClient,
     private readonly experienceRepo: IExperienceRepository,
+    private readonly traitHypothesisRepo: ITraitHypothesisRepository,
   ) {}
 
   private readDomain(row: Record<string, unknown>): string {
@@ -35,6 +39,27 @@ export class AnalysisContextService {
   }
 
   async buildContext(userId: string, mode: AnalysisJobMode): Promise<AnalysisContext> {
+    const { data: settings, error: settingsError } = await this.supabase
+      .from('user_settings')
+      .select('analysis_enabled')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (settingsError) {
+      throw new Error(`Failed to fetch user settings: ${settingsError.message}`);
+    }
+
+    const analysisEnabled = settings?.analysis_enabled !== false;
+    if (!analysisEnabled) {
+      return {
+        mode,
+        analysisEnabled: false,
+        recentLogs: [],
+        unprocessedLogs: [],
+        activeHypotheses: [],
+      };
+    }
+
     const now = new Date();
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const threeMonthsAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
@@ -42,9 +67,11 @@ export class AnalysisContextService {
     // Fetch recent logs (last 1 week)
     const { data: recentLogs, error: recentError } = await this.supabase
       .from('experiences')
-      .select('id, description, stress_level, logged_at, domain_id, domains(description)')
+      .select('id, description, stress_level, logged_at, domain_id, visibility, domains(description)')
       .eq('user_id', userId)
       .gte('logged_at', oneWeekAgo.toISOString())
+      .is('soft_deleted_at', null)
+      .eq('visibility', 'analysis_allowed')
       .order('logged_at', { ascending: false });
 
     if (recentError) {
@@ -62,9 +89,12 @@ export class AnalysisContextService {
 
     const context: AnalysisContext = {
       mode,
+      analysisEnabled: true,
       recentLogs: mappedRecentLogs,
       unprocessedLogs: [],
     };
+
+    context.activeHypotheses = await this.traitHypothesisRepo.findActiveByUser(userId);
 
     // For quick mode, return just recent logs
     if (mode === 'quick') {
@@ -76,9 +106,11 @@ export class AnalysisContextService {
     // Fetch unprocessed logs
     const { data: unprocessedLogs, error: unprocessedError } = await this.supabase
       .from('experiences')
-      .select('id, description, stress_level, logged_at, domain_id, domains(description)')
+      .select('id, description, stress_level, logged_at, domain_id, visibility, domains(description)')
       .eq('user_id', userId)
       .is('processed_at', null)
+      .is('soft_deleted_at', null)
+      .eq('visibility', 'analysis_allowed')
       .order('logged_at', { ascending: false });
 
     if (unprocessedError) {
@@ -98,6 +130,8 @@ export class AnalysisContextService {
       .from('experiences')
       .select('logged_at, stress_level')
       .eq('user_id', userId)
+      .is('soft_deleted_at', null)
+      .eq('visibility', 'analysis_allowed')
       .gte('logged_at', threeMonthsAgo.toISOString())
       .lte('logged_at', now.toISOString());
 
@@ -124,21 +158,6 @@ export class AnalysisContextService {
       count,
       avgStress: totalStress / count,
     }));
-
-    // Fetch previous traits (latest)
-    const { data: traits, error: traitsError } = await this.supabase
-      .from('traits')
-      .select('*')
-      .eq('user_id', userId)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (traitsError && traitsError.code !== 'PGRST116') {
-      console.warn(`Failed to fetch traits: ${traitsError.message}`);
-    } else if (traits) {
-      context.previousTraits = traits as Record<string, unknown>;
-    }
 
     // Fetch previous patterns (latest clusters)
     const { data: patterns, error: patternsError } = await this.supabase

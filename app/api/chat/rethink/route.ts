@@ -11,6 +11,7 @@ import { handleError, checkBodySize } from '@/lib/apiHelpers';
 import { createChatRateLimiter } from '@/infrastructure/rate-limiting/rateLimiterSingleton';
 import { resolveStoredLlmConfig } from '@/infrastructure/llm/resolveStoredLlmConfig';
 import type { LMConfig } from '@/types';
+import { buildEvidenceLoggingFallback } from '@/application/llm/evidenceLoggingFallback';
 
 interface RethinkRequestBody {
   pairNodeId: string;
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
 
     if (!pairNodeId) throw new ValidationError('pairNodeId が必要です');
     if (!threadId) throw new ValidationError('threadId が必要です');
-    const { llmSettings } = createRepositories(supabase);
+    const { llmSettings, userSettings } = createRepositories(supabase);
     const resolvedLlmConfig = await resolveStoredLlmConfig(
       user.id,
       lmConfig,
@@ -61,12 +62,13 @@ export async function POST(req: Request) {
 
     // Run all independent DB queries in parallel after auth
     const historyUseCase = createGetThreadHistoryUseCase(supabase);
-    const { persona, experience, psychology } = createRepositories(supabase);
-    const [allMessages, personaSnapshot, experiences, bigFive, attachment, identityStatus] =
+    const { experience, psychology, traitHypothesis } = createRepositories(supabase);
+    const settings = await userSettings.ensureDefaultByUser(user.id);
+    const [allMessages, activeHypotheses, experiences, bigFive, attachment, identityStatus] =
       await Promise.all([
         historyUseCase.getMessages(threadId),
-        persona.getLatest(user.id),
-        experience.findRecent(user.id, 5),
+        traitHypothesis.findActiveByUser(user.id),
+        experience.findRecent(user.id, 5, { visibility: 'analysis_allowed' }),
         psychology.getBigFiveScore(user.id),
         psychology.getAttachmentProfile(user.id),
         psychology.getIdentityStatus(user.id),
@@ -86,16 +88,17 @@ export async function POST(req: Request) {
       .slice(0, pairNodeUserMsgIdx)
       .map((m) => ({ role: m.role, content: m.content }));
 
-    // Build system prompt from persona + recent experiences + psychology profile
-    if (!personaSnapshot) {
+    // Build system prompt from active trait hypotheses + recent experiences + psychology profile
+    if (activeHypotheses.length === 0) {
       return NextResponse.json(
-        { message: 'ペルソナスナップショットが見つかりません。先にペルソナページでトレイト推論を実行してください。' },
-        { status: 422 },
+        buildEvidenceLoggingFallback({
+          allowChatFallbackDraft: settings.allowChatFallbackDraft,
+        }),
       );
     }
     const systemPrompt = buildChatSystemPrompt(
-      personaSnapshot.personaJson,
       experiences,
+      activeHypotheses,
       bigFive,
       attachment,
       identityStatus,
@@ -121,8 +124,10 @@ export async function POST(req: Request) {
           }
 
           // DB save after streaming completes (before sending done event)
-          const rethinkUseCase = createRethinkMessageUseCase(supabase);
-          await rethinkUseCase.execute(pairNodeId, user.id, fullText);
+          if (settings.allowChatHistorySave) {
+            const rethinkUseCase = createRethinkMessageUseCase(supabase);
+            await rethinkUseCase.execute(pairNodeId, user.id, fullText);
+          }
 
           // Atomically check budget and record usage to prevent concurrent over-spend
           const estimatedTokens = Math.ceil(fullText.length / 3);

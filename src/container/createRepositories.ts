@@ -3,7 +3,7 @@ import { SupabaseExperienceRepository } from '@/infrastructure/repositories/Supa
 import { SupabaseClusterQueryRepository } from '@/infrastructure/repositories/SupabaseClusterQueryRepository';
 import { SupabaseClusterCommandRepository } from '@/infrastructure/repositories/SupabaseClusterCommandRepository';
 import { SupabaseTraitRepository } from '@/infrastructure/repositories/SupabaseTraitRepository';
-import { SupabasePersonaRepository } from '@/infrastructure/repositories/SupabasePersonaRepository';
+import { SupabaseTraitHypothesisRepository } from '@/infrastructure/repositories/SupabaseTraitHypothesisRepository';
 import { SupabaseUserRepository } from '@/infrastructure/repositories/SupabaseUserRepository';
 import { SupabaseThreadRepository } from '@/infrastructure/repositories/SupabaseThreadRepository';
 import { SupabaseMessageRepository } from '@/infrastructure/repositories/SupabaseMessageRepository';
@@ -12,6 +12,7 @@ import { SupabaseLlmModelRepository } from '@/infrastructure/repositories/Supaba
 import { SupabasePsychologyRepository } from '@/infrastructure/repositories/SupabasePsychologyRepository';
 import { SupabaseAnalysisJobRepository } from '@/infrastructure/repositories/SupabaseAnalysisJobRepository';
 import { SupabaseUserLlmSettingsRepository } from '@/infrastructure/repositories/SupabaseUserLlmSettingsRepository';
+import { SupabaseUserSettingsRepository } from '@/infrastructure/repositories/SupabaseUserSettingsRepository';
 
 export function createRepositories(supabase: SupabaseClient) {
   return {
@@ -19,7 +20,7 @@ export function createRepositories(supabase: SupabaseClient) {
     clusterQuery: new SupabaseClusterQueryRepository(supabase),
     clusterCommand: new SupabaseClusterCommandRepository(supabase),
     trait: new SupabaseTraitRepository(supabase),
-    persona: new SupabasePersonaRepository(supabase),
+    traitHypothesis: new SupabaseTraitHypothesisRepository(supabase),
     user: new SupabaseUserRepository(supabase),
     thread: new SupabaseThreadRepository(supabase),
     message: new SupabaseMessageRepository(supabase),
@@ -27,6 +28,7 @@ export function createRepositories(supabase: SupabaseClient) {
     psychology: new SupabasePsychologyRepository(supabase),
     analysisJob: new SupabaseAnalysisJobRepository(supabase),
     llmSettings: new SupabaseUserLlmSettingsRepository(supabase),
+    userSettings: new SupabaseUserSettingsRepository(supabase),
   };
 }
 

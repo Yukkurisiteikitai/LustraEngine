@@ -83,14 +83,15 @@ npm run deploy    # Build and deploy to Cloudflare Workers
 
 ### KV Cache Strategy
 
-SSR HTML for authenticated pages is cached per-user in **Cloudflare KV** (`HTML_CACHE`).
+Home and Dashboard do not cache SSR HTML fragments. They cache per-user Analytics ViewModel JSON in **Cloudflare KV** (`HTML_CACHE`). The binding name is kept for compatibility, but the stored value is display data, not HTML.
 
 | Item | Detail |
 |------|--------|
-| Cached pages | `/dashboard`, `/logs`, `/analytics` |
-| Cache key format | `ssr:v1:{userId}:{pathname}` |
-| TTL | 1 hour |
-| Invalidation | On successful experience log, the user's KV entries are deleted in the background |
+| Cached targets | `dashboard`, `home` |
+| Cache key format | `analytics:view:v1:{userId}:{target}` |
+| Cached value | Minimal JSON for summary cards, stress trend, streak, and recent obstacle display |
+| Refresh | On successful experience log, Dashboard/Home ViewModels are regenerated and written in the background |
+| Fallback | KV miss, invalid JSON, version mismatch, or KV unavailability falls back to DB-generated ViewModels |
 
 ### Region Alignment and Smart Placement
 
@@ -121,10 +122,10 @@ The `/api/logs` endpoint behaves differently depending on the runtime:
 
 | Environment | Execution | Response | KV Cache |
 |-------------|-----------|----------|----------|
-| Cloudflare (prod / `npm run preview`) | Async via `waitUntil` | `202 Accepted` | Invalidated in background |
-| Local (`npm run dev`) | Synchronous | `200 OK` + analytics summary | None |
+| Cloudflare (prod / `npm run preview`) | Async via `waitUntil` | `202 Accepted` | Analytics ViewModels refreshed in background |
+| Local (`npm run dev`) | Synchronous | `200 OK` | DB fallback; cache refresh is best-effort if KV is available |
 
-In Cloudflare mode, the response is returned immediately and Supabase writes + KV invalidation happen after the response via `ctx.waitUntil()`.
+In Cloudflare mode, the response is returned immediately and Supabase writes + Analytics ViewModel cache refresh happen after the response via `ctx.waitUntil()`.
 
 ## Getting Started
 
@@ -212,7 +213,7 @@ RecEngine/
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/api/logs` | Record an experience; triggers async pattern detection. Returns `202 Accepted` on Cloudflare (background processing) or `200 OK` + analytics summary locally |
+| `POST` | `/api/logs` | Record an experience and refresh lightweight analytics view cache. Returns `202 Accepted` on Cloudflare (background processing) or `200 OK` locally |
 | `POST` | `/api/chat` | Send a chat message (per-user rate limiting applied) |
 | `POST` | `/api/chat/rethink` | Regenerate an assistant response for a pair node (SSE streaming) |
 | `POST` | `/api/patterns/detect` | Manually trigger pattern detection job |

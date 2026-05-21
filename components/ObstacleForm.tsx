@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import styles from './ObstacleForm.module.css';
 import DomainSelector from './DomainSelector';
 import StressSlider from './StressSlider';
@@ -10,6 +10,7 @@ export interface ObstacleDraft {
   description: string;
   domain?: Domain;
   stressLevel: number;
+  reportDifficulty: number;
   goal?: string;
   emotion?: string;
   context?: string;
@@ -30,6 +31,7 @@ const DEFAULT_VALUE: ObstacleDraft = {
   description: '',
   domain: undefined,
   stressLevel: 3,
+  reportDifficulty: 3,
   goal: '',
   emotion: '',
   context: '',
@@ -43,6 +45,10 @@ export default function ObstacleForm({
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<ObstacleDraft>(initialValue);
   const [errors, setErrors] = useState<ObstacleFormErrors>({});
+
+  useEffect(() => {
+    setForm(initialValue);
+  }, [initialValue]);
 
   const totalSteps = 3;
 
@@ -146,6 +152,31 @@ export default function ObstacleForm({
                 value={form.stressLevel}
                 onChange={(stressLevel) => setForm((prev) => ({ ...prev, stressLevel }))}
               />
+            </div>
+
+            <div className={styles.group}>
+              <label className={styles.label} htmlFor="reportDifficulty">
+                この記録はどれくらい慎重に扱うべきですか？
+              </label>
+              <input
+                id="reportDifficulty"
+                type="range"
+                min={1}
+                max={5}
+                step={1}
+                value={form.reportDifficulty}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, reportDifficulty: Number(event.target.value) }))
+                }
+                className={styles.input}
+              />
+              <div className={styles.scale} aria-hidden>
+                <span>1</span>
+                <span>2</span>
+                <span>3</span>
+                <span>4</span>
+                <span>5</span>
+              </div>
             </div>
 
             <div className={styles.actions}>

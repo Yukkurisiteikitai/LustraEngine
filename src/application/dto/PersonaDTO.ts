@@ -1,14 +1,3 @@
-import type { PersonaJson, TraitName } from '@/types';
+import type { UserModelSnapshot } from '@/types';
 
-export interface TraitDTO {
-  name: TraitName;
-  score: number;
-}
-
-export interface PersonaDTO {
-  id: string;
-  personaJson: PersonaJson;
-  traitsHash?: string;
-  version?: number;
-  createdAt: string;
-}
+export type PersonaDTO = UserModelSnapshot;

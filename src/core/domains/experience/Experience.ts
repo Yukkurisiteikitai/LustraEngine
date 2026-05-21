@@ -4,6 +4,10 @@ export interface ExperienceData {
   description: string;
   stressLevel: number;
   actionResult: 'AVOIDED' | 'CONFRONTED';
+  source?: string;
+  visibility: 'private' | 'analysis_allowed' | 'excluded';
+  reportDifficulty: number;
+  careful: boolean;
   actionMemo?: string;
   goal?: string;
   action?: string;
@@ -12,6 +16,7 @@ export interface ExperienceData {
   domainId?: string;
   domainKey?: string; // e.g. 'WORK', 'RELATIONSHIP'
   date: string; // logged_at (YYYY-MM-DD)
+  softDeletedAt?: string | null;
 }
 
 export class Experience {

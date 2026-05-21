@@ -2,6 +2,7 @@
 export type Domain = 'WORK' | 'RELATIONSHIP' | 'HEALTH' | 'MONEY' | 'SELF';
 
 export type ActionResult = 'AVOIDED' | 'CONFRONTED';
+export type EvidenceVisibility = 'private' | 'analysis_allowed' | 'excluded';
 
 // --- Experience input (Phase 1: Supabase 対応) ---
 export interface ExperienceInput {
@@ -9,6 +10,10 @@ export interface ExperienceInput {
   stressLevel: number;
   domain: Domain;
   actionResult: ActionResult;
+  source?: string;
+  visibility?: EvidenceVisibility;
+  reportDifficulty?: number;
+  careful?: boolean;
   actionMemo?: string;
   // 構造化フィールド（任意）
   goal?: string;
@@ -42,6 +47,24 @@ export interface DashboardSummary {
 export interface ExperienceRecord extends ExperienceInput {
   id: string;
   date: string;
+  softDeletedAt?: string | null;
+}
+
+export interface UserSettingsRecord {
+  id: string;
+  userId: string;
+  analysisEnabled: boolean;
+  includeSensitiveEvidence: boolean;
+  defaultEvidenceVisibility: EvidenceVisibility;
+  allowChatFallbackDraft: boolean;
+  allowSnapshotGeneration: boolean;
+  allowChatHistorySave: boolean;
+  requireConfirmationBeforeReanalysis: boolean;
+  allowModelSnapshotGeneration: boolean;
+  dataExportEnabled: boolean;
+  dataDeletionRequestedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // --- Backward compatibility aliases ---
@@ -148,12 +171,30 @@ export interface PersonaJson {
   domainBreakdown: Record<string, number>;
 }
 
-export interface PersonaSnapshot {
+export interface UserModelHypothesisSummary {
+  traitKey: TraitName | string;
+  hypothesisLabel: string;
+  hypothesisText: string;
+  score?: number;
+  confidence: number;
+  uncertainty: number;
+}
+
+export interface UserModelSnapshot {
   id: string;
   userId: string;
-  personaJson: PersonaJson;
+  snapshotKind: 'hypothesis_summary';
+  activeHypothesisCount: number;
+  topHypotheses: UserModelHypothesisSummary[];
+  summaryText: string;
+  evidenceCount: number;
+  modelName?: string;
+  modelVersion?: string;
+  promptVersion?: string;
   createdAt: string;
 }
+
+export type PersonaSnapshot = UserModelSnapshot;
 
 // --- L5 Interaction Layer ---
 export interface ChatMessage {

@@ -3,8 +3,13 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import SummaryCard from '@/components/SummaryCard';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { createGetAnalyticsUseCase } from '@/container/createUseCases';
+import { loadHomeSummaryViewModel } from '@/container/loadAnalyticsViewModel';
+import type { HomeSummaryViewModel } from '@/application/viewmodels/AnalyticsViewModel';
 import styles from './page.module.css';
+
+function displayAverageStress(value: number | null | undefined): string {
+  return `${value ?? 0}`;
+}
 
 export default async function HomePage() {
   const supabase = await createSupabaseServerClient();
@@ -12,16 +17,18 @@ export default async function HomePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  let summary = { confrontationRate: 0, avgStress7Days: 0, streakDays: 0 };
+  let summary: HomeSummaryViewModel = {
+    version: 1,
+    generatedAt: new Date().toISOString(),
+    latestLogCreatedAt: null,
+    confrontRate: 0,
+    averageStress: 0,
+    streakDays: 0,
+  };
 
   if (user) {
     try {
-      const data = await createGetAnalyticsUseCase(supabase).execute(user.id);
-      summary = {
-        confrontationRate: data.confrontationRate,
-        avgStress7Days: data.avgStress7Days,
-        streakDays: data.streakDays,
-      };
+      summary = await loadHomeSummaryViewModel(supabase, user.id);
     } catch {
       // Non-fatal: show zeros if analytics fail
     }
@@ -41,9 +48,9 @@ export default async function HomePage() {
 
         {user && (
           <section className={styles.summary} aria-label="最近のサマリー">
-            <SummaryCard title="向き合い率" value={`${summary.confrontationRate}%`} note="直近7日" />
-            <SummaryCard title="平均ストレス" value={`${summary.avgStress7Days}`} note="直近7日" />
-            <SummaryCard title="連続記録" value={`${summary.streakDays}日`} note="継続中" />
+            <SummaryCard title="向き合い率" value={`${summary.confrontRate ?? 0}%`} note="直近7日" />
+            <SummaryCard title="平均ストレス" value={displayAverageStress(summary.averageStress)} note="直近7日" />
+            <SummaryCard title="連続記録" value={`${summary.streakDays ?? 0}日`} note="継続中" />
           </section>
         )}
       </main>

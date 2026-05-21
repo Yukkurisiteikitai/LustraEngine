@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { revalidateTag } from 'next/cache';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createInferTraitsUseCase } from '@/container/createUseCases';
 import { createLLM } from '@/infrastructure/llm/createLLM';
@@ -38,12 +37,13 @@ export async function POST(req: Request) {
     );
 
     const useCase = createInferTraitsUseCase(supabase, createLLM(resolvedLlmConfig));
-    const { traits } = await useCase.execute(user.id);
+    const result = await useCase.execute(user.id, undefined);
 
-    revalidateTag('traits');
-    revalidateTag('persona');
-
-    return NextResponse.json({ traits, message: 'トレイト推論が完了しました' });
+    return NextResponse.json({
+      hypotheses: result.hypotheses,
+      summary: result.summary,
+      message: 'ユーザーモデル要約を更新しました',
+    });
   } catch (err) {
     return handleError(err);
   }

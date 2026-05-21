@@ -25,6 +25,8 @@ export class DailyAnalysisScheduler {
         .from('experiences')
         .select('user_id')
         .is('processed_at', null)
+        .is('soft_deleted_at', null)
+        .eq('visibility', 'analysis_allowed')
         .order('user_id');
 
       if (queryError) {
@@ -35,11 +37,36 @@ export class DailyAnalysisScheduler {
       const userIds = Array.from(new Set((unprocessedExperiences || []).map((e: Record<string, unknown>) => e.user_id as string)));
       console.log(`[DailyScheduler] Found ${userIds.length} users with unprocessed experiences`);
 
+      const disabledUserIds = new Set<string>();
+      if (userIds.length > 0) {
+        const { data: settingsRows, error: settingsError } = await this.supabase
+          .from('user_settings')
+          .select('user_id, analysis_enabled')
+          .in('user_id', userIds);
+
+        if (settingsError) {
+          throw new Error(`Failed to query user settings: ${settingsError.message}`);
+        }
+
+        for (const row of settingsRows ?? []) {
+          const settings = row as Record<string, unknown>;
+          if (settings.analysis_enabled === false) {
+            disabledUserIds.add(settings.user_id as string);
+          }
+        }
+      }
+
       // Step 2: For each user, create or get active daily job
       const today = new Date().toISOString().split('T')[0];
 
       for (const userId of userIds) {
         try {
+          if (disabledUserIds.has(userId)) {
+            console.log(`[DailyScheduler] Analysis disabled for user ${userId}; skipping`);
+            usersProcessed += 1;
+            continue;
+          }
+
           const idempotencyKey = `analysis:${userId}:daily:${today}`;
 
           // Check if active daily job exists

@@ -5,6 +5,7 @@ import { LLMRetryPolicy } from '@/application/llm/policies/LLMRetryPolicy';
 import { LLMResponseValidator } from '@/application/llm/policies/LLMResponseValidator';
 import { LogExperienceUseCase } from '@/application/usecases/LogExperienceUseCase';
 import { GetAnalyticsUseCase } from '@/application/usecases/GetAnalyticsUseCase';
+import { BuildAnalyticsViewModelUseCase } from '@/application/usecases/BuildAnalyticsViewModelUseCase';
 import { DetectPatternsUseCase } from '@/application/usecases/DetectPatternsUseCase';
 import { InferTraitsUseCase } from '@/application/usecases/InferTraitsUseCase';
 import { CreateAnalysisJobUseCase } from '@/application/usecases/CreateAnalysisJobUseCase';
@@ -13,6 +14,8 @@ import { CreateThreadUseCase } from '@/application/usecases/CreateThreadUseCase'
 import { GetThreadHistoryUseCase } from '@/application/usecases/GetThreadHistoryUseCase';
 import { SaveChatMessageUseCase } from '@/application/usecases/SaveChatMessageUseCase';
 import { RethinkMessageUseCase } from '@/application/usecases/RethinkMessageUseCase';
+import { ManageExperienceDispositionUseCase } from '@/application/usecases/ManageExperienceDispositionUseCase';
+import { ExportUserDataUseCase } from '@/application/usecases/ExportUserDataUseCase';
 import { createAdminClient } from '@/infrastructure/supabase/createAdminClient';
 import { CheckDbLimitsUseCase } from '@/application/usecases/CheckDbLimitsUseCase';
 import { SupabaseMonitoringRepository } from '@/infrastructure/repositories/SupabaseMonitoringRepository';
@@ -20,13 +23,18 @@ import { DiscordWebhookAdapter } from '@/infrastructure/notifications/DiscordWeb
 import { logger } from '@/infrastructure/observability/logger';
 
 export function createLogExperienceUseCase(supabase: SupabaseClient) {
-  const { experience, user } = createRepositories(supabase);
-  return new LogExperienceUseCase(experience, user);
+  const { experience, user, userSettings } = createRepositories(supabase);
+  return new LogExperienceUseCase(experience, user, userSettings);
 }
 
 export function createGetAnalyticsUseCase(supabase: SupabaseClient) {
   const { experience } = createRepositories(supabase);
   return new GetAnalyticsUseCase(experience);
+}
+
+export function createBuildAnalyticsViewModelUseCase(supabase: SupabaseClient) {
+  const { experience } = createRepositories(supabase);
+  return new BuildAnalyticsViewModelUseCase(experience);
 }
 
 export function createCreateAnalysisJobUseCase(supabase: SupabaseClient) {
@@ -47,23 +55,22 @@ export function createDetectPatternsUseCase(supabase: SupabaseClient, llm: ILLMP
   );
 }
 export function createInferTraitsUseCase(supabase: SupabaseClient, llm: ILLMPort) {
-  const { experience, clusterQuery, trait, persona, psychology } = createRepositories(supabase);
+  const { experience, clusterQuery, traitHypothesis, userSettings } = createRepositories(supabase);
   return new InferTraitsUseCase(
     experience,
     clusterQuery,
-    trait,
-    persona,
-    psychology,
+    traitHypothesis,
     llm,
     logger,
     new LLMRetryPolicy(),
     new LLMResponseValidator(),
+    userSettings,
   );
 }
 
 export function createChatUseCase(supabase: SupabaseClient, llm: ILLMPort) {
-  const { experience, persona, psychology } = createRepositories(supabase);
-  return new ChatUseCase(experience, persona, llm, psychology);
+  const { experience, traitHypothesis, psychology, userSettings } = createRepositories(supabase);
+  return new ChatUseCase(experience, traitHypothesis, llm, psychology, userSettings);
 }
 
 export function createThreadUseCase(supabase: SupabaseClient) {
@@ -99,5 +106,24 @@ export function createCheckDbLimitsUseCase(): CheckDbLimitsUseCase {
     new SupabaseMonitoringRepository(adminClient),
     new DiscordWebhookAdapter(webhookUrl),
     { warnMb, criticalMb },
+  );
+}
+
+export function createManageExperienceDispositionUseCase(supabase: SupabaseClient) {
+  const { experience, traitHypothesis } = createRepositories(supabase);
+  return new ManageExperienceDispositionUseCase(experience, traitHypothesis);
+}
+
+export function createExportUserDataUseCase(supabase: SupabaseClient) {
+  const { experience, traitHypothesis, userSettings, llmSettings, thread, pairNode, message } =
+    createRepositories(supabase);
+  return new ExportUserDataUseCase(
+    experience,
+    traitHypothesis,
+    userSettings,
+    llmSettings,
+    thread,
+    pairNode,
+    message,
   );
 }

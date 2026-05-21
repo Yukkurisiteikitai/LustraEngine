@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { IExperienceRepository } from '@/core/domains/experience/IExperienceRepository';
+import type { ITraitHypothesisRepository } from '@/core/domains/trait/ITraitHypothesisRepository';
 import type { ILLMPort } from '@/application/ports/ILLMPort';
 import type { AnalysisQueueMessage } from '@/cloudflare-env';
 import { AnalysisContextService } from '@/application/analysis/AnalysisContextService';
@@ -8,6 +9,7 @@ import { InferTraitsUseCase } from '@/application/usecases/InferTraitsUseCase';
 import { LLMRetryPolicy } from '@/application/llm/policies/LLMRetryPolicy';
 import { LLMResponseValidator } from '@/application/llm/policies/LLMResponseValidator';
 import { logger } from '@/infrastructure/observability/logger';
+import type { TraitHypothesisResult } from '@/core/domains/trait/TraitHypothesis';
 
 /**
  * Processes analysis jobs from the Cloudflare Queue
@@ -19,8 +21,7 @@ export class AnalysisJobConsumer {
     private readonly experienceRepo: IExperienceRepository,
     private readonly clusterCommandRepo: any,
     private readonly clusterQueryRepo: any,
-    private readonly traitRepo: any,
-    private readonly personaRepo: any,
+    private readonly traitHypothesisRepo: ITraitHypothesisRepository,
     private readonly psychologyRepo: any,
     private readonly createLlm: (userId: string) => Promise<ILLMPort>,
   ) {}
@@ -50,8 +51,37 @@ export class AnalysisJobConsumer {
       }
 
       // Step 2: Build analysis context
-      const contextService = new AnalysisContextService(this.supabase, this.experienceRepo);
+      const contextService = new AnalysisContextService(
+        this.supabase,
+        this.experienceRepo,
+        this.traitHypothesisRepo,
+      );
       const context = await contextService.buildContext(userId, mode);
+      if (!context.analysisEnabled) {
+        const { error: completeError } = await this.supabase
+          .from('analysis_jobs')
+          .update({
+            status: 'completed',
+            completed_at: new Date().toISOString(),
+            result: {
+              mode,
+              trigger,
+              skipped: true,
+              reason: 'analysis_disabled',
+            },
+          })
+          .eq('id', jobId)
+          .eq('user_id', userId);
+
+        if (completeError) {
+          logger.error(
+            `[AnalysisJobConsumer] Failed to mark skipped job as completed: ${completeError.message}`,
+          );
+        }
+
+        logger.info(`[AnalysisJobConsumer] Analysis disabled for user ${userId}; skipping job ${jobId}`);
+        return;
+      }
       const llm = await this.createLlm(userId);
 
       // Step 3: Run detect patterns
@@ -72,15 +102,13 @@ export class AnalysisJobConsumer {
       logger.info(`[AnalysisJobConsumer] DetectPatterns completed: ${detectResult.classified} classified`);
 
       // Step 4: Run infer traits (if not quick mode)
-      let inferResult: { traits: Record<string, number> } | null = null;
+      let inferResult: TraitHypothesisResult | null = null;
       if (mode !== 'quick') {
         logger.info(`[AnalysisJobConsumer] Running InferTraits for job ${jobId}`);
         const inferUseCase = new InferTraitsUseCase(
           this.experienceRepo,
           this.clusterQueryRepo,
-          this.traitRepo,
-          this.personaRepo,
-          this.psychologyRepo,
+          this.traitHypothesisRepo,
           llm,
           logger,
           new LLMRetryPolicy(),
@@ -123,7 +151,8 @@ export class AnalysisJobConsumer {
             },
             inferResult: inferResult
               ? {
-                  traitsUpdated: true,
+                  hypothesesGenerated: inferResult.summary.generatedCount,
+                  evidenceCount: inferResult.summary.evidenceCount,
                 }
               : null,
           },

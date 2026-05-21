@@ -10,6 +10,9 @@ export class ExperienceMapper {
       stressLevel: data.stressLevel,
       actionResult: data.actionResult,
       domain: data.domainKey ?? data.domainId,
+      visibility: data.visibility,
+      reportDifficulty: data.reportDifficulty,
+      careful: data.careful,
     };
   }
 
@@ -26,6 +29,12 @@ export class ExperienceMapper {
       description: row.description as string,
       stressLevel: row.stress_level as number,
       actionResult: row.action_result as 'AVOIDED' | 'CONFRONTED',
+      source: (row.source as string | null) ?? undefined,
+      visibility:
+        (row.visibility as 'private' | 'analysis_allowed' | 'excluded' | null) ??
+        'private',
+      reportDifficulty: (row.report_difficulty as number | null) ?? 3,
+      careful: Boolean(row.careful),
       actionMemo: (row.action_memo as string | null) ?? undefined,
       goal: (row.goal as string | null) ?? undefined,
       action: (row.action as string | null) ?? undefined,
@@ -34,6 +43,7 @@ export class ExperienceMapper {
       domainId: (row.domain_id as string | null) ?? undefined,
       domainKey,
       date: row.logged_at as string,
+      softDeletedAt: (row.soft_deleted_at as string | null) ?? null,
     };
   }
 }

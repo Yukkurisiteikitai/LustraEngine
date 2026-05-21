@@ -1,7 +1,7 @@
 import type { LMConfig } from '@/types';
 import type { IUserLlmSettingsRepository } from '@/core/domains/llm/IUserLlmSettingsRepository';
 import { validateLLMConfig } from './providerRegistry';
-import { decryptApiKey } from './llmSettingsCrypto';
+import { decryptApiKey, resolveLlmSettingsEncryptionKey } from './llmSettingsCrypto';
 
 export async function resolveStoredLlmConfig(
   userId: string,
@@ -22,12 +22,9 @@ export async function resolveStoredLlmConfig(
     return validateLLMConfig(config);
   }
 
-  if (!encryptionKey) {
-    throw new Error('LLM settings encryption key is missing');
-  }
-
+  const resolvedEncryptionKey = encryptionKey ?? resolveLlmSettingsEncryptionKey();
   const storedApiKey = activeSetting.encryptedApiKey
-    ? await decryptApiKey(activeSetting.encryptedApiKey, encryptionKey)
+    ? await decryptApiKey(activeSetting.encryptedApiKey, resolvedEncryptionKey)
     : '';
 
   if (!storedApiKey) {
