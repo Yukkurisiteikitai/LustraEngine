@@ -85,5 +85,6 @@ describe('persona route contract', () => {
     expect(json.snapshot).not.toHaveProperty('personaJson');
     expect(json.bigFive).toBeNull();
     expect(traitHypothesis.findActiveByUser).toHaveBeenCalledWith('user-1');
+    expect(mockCreateRepositories).toHaveBeenCalledTimes(1);
   });
 });

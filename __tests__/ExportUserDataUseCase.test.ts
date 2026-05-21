@@ -34,7 +34,7 @@ describe('ExportUserDataUseCase', () => {
       ]),
     };
     const traitHypothesisRepo = {
-      findByUser: jest.fn().mockResolvedValue([
+      findAllByUser: jest.fn().mockResolvedValue([
         {
           id: 'h-1',
           userId: 'user-1',
@@ -95,5 +95,70 @@ describe('ExportUserDataUseCase', () => {
     expect(exportData.snapshot.data?.snapshotKind).toBe('hypothesis_summary');
     expect(exportData.snapshot.summaryText).toContain('現在の仮説は 1 件あります');
     expect(exportData.snapshot.summaryText).toContain('会議で発言前に慎重になる傾向');
+    expect(traitHypothesisRepo.findAllByUser).toHaveBeenCalledWith('user-1');
+  });
+
+  it('exports more than 500 hypotheses without using a capped query', async () => {
+    const hypotheses = Array.from({ length: 501 }, (_, index) => ({
+      id: `h-${index}`,
+      userId: 'user-1',
+      traitKey: 'introversion',
+      hypothesisLabel: '内向性',
+      hypothesisText: `仮説 ${index}`,
+      score: 0.7,
+      confidence: 0.8,
+      uncertainty: 0.2,
+      evidenceIds: [],
+      sourcePatternIds: [],
+      modelName: 'mock',
+      modelVersion: '1',
+      promptVersion: '1',
+      status: 'revised',
+      supersedesHypothesisId: null,
+      supersededByHypothesisId: null,
+      analysisJobId: null,
+      createdAt: '2026-05-15T01:00:00.000Z',
+    }));
+    const experienceRepo = {
+      findAllByUser: jest.fn().mockResolvedValue([]),
+    };
+    const traitHypothesisRepo = {
+      findAllByUser: jest.fn().mockResolvedValue(hypotheses),
+      findByUser: jest.fn(),
+    };
+    const userSettingsRepo = {
+      ensureDefaultByUser: jest.fn().mockResolvedValue({
+        ...buildFallbackUserSettings('user-1'),
+        allowSnapshotGeneration: false,
+      }),
+    };
+    const llmSettingsRepo = {
+      getActiveByUser: jest.fn().mockResolvedValue(null),
+    };
+    const threadRepo = {
+      findByUser: jest.fn().mockResolvedValue([]),
+    };
+    const pairNodeRepo = {
+      findByThread: jest.fn().mockResolvedValue([]),
+    };
+    const messageRepo = {
+      findByPairNodes: jest.fn().mockResolvedValue([]),
+    };
+
+    const useCase = new ExportUserDataUseCase(
+      experienceRepo as never,
+      traitHypothesisRepo as never,
+      userSettingsRepo as never,
+      llmSettingsRepo as never,
+      threadRepo as never,
+      pairNodeRepo as never,
+      messageRepo as never,
+    );
+
+    const exportData = await useCase.execute('user-1');
+
+    expect(exportData.hypotheses).toHaveLength(501);
+    expect(traitHypothesisRepo.findAllByUser).toHaveBeenCalledWith('user-1');
+    expect(traitHypothesisRepo.findByUser).not.toHaveBeenCalled();
   });
 });

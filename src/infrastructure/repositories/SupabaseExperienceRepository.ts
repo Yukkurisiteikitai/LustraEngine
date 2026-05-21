@@ -86,13 +86,23 @@ export class SupabaseExperienceRepository implements IExperienceRepository {
     return (data ?? []).map((r) => ExperienceMapper.fromRow(r as Record<string, unknown>));
   }
 
-  async findAllDates(userId: string): Promise<string[]> {
-    const { data, error } = await this.supabase
+  async findAllDates(
+    userId: string,
+    options?: ExperienceQueryOptions,
+  ): Promise<string[]> {
+    let query = this.supabase
       .from('experiences')
       .select('logged_at')
       .eq('user_id', userId)
       .is('soft_deleted_at', null)
       .order('logged_at', { ascending: false });
+
+    const visibility = normalizeVisibility(options?.visibility);
+    if (visibility) {
+      query = query.in('visibility', visibility);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw new InfrastructureError('experience:findAllDates failed', error);
     return (data ?? []).map((d) => d.logged_at as string);

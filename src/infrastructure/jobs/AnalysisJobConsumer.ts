@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { IExperienceRepository } from '@/core/domains/experience/IExperienceRepository';
+import type { ITraitHypothesisRepository } from '@/core/domains/trait/ITraitHypothesisRepository';
 import type { ILLMPort } from '@/application/ports/ILLMPort';
 import type { AnalysisQueueMessage } from '@/cloudflare-env';
 import { AnalysisContextService } from '@/application/analysis/AnalysisContextService';
@@ -20,7 +21,7 @@ export class AnalysisJobConsumer {
     private readonly experienceRepo: IExperienceRepository,
     private readonly clusterCommandRepo: any,
     private readonly clusterQueryRepo: any,
-    private readonly traitHypothesisRepo: any,
+    private readonly traitHypothesisRepo: ITraitHypothesisRepository,
     private readonly psychologyRepo: any,
     private readonly createLlm: (userId: string) => Promise<ILLMPort>,
   ) {}

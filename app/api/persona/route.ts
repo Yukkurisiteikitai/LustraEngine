@@ -16,8 +16,7 @@ export async function GET() {
     } = await supabase.auth.getUser();
     if (!user) throw new AuthError('認証が必要です');
 
-    const { psychology, traitHypothesis } = createRepositories(supabase);
-    const { userSettings } = createRepositories(supabase);
+    const { psychology, traitHypothesis, userSettings } = createRepositories(supabase);
 
     let data: TraitHypothesisRecord[] = [];
     let bigFive: BigFiveScore | null = null;

@@ -54,7 +54,7 @@ export class ExportUserDataUseCase {
     const settings = await this.userSettingsRepo.ensureDefaultByUser(userId);
     const llmSettings = await this.llmSettingsRepo.getActiveByUser(userId);
     const evidence = await this.experienceRepo.findAllByUser(userId);
-    const hypotheses = await this.traitHypothesisRepo.findByUser(userId, 500);
+    const hypotheses = await this.traitHypothesisRepo.findAllByUser(userId);
     const threads = await this.threadRepo.findByUser(userId);
     const pairNodes = await Promise.all(threads.map((thread) => this.pairNodeRepo.findByThread(thread.id)));
     const messages = await this.messageRepo.findByPairNodes(pairNodes.flat().map((pairNode) => pairNode.id));

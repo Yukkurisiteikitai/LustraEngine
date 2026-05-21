@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createManageExperienceDispositionUseCase } from '@/container/createUseCases';
+import { refreshAnalyticsViewCache } from '@/container/loadAnalyticsViewModel';
 import { AuthError } from '@/core/errors/AuthError';
 import { ValidationError } from '@/core/errors/ValidationError';
 import { handleError, checkBodySize } from '@/lib/apiHelpers';
+import { getAnalyticsViewCacheKV } from '@/infrastructure/cache/AnalyticsViewCache';
 
 interface DispositionRequestBody {
   action: 'soft_delete' | 'exclude';
@@ -39,6 +41,13 @@ export async function PATCH(
 
     const useCase = createManageExperienceDispositionUseCase(supabase);
     const result = await useCase.execute(user.id, [experienceId], body.action);
+    try {
+      const analyticsViewCache = await getAnalyticsViewCacheKV();
+      await refreshAnalyticsViewCache(supabase, user.id, analyticsViewCache);
+    } catch (cacheError) {
+      console.error('[logs:disposition] Analytics View cache更新失敗:', cacheError);
+    }
+
     return NextResponse.json({
       ok: true,
       action: result.action,

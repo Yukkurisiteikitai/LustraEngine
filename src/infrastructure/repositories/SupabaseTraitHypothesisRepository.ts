@@ -6,6 +6,8 @@ import type {
 } from '@/core/domains/trait/TraitHypothesis';
 import { InfrastructureError } from '@/core/errors/InfrastructureError';
 
+const PAGE_SIZE = 1000;
+
 function toStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 }
@@ -59,6 +61,36 @@ function toRow(record: TraitHypothesisInsert) {
 export class SupabaseTraitHypothesisRepository implements ITraitHypothesisRepository {
   constructor(private readonly supabase: SupabaseClient) {}
 
+  private async fetchAllByUser(
+    userId: string,
+    status?: TraitHypothesisRecord['status'],
+  ): Promise<TraitHypothesisRecord[]> {
+    const records: TraitHypothesisRecord[] = [];
+
+    for (let from = 0; ; from += PAGE_SIZE) {
+      let query = this.supabase
+        .from('trait_hypothesis_history')
+        .select('*')
+        .eq('user_id', userId);
+
+      if (status) {
+        query = query.eq('status', status);
+      }
+
+      const { data, error } = await query
+        .order('created_at', { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (error) throw new InfrastructureError('traitHypothesis:fetchAllByUser failed', error);
+
+      const page = data ?? [];
+      records.push(...page.map((row) => fromRow(row as Record<string, unknown>)));
+      if (page.length < PAGE_SIZE) break;
+    }
+
+    return records;
+  }
+
   async append(record: TraitHypothesisInsert): Promise<void> {
     const { error } = await this.supabase
       .from('trait_hypothesis_history')
@@ -89,16 +121,12 @@ export class SupabaseTraitHypothesisRepository implements ITraitHypothesisReposi
     return (data ?? []).map((row) => fromRow(row as Record<string, unknown>));
   }
 
-  async findActiveByUser(userId: string): Promise<TraitHypothesisRecord[]> {
-    const { data, error } = await this.supabase
-      .from('trait_hypothesis_history')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('status', 'active')
-      .order('created_at', { ascending: false });
+  async findAllByUser(userId: string): Promise<TraitHypothesisRecord[]> {
+    return this.fetchAllByUser(userId);
+  }
 
-    if (error) throw new InfrastructureError('traitHypothesis:findActiveByUser failed', error);
-    return (data ?? []).map((row) => fromRow(row as Record<string, unknown>));
+  async findActiveByUser(userId: string): Promise<TraitHypothesisRecord[]> {
+    return this.fetchAllByUser(userId, 'active');
   }
 
   async markRevised(ids: string[], supersededById: string | null = null): Promise<void> {
@@ -117,22 +145,34 @@ export class SupabaseTraitHypothesisRepository implements ITraitHypothesisReposi
   }
 
   async markStatusByEvidenceIds(
+    userId: string,
     evidenceIds: string[],
     status: TraitHypothesisRecord['status'],
-  ): Promise<void> {
-    if (evidenceIds.length === 0) return;
+  ): Promise<number> {
+    if (evidenceIds.length === 0) return 0;
 
-    const { error } = await this.supabase
+    const evidenceIdSet = new Set(evidenceIds);
+    const affectedIds = (await this.findActiveByUser(userId))
+      .filter((hypothesis) => hypothesis.evidenceIds.some((id) => evidenceIdSet.has(id)))
+      .map((hypothesis) => hypothesis.id);
+
+    if (affectedIds.length === 0) return 0;
+
+    const { data, error } = await this.supabase
       .from('trait_hypothesis_history')
       .update({
         status,
         updated_at: new Date().toISOString(),
       })
-      .contains('evidence_ids', evidenceIds)
-      .eq('status', 'active');
+      .in('id', affectedIds)
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .select('id');
 
     if (error) {
       throw new InfrastructureError('traitHypothesis:markStatusByEvidenceIds failed', error);
     }
+
+    return data?.length ?? affectedIds.length;
   }
 }

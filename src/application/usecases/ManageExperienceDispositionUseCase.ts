@@ -34,12 +34,20 @@ export class ManageExperienceDispositionUseCase {
         ? await this.experienceRepo.softDelete(userId, experienceIds)
         : await this.experienceRepo.exclude(userId, experienceIds);
 
-    await this.traitHypothesisRepo.markStatusByEvidenceIds(experienceIds, affectedHypothesisStatus);
+    const updatedExperienceIds = updated.map((experience) => experience.id);
+    const affectedHypothesisCount =
+      updatedExperienceIds.length === 0
+        ? 0
+        : await this.traitHypothesisRepo.markStatusByEvidenceIds(
+            userId,
+            updatedExperienceIds,
+            affectedHypothesisStatus,
+          );
 
     return {
       action,
       updatedCount: updated.length,
-      affectedHypothesisCount: experienceIds.length,
+      affectedHypothesisCount,
     };
   }
 }

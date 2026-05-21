@@ -13,8 +13,8 @@ export class GetAnalyticsUseCase {
     const fromDate = sevenDaysAgo.toISOString().slice(0, 10);
 
     const [recentData, allDates] = await Promise.all([
-      this.expRepo.findSince(userId, fromDate),
-      this.expRepo.findAllDates(userId),
+      this.expRepo.findSince(userId, fromDate, { visibility: 'analysis_allowed' }),
+      this.expRepo.findAllDates(userId, { visibility: 'analysis_allowed' }),
     ]);
 
     const experiences = recentData.map((d) => new Experience(d));
