@@ -29,6 +29,7 @@ export interface IExperienceRepository {
     domainMap: Map<string, string>,
   ): Promise<ExperienceData[]>;
   findAllByUser(userId: string): Promise<ExperienceData[]>;
+  findById(userId: string, experienceId: string): Promise<ExperienceData | null>;
   findSince(userId: string, fromDate: string, options?: ExperienceQueryOptions): Promise<ExperienceData[]>;
   findAllDates(userId: string, options?: ExperienceQueryOptions): Promise<string[]>;
   findUnclassified(userId: string, options?: ExperienceQueryOptions): Promise<ExperienceData[]>;

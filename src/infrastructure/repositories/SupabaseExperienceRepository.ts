@@ -29,6 +29,19 @@ export class SupabaseExperienceRepository implements IExperienceRepository {
     return (data ?? []).map((r) => ExperienceMapper.fromRow(r as Record<string, unknown>));
   }
 
+  async findById(userId: string, experienceId: string): Promise<ExperienceData | null> {
+    const { data, error } = await this.supabase
+      .from('experiences')
+      .select('*, domains(description)')
+      .eq('user_id', userId)
+      .eq('id', experienceId)
+      .is('soft_deleted_at', null)
+      .maybeSingle();
+
+    if (error) throw new InfrastructureError('experience:findById failed', error);
+    return data ? ExperienceMapper.fromRow(data as Record<string, unknown>) : null;
+  }
+
   async save(
     userId: string,
     inputs: CreateExperienceInput[],

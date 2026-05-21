@@ -14,13 +14,20 @@ export default async function LogsPage() {
   if (!user) redirect('/login');
 
   const { experience } = createRepositories(supabase);
-  const experiences = await experience.findAllByUser(user.id);
+  const experiences = await experience.findRecent(user.id, 40);
 
   return (
     <>
       <Header />
       <main className={styles.main}>
         <div className={styles.stack}>
+          <div className={styles.pageHeader}>
+            <p className={styles.pageKicker}>Archive</p>
+            <h1 className={styles.pageTitle}>記録を読み返す</h1>
+            <p className={styles.pageIntro}>
+              ここでは最近の記録を見ながら、全文検索で過去ログをたどれます。検索語を入れると、サーバー側で一致した記録だけを返します。
+            </p>
+          </div>
           <LogsClient experiences={experiences} />
         </div>
       </main>
