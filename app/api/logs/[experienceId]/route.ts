@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createManageExperienceDispositionUseCase } from '@/container/createUseCases';
+import { createRepositories } from '@/container/createRepositories';
 import { refreshAnalyticsViewCache } from '@/container/loadAnalyticsViewModel';
 import { AuthError } from '@/core/errors/AuthError';
 import { ValidationError } from '@/core/errors/ValidationError';
@@ -9,6 +10,34 @@ import { getAnalyticsViewCacheKV } from '@/infrastructure/cache/AnalyticsViewCac
 
 interface DispositionRequestBody {
   action: 'soft_delete' | 'exclude';
+}
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ experienceId: string }> },
+) {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new AuthError('認証が必要です');
+
+    const { experienceId } = await params;
+    if (!experienceId) {
+      throw new ValidationError('experienceIdが必要です');
+    }
+
+    const { experience } = createRepositories(supabase);
+    const item = await experience.findById(user.id, experienceId);
+    if (!item) {
+      return NextResponse.json({ message: 'record_not_found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ experience: item });
+  } catch (error) {
+    return handleError(error);
+  }
 }
 
 export async function PATCH(

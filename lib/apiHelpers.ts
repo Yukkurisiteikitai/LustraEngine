@@ -55,7 +55,8 @@ export function handleError(err: unknown): NextResponse {
     return NextResponse.json({ message: err.message }, { status: 500 });
   }
   console.error('unhandled_error', {
-    err: String(err),
+    err,
+    stringified: String(err),
     stack: err instanceof Error ? err.stack : undefined,
   });
   return NextResponse.json({ message: '予期しないエラーが発生しました' }, { status: 500 });
