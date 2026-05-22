@@ -1,6 +1,6 @@
 'use client';
 
-import { type FormEvent, useMemo, useState, useTransition } from 'react';
+import { type FormEvent, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { ExperienceData } from '@/core/domains/experience/Experience';
 import {
@@ -65,12 +65,13 @@ export default function LogsClient({ experiences }: Props) {
   const [field, setField] = useState<LogSearchField>('description');
   const [message, setMessage] = useState('');
   const [isSearching, setIsSearching] = useState(false);
-  const [isPending, startTransition] = useTransition();
+  const [pendingActionId, setPendingActionId] = useState<string | null>(null);
 
   const groups = useMemo(() => groupArchiveExperiences(items), [items]);
 
   async function updateDisposition(id: string, action: 'soft_delete' | 'exclude') {
     setMessage('');
+    setPendingActionId(id);
     try {
       const res = await fetch(`/api/logs/${id}`, {
         method: 'PATCH',
@@ -95,6 +96,8 @@ export default function LogsClient({ experiences }: Props) {
       setMessage(action === 'soft_delete' ? '記録を削除しました' : '記録を除外しました');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '更新に失敗しました');
+    } finally {
+      setPendingActionId((current) => (current === id ? null : current));
     }
   }
 
@@ -243,24 +246,20 @@ export default function LogsClient({ experiences }: Props) {
                     <button
                       type="button"
                       className={styles.secondary}
-                      disabled={isPending || Boolean(item.softDeletedAt)}
-                      onClick={() =>
-                        startTransition(() => {
-                          void updateDisposition(item.id, 'soft_delete');
-                        })
-                      }
+                      disabled={pendingActionId === item.id || Boolean(item.softDeletedAt)}
+                      onClick={() => {
+                        void updateDisposition(item.id, 'soft_delete');
+                      }}
                     >
                       記録を削除する
                     </button>
                     <button
                       type="button"
                       className={styles.secondary}
-                      disabled={isPending || item.visibility === 'excluded'}
-                      onClick={() =>
-                        startTransition(() => {
-                          void updateDisposition(item.id, 'exclude');
-                        })
-                      }
+                      disabled={pendingActionId === item.id || item.visibility === 'excluded'}
+                      onClick={() => {
+                        void updateDisposition(item.id, 'exclude');
+                      }}
                     >
                       除外する
                     </button>

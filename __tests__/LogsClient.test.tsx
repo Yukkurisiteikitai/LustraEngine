@@ -81,4 +81,59 @@ describe('LogsClient', () => {
     expect(screen.getByText('会議の前に不安')).toBeInTheDocument();
     expect(screen.getByText('1件見つかりました。')).toBeInTheDocument();
   });
+
+  it('disables action buttons while a disposition update is in flight', async () => {
+    const user = userEvent.setup();
+    let resolveFetch!: (value: { ok: boolean; json: () => Promise<{ ok: boolean }> }) => void;
+    const fetchPromise = new Promise<{ ok: boolean; json: () => Promise<{ ok: boolean }> }>((resolve) => {
+      resolveFetch = resolve;
+    });
+    const fetchMock = jest.fn().mockReturnValue(fetchPromise);
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(
+      <LogsClient
+        experiences={[
+          {
+            id: 'e-1',
+            userId: 'user-1',
+            description: '会議で緊張した',
+            stressLevel: 4,
+            actionResult: 'CONFRONTED',
+            source: 'manual',
+            visibility: 'private',
+            reportDifficulty: 3,
+            careful: false,
+            goal: '説明する',
+            action: '話した',
+            emotion: '不安',
+            context: '午後の会議',
+            actionMemo: '少し落ち着いた',
+            domainKey: 'WORK',
+            date: '2026-05-20',
+            softDeletedAt: null,
+          },
+        ]}
+      />,
+    );
+
+    const deleteButton = screen.getByRole('button', { name: '記録を削除する' });
+    await user.click(deleteButton);
+
+    expect(deleteButton).toBeDisabled();
+
+    resolveFetch({
+      ok: true,
+      json: async () => ({ ok: true }),
+    });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/logs/e-1',
+        expect.objectContaining({
+          method: 'PATCH',
+        }),
+      );
+    });
+  });
 });

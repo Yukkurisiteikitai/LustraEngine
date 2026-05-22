@@ -16,6 +16,7 @@ type SearchRow = Record<string, unknown> & {
   search_rank?: number;
 };
 
+const SEARCH_RPC_UNAVAILABLE_CODES = new Set(['42883', 'PGRST202']);
 const SEARCH_FIELD_COLUMNS: Record<LogSearchField, string> = {
   description: 'description',
   context: 'context',
@@ -33,6 +34,16 @@ type SearchItem = {
 
 function escapeLikePattern(value: string): string {
   return value.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_');
+}
+
+function isSearchRpcUnavailable(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) {
+    return false;
+  }
+
+  const maybe = error as { code?: string; message?: string };
+  return SEARCH_RPC_UNAVAILABLE_CODES.has(maybe.code ?? '') ||
+    /function does not exist|could not find the function|rpc/i.test(maybe.message ?? '');
 }
 
 function mapSearchRows(rows: unknown[], field: LogSearchField): SearchItem[] {
@@ -75,6 +86,10 @@ export async function GET(request: Request) {
       p_limit: limit,
     });
 
+    if (error && !isSearchRpcUnavailable(error)) {
+      throw error;
+    }
+
     const items = error
       ? await (async () => {
           console.warn('[logs:search] rpc fallback', {
@@ -86,7 +101,7 @@ export async function GET(request: Request) {
           const pattern = `%${escapeLikePattern(q)}%`;
           const fallback = await supabase
             .from('experiences')
-            .select('*')
+            .select('*, domains(description)')
             .eq('user_id', user.id)
             .is('soft_deleted_at', null)
             .ilike(column, pattern)

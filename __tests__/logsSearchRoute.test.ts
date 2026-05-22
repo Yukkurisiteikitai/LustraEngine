@@ -135,4 +135,25 @@ describe('/api/logs/search', () => {
     expect(json.items).toHaveLength(1);
     expect(json.items[0]?.experience.id).toBe('e-2');
   });
+
+  it('returns a server error when rpc fails for an unexpected reason', async () => {
+    const fromMock = jest.fn();
+    mockCreateSupabaseServerClient.mockResolvedValueOnce({
+      auth: {
+        getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }),
+      },
+      rpc: jest.fn().mockResolvedValue({
+        data: null,
+        error: { code: '23505', message: 'duplicate key value violates unique constraint' },
+      }),
+      from: fromMock,
+    });
+
+    const response = await GET(
+      new Request('https://example.test/api/logs/search?q=%E6%94%B9%E9%80%A0&field=description'),
+    );
+
+    expect(response.status).toBe(500);
+    expect(fromMock).not.toHaveBeenCalled();
+  });
 });

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import type { ExperienceData } from '@/core/domains/experience/Experience';
 import {
   formatArchiveDate,
@@ -40,10 +40,11 @@ function fieldValue(value?: string | null) {
 export default function LogViewClient({ experience }: Props) {
   const [item, setItem] = useState(experience);
   const [message, setMessage] = useState('');
-  const [isPending, startTransition] = useTransition();
+  const [pendingAction, setPendingAction] = useState<'soft_delete' | 'exclude' | null>(null);
 
   async function updateDisposition(action: 'soft_delete' | 'exclude') {
     setMessage('');
+    setPendingAction(action);
     try {
       const res = await fetch(`/api/logs/${item.id}`, {
         method: 'PATCH',
@@ -68,6 +69,8 @@ export default function LogViewClient({ experience }: Props) {
       setMessage(action === 'soft_delete' ? '記録を削除しました' : '記録を除外しました');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '更新に失敗しました');
+    } finally {
+      setPendingAction((current) => (current === action ? null : current));
     }
   }
 
@@ -143,24 +146,20 @@ export default function LogViewClient({ experience }: Props) {
             <button
               type="button"
               className={styles.secondary}
-              disabled={isPending || Boolean(item.softDeletedAt)}
-              onClick={() =>
-                startTransition(() => {
-                  void updateDisposition('soft_delete');
-                })
-              }
+              disabled={pendingAction !== null || Boolean(item.softDeletedAt)}
+              onClick={() => {
+                void updateDisposition('soft_delete');
+              }}
             >
               記録を削除する
             </button>
             <button
               type="button"
               className={styles.secondary}
-              disabled={isPending || item.visibility === 'excluded'}
-              onClick={() =>
-                startTransition(() => {
-                  void updateDisposition('exclude');
-                })
-              }
+              disabled={pendingAction !== null || item.visibility === 'excluded'}
+              onClick={() => {
+                void updateDisposition('exclude');
+              }}
             >
               除外する
             </button>

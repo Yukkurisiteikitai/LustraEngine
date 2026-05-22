@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import LogViewClient from '@/app/logs/view/[id]/LogViewClient';
 
@@ -8,10 +8,11 @@ describe('LogViewClient', () => {
   });
 
   it('renders a record and updates local state after actions', async () => {
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ ok: true }),
+    let resolveFetch!: (value: { ok: boolean; json: () => Promise<{ ok: boolean }> }) => void;
+    const fetchPromise = new Promise<{ ok: boolean; json: () => Promise<{ ok: boolean }> }>((resolve) => {
+      resolveFetch = resolve;
     });
+    const fetchMock = jest.fn().mockReturnValue(fetchPromise);
     global.fetch = fetchMock as unknown as typeof fetch;
 
     const user = userEvent.setup();
@@ -45,7 +46,15 @@ describe('LogViewClient', () => {
     expect(screen.getByRole('button', { name: '記録を削除する' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '除外する' })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: '除外する' }));
+    const excludeButton = screen.getByRole('button', { name: '除外する' });
+    await user.click(excludeButton);
+
+    expect(excludeButton).toBeDisabled();
+
+    resolveFetch({
+      ok: true,
+      json: async () => ({ ok: true }),
+    });
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -56,10 +65,8 @@ describe('LogViewClient', () => {
       );
     });
 
-    expect(screen.getByText('記録を除外しました')).toBeInTheDocument();
-
-    await act(async () => {
-      await Promise.resolve();
+    await waitFor(() => {
+      expect(screen.getByText('記録を除外しました')).toBeInTheDocument();
     });
 
     expect(screen.getByText('除外', { selector: 'span.statusBadge' })).toBeInTheDocument();
