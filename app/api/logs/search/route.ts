@@ -16,11 +16,35 @@ type SearchRow = Record<string, unknown> & {
   search_rank?: number;
 };
 
+const SEARCH_FIELD_COLUMNS: Record<LogSearchField, string> = {
+  description: 'description',
+  context: 'context',
+  action: 'action',
+  emotion: 'emotion',
+  goal: 'goal',
+  action_memo: 'action_memo',
+};
+
 type SearchItem = {
   experience: ExperienceData;
   matchedField: LogSearchField;
   searchRank: number;
 };
+
+function escapeLikePattern(value: string): string {
+  return value.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_');
+}
+
+function mapSearchRows(rows: unknown[], field: LogSearchField): SearchItem[] {
+  return rows.map((row) => {
+    const searchRow = row as SearchRow;
+    return {
+      experience: ExperienceMapper.fromRow(searchRow),
+      matchedField: normalizeLogSearchField(searchRow.matched_field ?? field),
+      searchRank: Number(searchRow.search_rank ?? 0),
+    };
+  });
+}
 
 export async function GET(request: Request) {
   try {
@@ -51,16 +75,32 @@ export async function GET(request: Request) {
       p_limit: limit,
     });
 
-    if (error) throw error;
+    const items = error
+      ? await (async () => {
+          console.warn('[logs:search] rpc fallback', {
+            code: (error as { code?: string }).code,
+            message: (error as { message?: string }).message,
+          });
 
-    const items: SearchItem[] = (data ?? []).map((row) => {
-      const searchRow = row as SearchRow;
-      return {
-        experience: ExperienceMapper.fromRow(searchRow),
-        matchedField: normalizeLogSearchField(searchRow.matched_field ?? field),
-        searchRank: Number(searchRow.search_rank ?? 0),
-      };
-    });
+          const column = SEARCH_FIELD_COLUMNS[field];
+          const pattern = `%${escapeLikePattern(q)}%`;
+          const fallback = await supabase
+            .from('experiences')
+            .select('*')
+            .eq('user_id', user.id)
+            .is('soft_deleted_at', null)
+            .ilike(column, pattern)
+            .order('logged_at', { ascending: false })
+            .order('created_at', { ascending: false })
+            .limit(limit);
+
+          if (fallback.error) throw fallback.error;
+          return mapSearchRows(fallback.data ?? [], field).map((item) => ({
+            ...item,
+            searchRank: 0,
+          }));
+        })()
+      : mapSearchRows(data ?? [], field);
 
     return NextResponse.json({ items, field, q });
   } catch (error) {

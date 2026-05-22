@@ -32,14 +32,37 @@ export class SupabaseExperienceRepository implements IExperienceRepository {
   async findById(userId: string, experienceId: string): Promise<ExperienceData | null> {
     const { data, error } = await this.supabase
       .from('experiences')
-      .select('*, domains(description)')
+      .select('*')
       .eq('user_id', userId)
       .eq('id', experienceId)
       .is('soft_deleted_at', null)
-      .maybeSingle();
+      .limit(1);
 
     if (error) throw new InfrastructureError('experience:findById failed', error);
-    return data ? ExperienceMapper.fromRow(data as Record<string, unknown>) : null;
+    const row = data?.[0];
+    if (!row) return null;
+
+    const typedRow = row as Record<string, unknown>;
+    const domainId = typedRow.domain_id as string | null | undefined;
+
+    if (domainId) {
+      const { data: domainData, error: domainError } = await this.supabase
+        .from('domains')
+        .select('description')
+        .eq('id', domainId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (domainError) {
+        throw new InfrastructureError('experience:findById domain lookup failed', domainError);
+      }
+
+      if (domainData?.description) {
+        typedRow.domain_description = domainData.description;
+      }
+    }
+
+    return ExperienceMapper.fromRow(typedRow);
   }
 
   async save(

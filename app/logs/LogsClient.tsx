@@ -155,14 +155,17 @@ export default function LogsClient({ experiences }: Props) {
       <header className={styles.hero}>
         <div className={styles.heroCopy}>
           <p className={styles.kicker}>Archive</p>
-          <h1 className={styles.title}>過去ログ</h1>
+          <h1 className={styles.title}>記録ハブ</h1>
           <p className={styles.description}>
-            検索語を入れると、サーバー側で全文検索して一致した記録だけを表示します。詳細は各カードから開けます。
+            ここから新しく記録したり、過去ログを全文検索したり、詳細を開いて読み返せます。
           </p>
         </div>
         <div className={styles.heroActions}>
           <Link href="/log/new" className={styles.primary}>
             新しく記録する
+          </Link>
+          <Link href="/dashboard" className={styles.secondary}>
+            ダッシュボードへ
           </Link>
           <button type="button" className={styles.secondary} onClick={resetArchive}>
             最新に戻す
