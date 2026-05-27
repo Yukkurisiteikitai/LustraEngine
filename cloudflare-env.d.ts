@@ -12,6 +12,11 @@ declare global {
   interface CloudflareEnv {
     SUPABASE_URL: string;
     SUPABASE_SERVICE_ROLE_KEY: string;
+    AMC_MEDIA_BUCKET: R2Bucket;
+    R2_ACCOUNT_ID: string;
+    R2_ACCESS_KEY_ID: string;
+    R2_SECRET_ACCESS_KEY: string;
+    AMC_R2_BUCKET?: string;
     // Compatibility binding name; stores Analytics ViewModel JSON, not HTML.
     HTML_CACHE: KVNamespace;
     ANALYSIS_QUEUE: Queue<AnalysisQueueMessage>;
