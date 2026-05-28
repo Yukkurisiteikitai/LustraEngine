@@ -334,10 +334,10 @@ SECURITY DEFINER
 SET search_path = ''
 AS $$
 DECLARE
-  v_event amc_events%ROWTYPE;
-  v_record amc_records%ROWTYPE;
+  v_event public.amc_events%ROWTYPE;
+  v_record public.amc_records%ROWTYPE;
 BEGIN
-  INSERT INTO amc_events (
+  INSERT INTO public.amc_events (
     owner_user_id,
     google_calendar_event_id,
     title,
@@ -360,10 +360,10 @@ BEGIN
     p_event_idempotency_key
   )
   ON CONFLICT (owner_user_id, client_idempotency_key)
-  DO UPDATE SET updated_at = amc_events.updated_at
+  DO UPDATE SET updated_at = public.amc_events.updated_at
   RETURNING * INTO v_event;
 
-  INSERT INTO amc_records (
+  INSERT INTO public.amc_records (
     owner_user_id,
     event_id,
     current_body,
@@ -380,7 +380,7 @@ BEGIN
     p_record_idempotency_key
   )
   ON CONFLICT (owner_user_id, client_idempotency_key)
-  DO UPDATE SET updated_at = amc_records.updated_at
+  DO UPDATE SET updated_at = public.amc_records.updated_at
   RETURNING * INTO v_record;
 
   RETURN jsonb_build_object(
@@ -389,6 +389,37 @@ BEGIN
   );
 END;
 $$;
+
+REVOKE ALL ON FUNCTION public.amc_init_record_bundle(
+  uuid,
+  text,
+  text,
+  text,
+  timestamptz,
+  timestamptz,
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  text
+) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.amc_init_record_bundle(
+  uuid,
+  text,
+  text,
+  text,
+  timestamptz,
+  timestamptz,
+  text,
+  text,
+  text,
+  text,
+  text,
+  text,
+  text
+) TO service_role;
 
 CREATE OR REPLACE FUNCTION public.amc_save_record_revision(
   p_record_id uuid,
@@ -404,12 +435,12 @@ SECURITY DEFINER
 SET search_path = ''
 AS $$
 DECLARE
-  v_record amc_records%ROWTYPE;
-  v_revision amc_record_revisions%ROWTYPE;
+  v_record public.amc_records%ROWTYPE;
+  v_revision public.amc_record_revisions%ROWTYPE;
 BEGIN
   SELECT *
   INTO v_record
-  FROM amc_records
+  FROM public.amc_records
   WHERE id = p_record_id
   FOR UPDATE;
 
@@ -428,7 +459,7 @@ BEGIN
   IF p_client_idempotency_key IS NOT NULL THEN
     SELECT *
     INTO v_revision
-    FROM amc_record_revisions
+    FROM public.amc_record_revisions
     WHERE record_id = p_record_id
       AND client_idempotency_key = p_client_idempotency_key;
 
@@ -444,7 +475,7 @@ BEGIN
     RAISE EXCEPTION 'revision_conflict' USING ERRCODE = 'P0001';
   END IF;
 
-  INSERT INTO amc_record_revisions (
+  INSERT INTO public.amc_record_revisions (
     record_id,
     revision_number,
     body,
@@ -462,7 +493,7 @@ BEGIN
   )
   RETURNING * INTO v_revision;
 
-  UPDATE amc_records
+  UPDATE public.amc_records
   SET
     current_revision = v_revision.revision_number,
     current_body = p_body,
@@ -477,6 +508,9 @@ BEGIN
   );
 END;
 $$;
+
+REVOKE ALL ON FUNCTION public.amc_save_record_revision(uuid, uuid, integer, text, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.amc_save_record_revision(uuid, uuid, integer, text, text, text) TO service_role;
 
 CREATE OR REPLACE FUNCTION public.amc_create_share_link_bundle(
   p_owner_user_id uuid,
@@ -495,10 +529,10 @@ SECURITY DEFINER
 SET search_path = ''
 AS $$
 DECLARE
-  v_link amc_share_links%ROWTYPE;
+  v_link public.amc_share_links%ROWTYPE;
   v_grant jsonb;
 BEGIN
-  INSERT INTO amc_share_links (
+  INSERT INTO public.amc_share_links (
     owner_user_id,
     record_id,
     token_hash,
@@ -519,14 +553,14 @@ BEGIN
     COALESCE(p_client_idempotency_key, gen_random_uuid()::text)
   )
   ON CONFLICT (owner_user_id, client_idempotency_key)
-  DO UPDATE SET updated_at = amc_share_links.updated_at
+  DO UPDATE SET updated_at = public.amc_share_links.updated_at
   RETURNING * INTO v_link;
 
   IF jsonb_typeof(p_grants) = 'array' THEN
     FOR v_grant IN
       SELECT value FROM jsonb_array_elements(p_grants)
     LOOP
-      INSERT INTO amc_share_grants (
+      INSERT INTO public.amc_share_grants (
         record_id,
         share_link_id,
         grant_kind,
@@ -550,9 +584,14 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION public.amc_create_share_link_bundle(uuid, uuid, text, text, text, timestamptz, integer, text, jsonb) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.amc_create_share_link_bundle(uuid, uuid, text, text, text, timestamptz, integer, text, jsonb) TO service_role;
+
 CREATE OR REPLACE FUNCTION public.amc_claim_share_link(
   p_token_hash text,
-  p_viewer_user_id uuid
+  p_viewer_user_id uuid,
+  p_viewer_google_subject text DEFAULT NULL,
+  p_viewer_email text DEFAULT NULL
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -560,11 +599,17 @@ SECURITY DEFINER
 SET search_path = ''
 AS $$
 DECLARE
-  v_link amc_share_links%ROWTYPE;
+  v_link public.amc_share_links%ROWTYPE;
+  v_owner_user_id uuid;
+  v_specific_user_granted boolean := false;
+  v_friend_granted boolean := false;
+  v_friendship_accepted boolean := false;
+  v_allowed boolean := false;
+  v_reason text := 'denied';
 BEGIN
   SELECT *
   INTO v_link
-  FROM amc_share_links
+  FROM public.amc_share_links
   WHERE token_hash = p_token_hash
   FOR UPDATE;
 
@@ -572,8 +617,17 @@ BEGIN
     RAISE EXCEPTION 'share_link_not_found' USING ERRCODE = 'P0002';
   END IF;
 
+  SELECT r.owner_user_id
+  INTO v_owner_user_id
+  FROM public.amc_records r
+  WHERE r.id = v_link.record_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'record_not_found' USING ERRCODE = 'P0002';
+  END IF;
+
   IF v_link.revoked_at IS NOT NULL THEN
-    INSERT INTO amc_share_access_events (
+    INSERT INTO public.amc_share_access_events (
       record_id,
       share_link_id,
       viewer_user_id,
@@ -593,7 +647,7 @@ BEGIN
   END IF;
 
   IF v_link.expires_at IS NOT NULL AND v_link.expires_at < now() THEN
-    INSERT INTO amc_share_access_events (
+    INSERT INTO public.amc_share_access_events (
       record_id,
       share_link_id,
       viewer_user_id,
@@ -613,7 +667,7 @@ BEGIN
   END IF;
 
   IF v_link.max_uses IS NOT NULL AND v_link.use_count >= v_link.max_uses THEN
-    INSERT INTO amc_share_access_events (
+    INSERT INTO public.amc_share_access_events (
       record_id,
       share_link_id,
       viewer_user_id,
@@ -632,13 +686,109 @@ BEGIN
     RAISE EXCEPTION 'share_link_exhausted' USING ERRCODE = 'P0001';
   END IF;
 
-  UPDATE amc_share_links
+  IF p_viewer_user_id IS NULL THEN
+    INSERT INTO public.amc_share_access_events (
+      record_id,
+      share_link_id,
+      viewer_user_id,
+      access_scope,
+      result,
+      reason
+    )
+    VALUES (
+      v_link.record_id,
+      v_link.id,
+      NULL,
+      v_link.access_scope,
+      'denied',
+      'authentication_required'
+    );
+    RAISE EXCEPTION 'authentication_required' USING ERRCODE = '28000';
+  END IF;
+
+  IF p_viewer_user_id = v_owner_user_id THEN
+    v_allowed := true;
+    v_reason := 'owner';
+  ELSIF v_link.access_scope = 'public' THEN
+    v_allowed := true;
+    v_reason := 'public';
+  ELSIF v_link.access_scope = 'limited_public' THEN
+    v_allowed := true;
+    v_reason := 'limited_public';
+  ELSIF v_link.access_scope = 'specific_users' THEN
+    SELECT EXISTS (
+      SELECT 1
+      FROM public.amc_share_grants g
+      WHERE g.share_link_id = v_link.id
+        AND g.grant_kind = 'specific_user'
+        AND (
+          g.grantee_user_id = p_viewer_user_id
+          OR (p_viewer_google_subject IS NOT NULL AND g.grantee_google_subject = p_viewer_google_subject)
+          OR (p_viewer_email IS NOT NULL AND g.grantee_email = p_viewer_email)
+        )
+    )
+    INTO v_specific_user_granted;
+    v_allowed := v_specific_user_granted;
+    v_reason := CASE WHEN v_allowed THEN 'specific_users' ELSE 'missing_specific_grant' END;
+  ELSIF v_link.access_scope = 'friends' THEN
+    SELECT EXISTS (
+      SELECT 1
+      FROM public.amc_share_grants g
+      WHERE g.share_link_id = v_link.id
+        AND g.grant_kind = 'friend'
+    )
+    INTO v_friend_granted;
+
+    IF v_friend_granted THEN
+      SELECT EXISTS (
+        SELECT 1
+        FROM public.amc_friendships f
+        WHERE f.status = 'accepted'
+          AND (
+            (f.requester_user_id = v_owner_user_id AND f.addressee_user_id = p_viewer_user_id)
+            OR (f.requester_user_id = p_viewer_user_id AND f.addressee_user_id = v_owner_user_id)
+          )
+      )
+      INTO v_friendship_accepted;
+    END IF;
+
+    v_allowed := v_friend_granted AND v_friendship_accepted;
+    v_reason := CASE
+      WHEN NOT v_friend_granted THEN 'missing_friend_grant'
+      WHEN NOT v_friendship_accepted THEN 'missing_friendship'
+      ELSE 'friends'
+    END;
+  ELSE
+    RAISE EXCEPTION 'unsupported_access_scope' USING ERRCODE = 'P0001';
+  END IF;
+
+  IF NOT v_allowed THEN
+    INSERT INTO public.amc_share_access_events (
+      record_id,
+      share_link_id,
+      viewer_user_id,
+      access_scope,
+      result,
+      reason
+    )
+    VALUES (
+      v_link.record_id,
+      v_link.id,
+      p_viewer_user_id,
+      v_link.access_scope,
+      'denied',
+      v_reason
+    );
+    RAISE EXCEPTION 'access_denied' USING ERRCODE = '42501';
+  END IF;
+
+  UPDATE public.amc_share_links
   SET use_count = use_count + 1,
       updated_at = now()
   WHERE id = v_link.id
   RETURNING * INTO v_link;
 
-  INSERT INTO amc_share_access_events (
+  INSERT INTO public.amc_share_access_events (
     record_id,
     share_link_id,
     viewer_user_id,
@@ -652,12 +802,15 @@ BEGIN
     p_viewer_user_id,
     v_link.access_scope,
     'granted',
-    NULL
+    v_reason
   );
 
   RETURN jsonb_build_object('shareLink', to_jsonb(v_link));
 END;
 $$;
+
+REVOKE ALL ON FUNCTION public.amc_claim_share_link(text, uuid, text, text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.amc_claim_share_link(text, uuid, text, text) TO service_role;
 
 CREATE OR REPLACE FUNCTION public.amc_tombstone_share_link(
   p_share_link_id uuid,
@@ -669,7 +822,7 @@ SECURITY DEFINER
 SET search_path = ''
 AS $$
 BEGIN
-  UPDATE amc_share_links
+  UPDATE public.amc_share_links
   SET revoked_at = now(),
       updated_at = now()
   WHERE id = p_share_link_id
@@ -677,16 +830,19 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION public.amc_tombstone_share_link(uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.amc_tombstone_share_link(uuid, uuid) TO service_role;
+
 CREATE INDEX IF NOT EXISTS amc_records_owner_visibility_idx
-  ON amc_records (owner_user_id, visibility, deleted_at, updated_at DESC);
+  ON public.amc_records (owner_user_id, visibility, deleted_at, updated_at DESC);
 
 CREATE INDEX IF NOT EXISTS amc_record_attachments_record_idx
-  ON amc_record_attachments (record_id, status, created_at DESC);
+  ON public.amc_record_attachments (record_id, status, created_at DESC);
 
 CREATE INDEX IF NOT EXISTS amc_share_links_record_idx
-  ON amc_share_links (record_id, created_at DESC);
+  ON public.amc_share_links (record_id, created_at DESC);
 
 CREATE INDEX IF NOT EXISTS amc_share_access_events_record_idx
-  ON amc_share_access_events (record_id, accessed_at DESC);
+  ON public.amc_share_access_events (record_id, accessed_at DESC);
 
 COMMIT;

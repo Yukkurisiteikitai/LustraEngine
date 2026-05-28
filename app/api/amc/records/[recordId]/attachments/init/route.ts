@@ -106,35 +106,68 @@ export async function POST(
 
     const attachmentId = crypto.randomUUID();
     const r2Key = `users/${user.id}/records/${recordId}/attachments/${attachmentId}`;
-    const { data: attachment, error: attachmentError } = await admin
+    const attachmentPayload = {
+      id: attachmentId,
+      record_id: recordId,
+      owner_user_id: user.id,
+      attachment_type: body.attachmentType,
+      r2_key: r2Key,
+      mime_type: body.mimeType,
+      size_bytes: body.sizeBytes,
+      checksum: body.checksum ?? null,
+      status: 'uploading',
+      client_idempotency_key: body.idempotencyKey,
+      retry_count: 0,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data: insertedAttachment, error: insertError } = await admin
       .from('amc_record_attachments')
-      .upsert(
-        {
-          id: attachmentId,
-          record_id: recordId,
-          owner_user_id: user.id,
-          attachment_type: body.attachmentType,
-          r2_key: r2Key,
-          mime_type: body.mimeType,
-          size_bytes: body.sizeBytes,
-          checksum: body.checksum ?? null,
-          status: 'uploading',
-          client_idempotency_key: body.idempotencyKey,
-          retry_count: 0,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'record_id,client_idempotency_key' },
-      )
+      .insert(attachmentPayload)
       .select('*')
       .single();
 
-    if (attachmentError) throw attachmentError;
+    if (insertError) {
+      const duplicateKey = (insertError as { code?: string }).code === '23505';
+      if (!duplicateKey) throw insertError;
+
+      const { data: existingAttachment, error: selectError } = await admin
+        .from('amc_record_attachments')
+        .select('*')
+        .eq('record_id', recordId)
+        .eq('client_idempotency_key', body.idempotencyKey)
+        .maybeSingle();
+
+      if (selectError) throw selectError;
+      if (!existingAttachment) {
+        throw insertError;
+      }
+
+      const r2 = requireR2Env();
+      const retryUploadUrl = generateR2PresignedUrl({
+        accountId: r2.accountId,
+        bucket: r2.bucket,
+        key: existingAttachment.r2_key,
+        method: 'PUT',
+        accessKeyId: r2.accessKeyId,
+        secretAccessKey: r2.secretAccessKey,
+        expiresInSeconds: 3600,
+        contentType: existingAttachment.mime_type,
+      });
+
+      return NextResponse.json({
+        ok: true,
+        attachment: existingAttachment,
+        uploadUrl: retryUploadUrl,
+        expiresInSeconds: 3600,
+      });
+    }
 
     const r2 = requireR2Env();
     const uploadUrl = generateR2PresignedUrl({
       accountId: r2.accountId,
       bucket: r2.bucket,
-      key: attachment.r2_key,
+      key: insertedAttachment.r2_key,
       method: 'PUT',
       accessKeyId: r2.accessKeyId,
       secretAccessKey: r2.secretAccessKey,
@@ -144,7 +177,7 @@ export async function POST(
 
     return NextResponse.json({
       ok: true,
-      attachment,
+      attachment: insertedAttachment,
       uploadUrl,
       expiresInSeconds: 3600,
     });

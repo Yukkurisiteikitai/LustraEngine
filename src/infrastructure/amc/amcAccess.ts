@@ -14,6 +14,8 @@ export type AmcAccessScope =
   | 'public'
   | 'limited_public';
 
+export type AmcShareLinkScope = Exclude<AmcAccessScope, 'private'>;
+
 export type AmcShareGrantKind = 'specific_user' | 'friend' | 'public' | 'limited_public';
 
 export interface AmcRecordRow {

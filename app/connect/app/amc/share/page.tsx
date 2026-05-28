@@ -5,13 +5,20 @@ import { ensureGoogleIdentityLink } from '@/infrastructure/amc/amcAuth';
 import { generateR2PresignedUrl, sha256Hex } from '@/infrastructure/amc/amcCrypto';
 import { ValidationError } from '@/core/errors/ValidationError';
 
-async function loadSharePageData(token: string, viewerUserId: string) {
+async function loadSharePageData(
+  token: string,
+  viewerUserId: string,
+  viewerGoogleSubject: string,
+  viewerEmail: string | null,
+) {
   const admin = createAdminClient();
   const tokenHash = sha256Hex(token);
 
   const { data: claim, error: claimError } = await admin.rpc('amc_claim_share_link', {
     p_token_hash: tokenHash,
     p_viewer_user_id: viewerUserId,
+    p_viewer_google_subject: viewerGoogleSubject,
+    p_viewer_email: viewerEmail,
   });
 
   if (claimError) {
@@ -95,14 +102,14 @@ export default async function AmcSharePage({
   }
 
   const admin = createAdminClient();
-  await ensureGoogleIdentityLink(admin, user);
+  const googleIdentity = await ensureGoogleIdentityLink(admin, user);
 
   let data:
     | Awaited<ReturnType<typeof loadSharePageData>>
     | null = null;
   let errorMessage: string | null = null;
   try {
-    data = await loadSharePageData(c, user.id);
+    data = await loadSharePageData(c, user.id, googleIdentity.googleSubject, user.email ?? googleIdentity.googleEmail);
   } catch (error) {
     errorMessage = error instanceof Error ? error.message : 'share_link_error';
   }

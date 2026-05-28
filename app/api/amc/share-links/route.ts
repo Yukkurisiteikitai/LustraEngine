@@ -7,7 +7,7 @@ import { ValidationError } from '@/core/errors/ValidationError';
 import { AuthError } from '@/core/errors/AuthError';
 import { AuthorizationError } from '@/core/errors/AuthorizationError';
 import { handleError, checkBodySize } from '@/lib/apiHelpers';
-import type { AmcAccessScope, AmcShareGrantKind } from '@/infrastructure/amc/amcAccess';
+import type { AmcShareLinkScope, AmcShareGrantKind } from '@/infrastructure/amc/amcAccess';
 
 interface ShareLinkGrantInput {
   grantKind: AmcShareGrantKind;
@@ -18,23 +18,22 @@ interface ShareLinkGrantInput {
 
 interface ShareLinkCreateRequestBody {
   recordId: string;
-  accessScope: AmcAccessScope;
+  accessScope: AmcShareLinkScope;
   idempotencyKey: string;
   expiresAt?: string | null;
   maxUses?: number | null;
   grants?: ShareLinkGrantInput[];
 }
 
-const AMC_ACCESS_SCOPES: readonly AmcAccessScope[] = [
-  'private',
+const AMC_SHARE_LINK_SCOPES: readonly AmcShareLinkScope[] = [
   'specific_users',
   'friends',
   'public',
   'limited_public',
 ];
 
-function isAccessScope(value: unknown): value is AmcAccessScope {
-  return AMC_ACCESS_SCOPES.includes(value as AmcAccessScope);
+function isAccessScope(value: unknown): value is AmcShareLinkScope {
+  return AMC_SHARE_LINK_SCOPES.includes(value as AmcShareLinkScope);
 }
 
 export async function POST(request: Request) {
