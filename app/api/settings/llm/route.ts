@@ -57,7 +57,9 @@ export async function GET() {
     const supabase = await createSupabaseServerClient();
     const {
       data: { user },
+      error: authError,
     } = await supabase.auth.getUser();
+    if (authError || !user) console.error('[DEBUG] getUser result:', { user: !!user, authError });
     if (!user) throw new AuthError('認証が必要です');
 
     // In production, user-managed LLM settings are disabled.
@@ -80,7 +82,9 @@ export async function POST(req: Request) {
     const supabase = await createSupabaseServerClient();
     const {
       data: { user },
+      error: authError,
     } = await supabase.auth.getUser();
+    if (authError || !user) console.error('[DEBUG] getUser result:', { user: !!user, authError });
     if (!user) throw new AuthError('認証が必要です');
 
     // In production, reject user-managed LLM settings storage.

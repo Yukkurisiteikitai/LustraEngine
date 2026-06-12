@@ -4,8 +4,7 @@
 	"name": "lustra-mvp-ui",
 	"compatibility_date": "2026-03-13",
 	"compatibility_flags": [
-		"nodejs_compat",
-		"global_fetch_strictly_public"
+		"nodejs_compat"
 	],
 	"assets": {
 		"directory": ".open-next/assets",
@@ -49,7 +48,7 @@
 			{
 				"queue": "analysis-jobs",
 				"max_batch_size": 10,
-				"max_batch_timeout": 30,
+				"max_batch_timeout": 1,
 				"max_retries": 3,
 				"dead_letter_queue": "analysis-jobs-dead-letter"
 			}
