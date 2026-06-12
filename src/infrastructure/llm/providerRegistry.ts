@@ -106,7 +106,7 @@ export function normalizeLLMConfig(config: LMConfig): ResolvedLLMConfig {
       provider: 'custom_openai_compatible',
       type: 'gpt',
       model: config.lmstudioModel ?? config.model ?? 'local-model',
-      apiKey: config.lmstudioApiKey ?? config.apiKey ?? 'lm-studio',
+      apiKey: config.lmstudioApiKey || config.apiKey || 'lm-studio',
       baseUrl,
       temperature: config.temperature,
       maxTokens: config.maxTokens,

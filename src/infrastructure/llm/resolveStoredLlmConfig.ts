@@ -28,7 +28,12 @@ export async function resolveStoredLlmConfig(
     : '';
 
   if (!storedApiKey) {
-    throw new Error('Active LLM setting does not contain a readable API key');
+    if (activeSetting.hasApiKey) {
+      // had an api key but couldn't decrypt — encryption key mismatch or corruption
+      throw new Error('Active LLM setting does not contain a readable API key');
+    }
+    // hasApiKey=false: no key was stored (e.g. LM Studio placeholder), fall back to provided config
+    return validateLLMConfig(config);
   }
 
   const merged = {

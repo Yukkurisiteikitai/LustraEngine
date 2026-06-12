@@ -68,7 +68,6 @@ describe('settings llm route', () => {
           type: 'gpt',
           model: 'local-model',
           lmstudioEndpoint: 'http://localhost:1234/v1',
-          lmstudioApiKey: 'lm-studio',
           lmstudioModel: 'local-model',
         }),
         json: async () => ({
@@ -76,7 +75,6 @@ describe('settings llm route', () => {
           type: 'gpt',
           model: 'local-model',
           lmstudioEndpoint: 'http://localhost:1234/v1',
-          lmstudioApiKey: 'lm-studio',
           lmstudioModel: 'local-model',
         }),
       } as never,

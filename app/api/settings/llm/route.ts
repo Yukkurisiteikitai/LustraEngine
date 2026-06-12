@@ -105,7 +105,8 @@ export async function POST(req: Request) {
     const { llmSettings } = createRepositories(supabase);
     const existing = await llmSettings.getActiveByUser(user.id);
 
-    const requestedApiKey = typeof body.apiKey === 'string' ? body.apiKey.trim() : '';
+    const requestedApiKey = (typeof body.apiKey === 'string' ? body.apiKey.trim() : '')
+      || (typeof body.lmstudioApiKey === 'string' ? body.lmstudioApiKey.trim() : '');
     const encryptionKey = requestedApiKey || existing?.encryptedApiKey
       ? resolveLlmSettingsEncryptionKey()
       : null;
