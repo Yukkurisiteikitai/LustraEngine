@@ -1,3 +1,12 @@
+---
+title: Analysis Job Pipeline 実行可能性レビュー
+category: analysis
+status: archived
+date: 2026-05-12
+tags: [analysis-job, pipeline, e2e, blocker, review]
+related: [../bug/2026-06-08_blocker-fix-complete.md, ../bug/2026-06-08_blocker-fix-report.md]
+---
+
 # Analysis Job Pipeline 実行可能性レビューレポート
 
 ## 確認日: 2026-05-12

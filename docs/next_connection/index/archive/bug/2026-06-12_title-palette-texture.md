@@ -1,3 +1,14 @@
+---
+title: チャットがフォールバックテンプレートしか返さないバグ
+category: bug
+status: archived
+date: 2026-06-12
+tags: [lm-studio, chat, fallback, api-key, settings, lmstudio]
+related: [../../active/llm/2026-06-11_local-llm-setup.md]
+---
+
+> **2026-06-14 注**: commit `eb63919 fix: LM Studio chat always returned fallback template instead of real responses` で解決済みのため archive に移動。
+
 ### issues (直面している問題)
 - チャット画面でメッセージを送信しても、AIからの回答ではなく、常に**固定のテンプレート文**（「仮説を作るために、次の点を記録してください…」）しか返ってこない。
 - または、内部的に `{"message":"予期しないエラーが発生しました"}` が発生し、チャットが正常に進行しない。
