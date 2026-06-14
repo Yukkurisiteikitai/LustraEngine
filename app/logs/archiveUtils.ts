@@ -65,7 +65,18 @@ export function formatArchiveDate(date: string): string {
 }
 
 export function getActionLabel(actionResult: ExperienceData['actionResult']): string {
-  return actionResult === 'CONFRONTED' ? '向き合った' : '回避した';
+  switch (actionResult) {
+    case 'CONFRONTED_SUCCESS':
+      return '向き合えた';
+    case 'CONFRONTED_FAILED':
+      return '向き合ったが届かず';
+    case 'PARTIAL':
+      return '一部だけ進んだ';
+    case 'AVOIDED':
+      return '回避した';
+    default:
+      return '不明';
+  }
 }
 
 export function getVisibilityLabel(visibility: ExperienceData['visibility']): string {

@@ -1,43 +1,47 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import LogNewClient from '@/app/log/new/LogNewClient';
-import { useSubmitLogMutation } from '@/lib/mockQueryClient';
+import {
+  useExtractDiaryMutation,
+  useSubmitLogMutation,
+  type ExtractedDiaryFields,
+} from '@/lib/mockQueryClient';
 
 jest.mock('@/lib/mockQueryClient', () => ({
+  useExtractDiaryMutation: jest.fn(),
   useSubmitLogMutation: jest.fn(),
 }));
 
-const mockUseSubmitLogMutation = useSubmitLogMutation as jest.Mock;
+const mockUseExtract = useExtractDiaryMutation as jest.Mock;
+const mockUseSubmit = useSubmitLogMutation as jest.Mock;
 
-function setupMutation(mutate: jest.Mock) {
-  mockUseSubmitLogMutation.mockReturnValue({
-    mutate,
-    isPending: false,
-  });
+function setupExtract(mutate: jest.Mock) {
+  mockUseExtract.mockReturnValue({ mutate, isPending: false });
+}
+function setupSubmit(mutate: jest.Mock) {
+  mockUseSubmit.mockReturnValue({ mutate, isPending: false });
 }
 
-async function completeWizard(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText('いま、どのような障害に向き合っていますか？'), '上司に相談する');
-  await user.click(screen.getByRole('button', { name: '次へ' }));
+const SAMPLE_EXTRACTED: ExtractedDiaryFields = {
+  description: 'スタバで国語のレポートを2件完了',
+  context: 'スタバ',
+  timeOfDay: 'afternoon',
+  durationMinutes: 120,
+  emotions: [
+    { label: '爽快', intensity: 4 },
+    { label: '達成感', intensity: 4 },
+  ],
+  actionResult: 'CONFRONTED_SUCCESS',
+  trigger: '550円分は回収してやるという気持ち',
+  needsTriggerQuestion: false,
+  triggerQuestion: null,
+  modelName: 'qwen3-swallow-8b-rl-v0.2',
+};
 
-  await user.click(screen.getByRole('button', { name: '仕事' }));
-  await user.click(screen.getByRole('button', { name: '次へ' }));
-
-  await user.type(screen.getByLabelText('そのとき、どのような感情でしたか？（任意）'), '不安');
-  await user.type(screen.getByLabelText('どのような状況でしたか？（任意）'), '夜、一人で部屋にいた');
-  await user.type(screen.getByLabelText('本来、何をしようとしていましたか？（任意）'), '英語の勉強');
-  await user.click(screen.getByRole('button', { name: '次へ' }));
-
-  await user.click(screen.getByLabelText('向き合った'));
-  await user.type(screen.getByLabelText('実際にしたこと（任意）'), 'メールした');
-  await user.type(screen.getByLabelText('追加メモ（任意）'), '5分だけ取り組んだ');
-  await user.click(screen.getByRole('button', { name: '次へ' }));
-}
-
-describe('LogNewClient', () => {
+describe('LogNewClient (3-step diary → confirm → save flow)', () => {
   beforeEach(() => {
     jest.useFakeTimers();
-    jest.setSystemTime(new Date('2026-05-13T00:00:00.000Z'));
+    jest.setSystemTime(new Date('2026-06-14T00:00:00.000Z'));
     jest.clearAllMocks();
     window.sessionStorage.clear();
   });
@@ -49,113 +53,100 @@ describe('LogNewClient', () => {
     jest.useRealTimers();
   });
 
-  it('submits the existing /api/logs payload shape', async () => {
-    const mutate = jest.fn();
-    setupMutation(mutate);
+  it('extracts diary then saves a structured payload', async () => {
+    const extractMutate = jest.fn((_text: string, opts: { onSuccess: (r: ExtractedDiaryFields) => void }) => {
+      opts.onSuccess(SAMPLE_EXTRACTED);
+    });
+    const saveMutate = jest.fn();
+    setupExtract(extractMutate);
+    setupSubmit(saveMutate);
+
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-
     render(<LogNewClient />);
-    await completeWizard(user);
-    await user.click(screen.getByRole('button', { name: '送信する' }));
 
-    expect(mutate).toHaveBeenCalledTimes(1);
-    expect(mutate.mock.calls[0][0]).toMatchInlineSnapshot(`
-{
-  "date": "2026-05-13",
-  "obstacles": [
-    {
-      "action": "メールした",
-      "actionMemo": "5分だけ取り組んだ",
-      "actionResult": "CONFRONTED",
-      "context": "夜、一人で部屋にいた",
-      "description": "上司に相談する",
-      "domain": "WORK",
-      "emotion": "不安",
-      "goal": "英語の勉強",
-      "reportDifficulty": 3,
-      "stressLevel": 3,
-    },
-  ],
-}
-`);
+    // Step 1: type diary, click extract
+    const textarea = screen.getByPlaceholderText(/スタバで2時間レポート/);
+    await user.type(textarea, '今日は集中して取り組めた。レポートが終わって嬉しい。');
+    await user.click(screen.getByRole('button', { name: /AIに読み取ってもらう/ }));
+
+    expect(extractMutate).toHaveBeenCalledTimes(1);
+    expect(extractMutate.mock.calls[0][0]).toContain('今日は集中して');
+
+    // Step 2: confirm step renders extracted fields
+    expect(await screen.findByDisplayValue('スタバで国語のレポートを2件完了')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('スタバ')).toBeInTheDocument();
+    expect(screen.getByText('爽快')).toBeInTheDocument();
+
+    // Pick a domain (the LLM cannot infer this), then save
+    await user.click(screen.getByRole('button', { name: '仕事' }));
+    await user.click(screen.getByRole('button', { name: /保存する/ }));
+
+    expect(saveMutate).toHaveBeenCalledTimes(1);
+    const payload = saveMutate.mock.calls[0][0];
+    expect(payload.date).toBe('2026-06-14');
+    expect(payload.obstacles).toHaveLength(1);
+    const ob = payload.obstacles[0];
+    expect(ob.actionResult).toBe('CONFRONTED_SUCCESS');
+    expect(ob.timeOfDay).toBe('afternoon');
+    expect(ob.durationMinutes).toBe(120);
+    expect(ob.domain).toBe('WORK');
+    expect(ob.emotions).toEqual([
+      { label: '爽快', intensity: 4 },
+      { label: '達成感', intensity: 4 },
+    ]);
+    expect(ob.trigger).toBe('550円分は回収してやるという気持ち');
   });
 
-  it('resets the form after a successful submit', async () => {
-    const mutate = jest.fn((_payload, options) => {
-      options.onSuccess({ ok: true, message: 'ok' });
+  it('shows the trigger follow-up only when needsTriggerQuestion is true', async () => {
+    const extractMutate = jest.fn((_text: string, opts: { onSuccess: (r: ExtractedDiaryFields) => void }) => {
+      opts.onSuccess({
+        ...SAMPLE_EXTRACTED,
+        trigger: null,
+        needsTriggerQuestion: true,
+        triggerQuestion: 'なぜ取りかかれたのですか？',
+      });
     });
-    setupMutation(mutate);
+    const saveMutate = jest.fn();
+    setupExtract(extractMutate);
+    setupSubmit(saveMutate);
+
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-
     render(<LogNewClient />);
-    await completeWizard(user);
-    await user.click(screen.getByRole('button', { name: '送信する' }));
 
-    expect(screen.getByText('記録しました。必要に応じて設定から分析対象を調整してください。')).toBeInTheDocument();
+    await user.type(screen.getByPlaceholderText(/スタバで2時間レポート/), '夕方ジムに行った。');
+    await user.click(screen.getByRole('button', { name: /AIに読み取ってもらう/ }));
 
-    act(() => {
-      jest.advanceTimersByTime(2000);
-    });
+    await screen.findByDisplayValue('スタバで国語のレポートを2件完了');
+    await user.click(screen.getByRole('button', { name: '仕事' }));
+    await user.click(screen.getByRole('button', { name: /次へ/ }));
 
-    expect(screen.getByText('Step 1 / 3')).toBeInTheDocument();
-    expect(screen.getByLabelText('いま、どのような障害に向き合っていますか？')).toHaveValue('');
+    expect(await screen.findByText('なぜ取りかかれたのですか？')).toBeInTheDocument();
+
+    await user.type(screen.getByPlaceholderText('思い当たることを一言で…'), '体が動いた');
+    await user.click(screen.getByRole('button', { name: /保存する/ }));
+
+    expect(saveMutate).toHaveBeenCalledTimes(1);
+    expect(saveMutate.mock.calls[0][0].obstacles[0].trigger).toBe('体が動いた');
   });
 
-  it('keeps the confirmation input visible when mutation fails', async () => {
-    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const mutate = jest.fn((_payload, options) => {
-      options.onError(new Error('送信失敗'));
+  it('surfaces extraction errors and keeps the user on step 1', async () => {
+    const extractMutate = jest.fn((_text: string, opts: { onError: (e: Error) => void }) => {
+      opts.onError(new Error('LLMが落ちました'));
     });
-    setupMutation(mutate);
+    setupExtract(extractMutate);
+    setupSubmit(jest.fn());
+
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-
     render(<LogNewClient />);
-    await completeWizard(user);
-    await user.click(screen.getByRole('button', { name: '送信する' }));
 
-    expect(screen.getByText('エラー: 送信失敗')).toBeInTheDocument();
-    expect(screen.getByText('Step 3 / 3')).toBeInTheDocument();
-    expect(screen.getByText('上司に相談する')).toBeInTheDocument();
-    expect(screen.getByText('メールした')).toBeInTheDocument();
-    consoleError.mockRestore();
-  });
-
-  it('pre-fills chat fallback drafts and preserves source on submit', async () => {
-    const mutate = jest.fn();
-    setupMutation(mutate);
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-
-    window.sessionStorage.setItem(
-      'ylm:evidence_logging_draft',
-      JSON.stringify({
-        template: '出来事 / 感情 / 避けたこと or 向き合ったこと / 関係する領域',
-        questions: [
-          '直近で強く気になった出来事は何でしたか？',
-          'そのとき避けたこと、向き合ったことは何でしたか？',
-        ],
-        source: 'chat_fallback',
-      }),
-    );
-
-    render(<LogNewClient />);
+    await user.type(screen.getByPlaceholderText(/スタバで2時間レポート/), 'テスト日記です。');
+    await user.click(screen.getByRole('button', { name: /AIに読み取ってもらう/ }));
 
     await waitFor(() => {
-      expect(screen.getByText('直近で強く気になった出来事は何でしたか？')).toBeInTheDocument();
+      // error message renders in both the inline error box and the aria-live region
+      expect(screen.getAllByText('LLMが落ちました').length).toBeGreaterThan(0);
     });
-    expect(screen.getByLabelText('いま、どのような障害に向き合っていますか？')).toHaveValue(
-      '出来事 / 感情 / 避けたこと or 向き合ったこと / 関係する領域',
-    );
-    expect(window.sessionStorage.getItem('ylm:evidence_logging_draft')).toBeNull();
-
-    await user.click(screen.getByRole('button', { name: '次へ' }));
-    await user.click(screen.getByRole('button', { name: '仕事' }));
-    await user.click(screen.getByRole('button', { name: '次へ' }));
-    await user.click(screen.getByRole('button', { name: '次へ' }));
-    await user.click(screen.getByRole('radio', { name: '回避した' }));
-    await user.click(screen.getByRole('button', { name: '次へ' }));
-    await user.click(screen.getByRole('button', { name: '送信する' }));
-
-    expect(mutate).toHaveBeenCalledTimes(1);
-    expect(mutate.mock.calls[0][0].obstacles[0].source).toBe('chat_fallback');
+    // Still on step 1
+    expect(screen.getByText('Step 1 / 3')).toBeInTheDocument();
   });
 });

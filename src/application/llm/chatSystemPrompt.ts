@@ -136,10 +136,17 @@ export function buildChatSystemPrompt(
     experiences.length > 0
       ? experiences
           .slice(0, 5)
-          .map(
-            (e) =>
-              `- ${e.description.slice(0, 60)}（ストレス${e.stressLevel}/5、${e.actionResult === 'CONFRONTED' ? '向き合った' : '回避した'}）`,
-          )
+          .map((e) => {
+            const outcome =
+              e.actionResult === 'CONFRONTED_SUCCESS'
+                ? '向き合えた'
+                : e.actionResult === 'CONFRONTED_FAILED'
+                  ? '向き合ったが届かず'
+                  : e.actionResult === 'PARTIAL'
+                    ? '一部だけ進んだ'
+                    : '回避した';
+            return `- ${e.description.slice(0, 60)}（ストレス${e.stressLevel}/5、${outcome}）`;
+          })
           .join('\n')
       : '- 最近の体験記録はありません';
 

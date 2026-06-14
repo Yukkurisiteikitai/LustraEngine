@@ -3,6 +3,7 @@ import { ValidationError } from '@/core/errors/ValidationError';
 import { AuthError } from '@/core/errors/AuthError';
 import { AuthorizationError } from '@/core/errors/AuthorizationError';
 import { LLMError } from '@/core/errors/LLMError';
+import { LLMExtractionFailedError } from '@/core/errors/LLMExtractionFailedError';
 import { InfrastructureError } from '@/core/errors/InfrastructureError';
 import { RateLimitError } from '@/core/errors/RateLimitError';
 import { LLMConcurrencyError } from '@/core/errors/LLMConcurrencyError';
@@ -47,6 +48,14 @@ export function handleError(err: unknown): NextResponse {
   }
   if (err instanceof AuthorizationError) {
     return NextResponse.json({ message: err.message }, { status: 403 });
+  }
+  if (err instanceof LLMExtractionFailedError) {
+    console.error('api:llm_extraction_failed_502', {
+      message: err.message,
+      cause: err.cause,
+      stack: err.stack,
+    });
+    return NextResponse.json({ message: err.message, code: 'LLM_EXTRACTION_FAILED' }, { status: 502 });
   }
   if (err instanceof LLMError) {
     console.error('api:llm_error_502', {

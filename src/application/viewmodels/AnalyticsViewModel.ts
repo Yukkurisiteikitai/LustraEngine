@@ -2,7 +2,8 @@ export const ANALYTICS_VIEW_MODEL_VERSION = 1 as const;
 
 export type AnalyticsViewModelVersion = typeof ANALYTICS_VIEW_MODEL_VERSION;
 
-export type AnalyticsObstacleActionResult = 'AVOIDED' | 'CONFRONTED';
+import type { ActionResult } from '@/types';
+export type AnalyticsObstacleActionResult = ActionResult;
 
 export interface AnalyticsViewObstacle {
   id: string;

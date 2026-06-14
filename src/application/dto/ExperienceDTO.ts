@@ -1,8 +1,10 @@
+import type { ActionResult, ExperienceEmotion, TimeOfDay } from '@/types';
+
 export interface CreateExperienceDTO {
   description: string;
   stressLevel: number;
   domain: string;
-  actionResult: 'AVOIDED' | 'CONFRONTED';
+  actionResult: ActionResult;
   source?: string;
   visibility?: 'private' | 'analysis_allowed' | 'excluded';
   reportDifficulty?: number;
@@ -11,7 +13,11 @@ export interface CreateExperienceDTO {
   goal?: string;
   action?: string;
   emotion?: string;
+  emotions?: ExperienceEmotion[];
   context?: string;
+  trigger?: string;
+  timeOfDay?: TimeOfDay;
+  durationMinutes?: number;
 }
 
 export interface ExperienceResponseDTO {
@@ -19,9 +25,14 @@ export interface ExperienceResponseDTO {
   date: string;
   description: string;
   stressLevel: number;
-  actionResult: 'AVOIDED' | 'CONFRONTED';
+  actionResult: ActionResult;
   domain?: string;
   visibility?: 'private' | 'analysis_allowed' | 'excluded';
   reportDifficulty?: number;
   careful?: boolean;
+  emotions?: ExperienceEmotion[];
+  context?: string;
+  trigger?: string;
+  timeOfDay?: TimeOfDay;
+  durationMinutes?: number;
 }

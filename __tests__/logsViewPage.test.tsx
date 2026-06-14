@@ -65,7 +65,7 @@ describe('LogViewPage', () => {
           userId: 'user-1',
           description: '会議で緊張した',
           stressLevel: 4,
-          actionResult: 'CONFRONTED',
+          actionResult: 'CONFRONTED_SUCCESS',
           source: 'manual',
           visibility: 'private',
           reportDifficulty: 3,

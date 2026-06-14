@@ -1,7 +1,38 @@
 // --- Legacy domain type (Phase 3 で { id, name, description, color } に移行予定) ---
 export type Domain = 'WORK' | 'RELATIONSHIP' | 'HEALTH' | 'MONEY' | 'SELF';
 
-export type ActionResult = 'AVOIDED' | 'CONFRONTED';
+// 4-valued result of facing an obstacle.
+//   CONFRONTED_SUCCESS — engaged and succeeded
+//   CONFRONTED_FAILED  — engaged, did not succeed
+//   PARTIAL            — partially engaged / stopped midway
+//   AVOIDED            — did not engage
+// Legacy 'CONFRONTED' values were migrated to 'CONFRONTED_SUCCESS' in migration 039.
+export type ActionResult =
+  | 'CONFRONTED_SUCCESS'
+  | 'CONFRONTED_FAILED'
+  | 'PARTIAL'
+  | 'AVOIDED';
+
+export const ACTION_RESULT_VALUES: readonly ActionResult[] = [
+  'CONFRONTED_SUCCESS',
+  'CONFRONTED_FAILED',
+  'PARTIAL',
+  'AVOIDED',
+] as const;
+
+export type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'night';
+export const TIME_OF_DAY_VALUES: readonly TimeOfDay[] = [
+  'morning',
+  'afternoon',
+  'evening',
+  'night',
+] as const;
+
+export interface ExperienceEmotion {
+  label: string;
+  intensity: 1 | 2 | 3 | 4 | 5;
+}
+
 export type EvidenceVisibility = 'private' | 'analysis_allowed' | 'excluded';
 
 // --- Experience input (Phase 1: Supabase 対応) ---
@@ -18,8 +49,12 @@ export interface ExperienceInput {
   // 構造化フィールド（任意）
   goal?: string;
   action?: string;
-  emotion?: string;
+  emotion?: string;            // legacy free-text (kept for backward compat)
+  emotions?: ExperienceEmotion[];
   context?: string;
+  trigger?: string;
+  timeOfDay?: TimeOfDay;
+  durationMinutes?: number;
 }
 
 export interface LogPayload {
@@ -122,11 +157,15 @@ export interface ExperienceForClassification {
   id: string;
   description: string;
   stressLevel: number;
-  actionResult: 'AVOIDED' | 'CONFRONTED';
+  actionResult: ActionResult;
   goal?: string;
   action?: string;
   emotion?: string;
+  emotions?: ExperienceEmotion[];
   context?: string;
+  trigger?: string;
+  timeOfDay?: TimeOfDay;
+  durationMinutes?: number;
 }
 
 export interface ClusterAssignment {

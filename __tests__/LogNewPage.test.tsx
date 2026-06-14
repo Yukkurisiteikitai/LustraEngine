@@ -32,6 +32,10 @@ jest.mock('@/lib/mockQueryClient', () => ({
     mutate: jest.fn(),
     isPending: false,
   }),
+  useExtractDiaryMutation: () => ({
+    mutate: jest.fn(),
+    isPending: false,
+  }),
 }));
 
 const mockCreateSupabaseServerClient = createSupabaseServerClient as jest.Mock;
@@ -83,7 +87,7 @@ describe('LogNewPage', () => {
     expect(screen.getByText(/ここでは出来事を記録します/)).toBeInTheDocument();
     expect(screen.getByText('Chat からの下書き')).toBeInTheDocument();
     expect(screen.getByText('q1')).toBeInTheDocument();
-    expect(screen.getByLabelText('いま、どのような障害に向き合っていますか？')).toHaveValue('foo');
+    expect(screen.getByPlaceholderText(/スタバで2時間レポート/)).toHaveValue('foo');
     expect(screen.getByText(/evidenceType: chat_fallback/)).toBeInTheDocument();
     expect(window.sessionStorage.getItem('ylm:evidence_logging_draft')).toBeNull();
   });

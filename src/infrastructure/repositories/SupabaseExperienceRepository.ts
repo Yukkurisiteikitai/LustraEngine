@@ -52,23 +52,33 @@ export class SupabaseExperienceRepository implements IExperienceRepository {
     date: string,
     domainMap: Map<string, string>,
   ): Promise<ExperienceData[]> {
-    const rows = inputs.map((o) => ({
-      user_id: userId,
-      logged_at: date,
-      description: o.description,
-      stress_level: o.stressLevel,
-      action_result: o.actionResult,
-      source: o.source ?? null,
-      visibility: o.visibility ?? 'private',
-      report_difficulty: o.reportDifficulty ?? 3,
-      careful: o.careful ?? (o.reportDifficulty ?? 3) >= 4,
-      action_memo: o.actionMemo ?? null,
-      goal: o.goal ?? null,
-      action: o.action ?? null,
-      emotion: o.emotion ?? null,
-      context: o.context ?? null,
-      domain_id: domainMap.get(o.domain) ?? null,
-    }));
+    const rows = inputs.map((o) => {
+      // 後方互換: emotion (TEXT) は LLM-1 経由なら emotions[0].label を入れて
+      // 旧クライアント (description join 等) からも読めるようにしておく。
+      const legacyEmotion =
+        o.emotion ?? (o.emotions && o.emotions.length > 0 ? o.emotions[0].label : null);
+      return {
+        user_id: userId,
+        logged_at: date,
+        description: o.description,
+        stress_level: o.stressLevel,
+        action_result: o.actionResult,
+        source: o.source ?? null,
+        visibility: o.visibility ?? 'private',
+        report_difficulty: o.reportDifficulty ?? 3,
+        careful: o.careful ?? (o.reportDifficulty ?? 3) >= 4,
+        action_memo: o.actionMemo ?? null,
+        goal: o.goal ?? null,
+        action: o.action ?? null,
+        emotion: legacyEmotion,
+        emotions: o.emotions ?? null,
+        context: o.context ?? null,
+        trigger: o.trigger ?? null,
+        time_of_day: o.timeOfDay ?? null,
+        duration_minutes: o.durationMinutes ?? null,
+        domain_id: domainMap.get(o.domain) ?? null,
+      };
+    });
 
     const { data, error } = await this.supabase
       .from('experiences')

@@ -36,7 +36,7 @@ const payload = {
       description: '数学2の問題集に挑む',
       domain: 'SELF',
       stressLevel: 1,
-      actionResult: 'CONFRONTED',
+      actionResult: 'CONFRONTED_SUCCESS',
     },
   ],
 };

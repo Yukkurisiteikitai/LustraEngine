@@ -37,7 +37,7 @@ describe('/api/logs GET', () => {
             user_id: 'user-1',
             description: 'visible item',
             stress_level: 2,
-            action_result: 'CONFRONTED',
+            action_result: 'CONFRONTED_SUCCESS',
             visibility: 'private',
             report_difficulty: 2,
             careful: false,

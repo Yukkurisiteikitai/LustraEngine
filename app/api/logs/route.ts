@@ -8,6 +8,7 @@ import {
   type AnalyticsViewCacheKV,
 } from '@/infrastructure/cache/AnalyticsViewCache';
 import { VALID_DOMAINS, type Domain } from '@/core/domains/domain/Domain';
+import { ACTION_RESULT_VALUES, TIME_OF_DAY_VALUES, type ActionResult, type TimeOfDay } from '@/types';
 import { ValidationError } from '@/core/errors/ValidationError';
 import { AuthError } from '@/core/errors/AuthError';
 import { handleError, checkBodySize } from '@/lib/apiHelpers';
@@ -140,8 +141,44 @@ export async function POST(request: Request) {
       if (obs.careful !== undefined && typeof obs.careful !== 'boolean') {
         throw new ValidationError('carefulはbooleanで指定してください');
       }
-      if (obs.actionResult !== 'AVOIDED' && obs.actionResult !== 'CONFRONTED') {
-        throw new ValidationError('actionResultはAVOIDEDまたはCONFRONTEDで指定してください');
+      if (!ACTION_RESULT_VALUES.includes(obs.actionResult as ActionResult)) {
+        throw new ValidationError(
+          `actionResultは ${ACTION_RESULT_VALUES.join(' / ')} のいずれかで指定してください`,
+        );
+      }
+      if (
+        obs.timeOfDay !== undefined &&
+        !TIME_OF_DAY_VALUES.includes(obs.timeOfDay as TimeOfDay)
+      ) {
+        throw new ValidationError(
+          `timeOfDayは ${TIME_OF_DAY_VALUES.join(' / ')} のいずれかで指定してください`,
+        );
+      }
+      if (
+        obs.durationMinutes !== undefined &&
+        (typeof obs.durationMinutes !== 'number' || obs.durationMinutes < 0)
+      ) {
+        throw new ValidationError('durationMinutesは0以上の数値で指定してください');
+      }
+      if (obs.emotions !== undefined) {
+        if (!Array.isArray(obs.emotions)) {
+          throw new ValidationError('emotionsは配列で指定してください');
+        }
+        for (const e of obs.emotions) {
+          if (!e || typeof e !== 'object') {
+            throw new ValidationError('emotions[]の要素はオブジェクトで指定してください');
+          }
+          if (typeof (e as { label?: unknown }).label !== 'string') {
+            throw new ValidationError('emotions[].labelは文字列で指定してください');
+          }
+          const intensity = (e as { intensity?: unknown }).intensity;
+          if (typeof intensity !== 'number' || intensity < 1 || intensity > 5) {
+            throw new ValidationError('emotions[].intensityは1〜5の数値で指定してください');
+          }
+        }
+      }
+      if (obs.trigger !== undefined && typeof obs.trigger !== 'string') {
+        throw new ValidationError('triggerは文字列で指定してください');
       }
     }
 

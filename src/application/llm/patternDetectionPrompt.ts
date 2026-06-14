@@ -88,7 +88,15 @@ export function buildPatternUserMessage(experience: Experience): string {
   if (data.context) parts.push(`Context: ${data.context}`);
   if (data.action) parts.push(`Action taken: ${data.action}`);
   parts.push(`Stress level: ${data.stressLevel}/5`);
-  parts.push(`Outcome: ${data.actionResult === 'AVOIDED' ? 'Avoided' : 'Confronted'}`);
+  const outcomeLabel =
+    data.actionResult === 'AVOIDED'
+      ? 'Avoided'
+      : data.actionResult === 'CONFRONTED_SUCCESS'
+        ? 'Confronted (success)'
+        : data.actionResult === 'CONFRONTED_FAILED'
+          ? 'Confronted (failed)'
+          : 'Partial';
+  parts.push(`Outcome: ${outcomeLabel}`);
   return parts.join('\n');
 }
 
