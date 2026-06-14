@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YourselfLM - ログ入力モック</title>
+<style>
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f4ef;
+  --bg-tertiary: #ebe9e2;
+  --text-primary: #1a1a18;
+  --text-secondary: #5f5e5a;
+  --text-tertiary: #8a8980;
+  --border-tertiary: rgba(0,0,0,0.1);
+  --border-secondary: rgba(0,0,0,0.2);
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --purple-50: #EEEDFE;
+  --purple-200: #AFA9EC;
+  --purple-600: #534AB7;
+  --purple-800: #3C3489;
+  --teal-50: #E1F5EE;
+  --teal-600: #0F6E56;
+  --teal-800: #085041;
+  --teal-mid: #1D9E75;
+  --red-50: #FCEBEB;
+  --red-600: #A32D2D;
+  --red-800: #791F1F;
+  --amber-50: #FAEEDA;
+  --amber-600: #854F0B;
+  --amber-800: #633806;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #262624;
+    --bg-secondary: #1f1e1c;
+    --bg-tertiary: #1a1917;
+    --text-primary: #f0eee6;
+    --text-secondary: #b4b2a9;
+    --text-tertiary: #8a8980;
+    --border-tertiary: rgba(255,255,255,0.12);
+    --border-secondary: rgba(255,255,255,0.2);
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg-tertiary); padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 28px; }
+.slabel2 { font-size: 11px; color: var(--text-tertiary); text-align: center; margin-bottom: 10px; letter-spacing: .06em; text-transform: uppercase; }
+.screen { background: var(--bg-secondary); border-radius: var(--radius-lg); padding: 16px; }
+.phone { background: var(--bg-primary); border-radius: 20px; border: 0.5px solid var(--border-tertiary); width: 340px; margin: 0 auto; overflow: hidden; }
+.topbar { display: flex; align-items: center; padding: 14px 16px 10px; border-bottom: 0.5px solid var(--border-tertiary); gap: 8px; }
+.topbar-title { font-size: 15px; font-weight: 500; color: var(--text-primary); flex: 1; }
+.icon { font-size: 18px; color: var(--text-secondary); }
+.step-pills { display: flex; gap: 5px; padding: 12px 16px 4px; }
+.pill { height: 4px; border-radius: 2px; flex: 1; }
+.pill-active { background: var(--purple-600); }
+.pill-done { background: var(--teal-mid); }
+.pill-todo { background: var(--border-tertiary); }
+.slabel { font-size: 11px; color: var(--text-tertiary); padding: 4px 16px 10px; }
+.sec { padding: 0 16px 16px; }
+.mic-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.mic-btn { display: flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: var(--radius-md); border: 0.5px solid var(--border-secondary); background: var(--bg-primary); font-size: 13px; color: var(--text-secondary); cursor: pointer; }
+.mic-icon { font-size: 16px; color: var(--purple-600); }
+.hint { font-size: 12px; color: var(--text-tertiary); }
+.diary-area { width: 100%; min-height: 110px; border: 0.5px solid var(--border-secondary); border-radius: var(--radius-md); padding: 10px 12px; font-size: 13px; color: var(--text-primary); background: var(--bg-primary); resize: none; line-height: 1.6; font-family: inherit; }
+.primary-btn { width: 100%; padding: 10px; border-radius: var(--radius-md); background: var(--purple-600); border: none; color: var(--purple-50); font-size: 14px; font-weight: 500; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
+.divider { height: 0.5px; background: var(--border-tertiary); margin: 12px 0; }
+.elabel { font-size: 11px; color: var(--text-tertiary); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 8px; }
+.erow { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
+.ekey { font-size: 12px; color: var(--text-secondary); width: 64px; flex-shrink: 0; padding-top: 2px; }
+.eval { font-size: 13px; color: var(--text-primary); flex: 1; line-height: 1.4; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; border: 0.5px solid var(--border-secondary); cursor: pointer; }
+.chip-on { background: var(--purple-50); border-color: var(--purple-600); color: var(--purple-800); }
+.chip-off { background: var(--bg-secondary); color: var(--text-secondary); }
+.dots { display: flex; gap: 4px; margin-top: 6px; align-items: center; }
+.dot { width: 10px; height: 10px; border-radius: 50%; cursor: pointer; }
+.dot-on { background: var(--purple-600); }
+.dot-off { background: var(--border-secondary); }
+.result-row { display: flex; gap: 6px; }
+.rbtn { flex: 1; padding: 9px 4px; border-radius: var(--radius-md); font-size: 12px; text-align: center; border: 0.5px solid; cursor: pointer; }
+.rbtn-ok { background: var(--teal-50); color: var(--teal-800); border-color: var(--teal-600); }
+.rbtn-ng { background: var(--red-50); color: var(--red-800); border-color: var(--red-600); opacity: 0.4; }
+.rbtn-mid { background: var(--amber-50); color: var(--amber-800); border-color: var(--amber-600); opacity: 0.4; }
+.tbox { background: var(--bg-secondary); border-radius: var(--radius-md); padding: 10px 12px; border: 0.5px solid var(--border-tertiary); }
+.tq { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.4; }
+.tinput { width: 100%; border: 0.5px solid var(--border-secondary); border-radius: var(--radius-md); padding: 7px 10px; font-size: 13px; background: var(--bg-primary); color: var(--text-primary); font-family: inherit; }
+.skip { margin-top: 8px; font-size: 12px; color: var(--text-tertiary); text-align: center; }
+.save-btn { width: 100%; padding: 10px; border-radius: var(--radius-md); background: var(--teal-mid); border: none; color: var(--teal-50); font-size: 14px; font-weight: 500; margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<!-- ============ STEP 1: 日記を書く ============ -->
+<div>
+  <div class="slabel2">step 1 — 日記を書く（自由テキスト1つ + 音声入力）</div>
+  <div class="screen">
+    <div class="phone">
+      <div class="topbar">
+        <span class="icon">&#8592;</span>
+        <span class="topbar-title">今日の記録</span>
+        <span class="icon">&#128197;</span>
+      </div>
+      <div class="step-pills">
+        <div class="pill pill-active"></div>
+        <div class="pill pill-todo"></div>
+        <div class="pill pill-todo"></div>
+      </div>
+      <div class="slabel">step 1 / 3 — 今日あったことを話してください</div>
+      <div class="sec">
+        <div class="mic-row">
+          <div class="mic-btn"><span class="mic-icon">&#127908;</span>音声で話す</div>
+          <span class="hint">または下に入力</span>
+        </div>
+        <textarea class="diary-area" placeholder="今日あったことをそのまま書いてください。
+
+例：スタバで2時間レポートやった。550円分は絶対回収してやるって気持ちで集中できた。国語のレポート2個終わって爽快だった。"></textarea>
+        <button class="primary-btn">&#10024; AIに読み取ってもらう</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ STEP 2: LLM抽出結果の確認 ============ -->
+<div>
+  <div class="slabel2">step 2 — LLM抽出結果の確認</div>
+  <div class="screen">
+    <div class="phone">
+      <div class="topbar">
+        <span class="icon">&#8592;</span>
+        <span class="topbar-title">内容を確認</span>
+      </div>
+      <div class="step-pills">
+        <div class="pill pill-done"></div>
+        <div class="pill pill-active"></div>
+        <div class="pill pill-todo"></div>
+      </div>
+      <div class="slabel">step 2 / 3 — AIが読み取った内容を確認してください</div>
+      <div class="sec">
+        <div class="elabel">読み取り結果</div>
+        <div class="erow">
+          <div class="ekey">やったこと</div>
+          <div class="eval">スタバでZen studyのレポートを2件完了</div>
+        </div>
+        <div class="erow">
+          <div class="ekey">場所・時間</div>
+          <div class="eval">スタバ、約2時間</div>
+        </div>
+        <div class="erow">
+          <div class="ekey">感情</div>
+          <div class="eval">
+            <div class="chips">
+              <span class="chip chip-on">爽快</span>
+              <span class="chip chip-on">達成感</span>
+              <span class="chip chip-off">+ 追加</span>
+            </div>
+            <div class="dots">
+              <span style="font-size:11px;color:var(--text-tertiary);margin-right:4px">強さ</span>
+              <div class="dot dot-on"></div>
+              <div class="dot dot-on"></div>
+              <div class="dot dot-on"></div>
+              <div class="dot dot-on"></div>
+              <div class="dot dot-off"></div>
+              <span style="font-size:11px;color:var(--text-tertiary);margin-left:4px">4/5</span>
+            </div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="elabel">結果</div>
+        <div class="result-row">
+          <div class="rbtn rbtn-ok">向き合って<br><span style="font-size:10px">成功</span></div>
+          <div class="rbtn rbtn-ng">回避した</div>
+          <div class="rbtn rbtn-mid">一部だけ</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ STEP 3: きっかけ(trigger)の追加質問 ============ -->
+<div>
+  <div class="slabel2">step 3 — きっかけ(trigger)を追加質問</div>
+  <div class="screen">
+    <div class="phone">
+      <div class="topbar">
+        <span class="icon">&#8592;</span>
+        <span class="topbar-title">もう少しだけ</span>
+      </div>
+      <div class="step-pills">
+        <div class="pill pill-done"></div>
+        <div class="pill pill-done"></div>
+        <div class="pill pill-active"></div>
+      </div>
+      <div class="slabel">step 3 / 3 — 最後に1問だけ</div>
+      <div class="sec">
+        <div class="tbox">
+          <div class="tq">「550円分は回収してやる」という気持ちはどこから来ましたか？</div>
+          <input class="tinput" placeholder="思い当たることを一言で..." />
+        </div>
+        <div class="skip">スキップしてもOK</div>
+        <button class="save-btn">&#10003; 保存する</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
