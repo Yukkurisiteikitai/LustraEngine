@@ -1,3 +1,12 @@
+---
+title: Analysis Job Pipeline E2E ブロッカー完全修正レポート
+category: bug
+status: archived
+date: 2026-05-12
+tags: [analysis-job, e2e, blocker, fix]
+related: [./2026-06-08_blocker-fix-report.md, ../analysis/2026-05-12_analysis-job-review.md]
+---
+
 # Analysis Job Pipeline E2E ブロッカー完全修正レポート
 
 **完了日:** 2026-05-12  

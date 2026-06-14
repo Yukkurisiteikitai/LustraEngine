@@ -1,3 +1,12 @@
+---
+title: デプロイメントチェックリスト
+category: infra
+status: active
+date: 2026-06-08
+tags: [deploy, cloudflare, supabase, wrangler, env, rls, migration]
+related: []
+---
+
 # Deployment Checklist
 
 ## Region Configuration

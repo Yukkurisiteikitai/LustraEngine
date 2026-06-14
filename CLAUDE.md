@@ -4,6 +4,17 @@
 
 YourselfLM is an AI-powered self-reflection app. Users log daily obstacles across five domains (WORK, RELATIONSHIP, HEALTH, MONEY, SELF), and the system asynchronously detects behavioral patterns, infers personality traits, and provides AI coaching via chat.
 
+## Before Starting Any Work — 引き継ぎ資料の確認
+
+毎セッション、コード変更に入る前に以下を実施すること:
+
+1. `docs/next_connection/PROMPT.md` を Read で開き、手順に従う
+2. `docs/next_connection/目次.md` で今回触る領域に関連するキーワード（ファイル名・機能名・カテゴリ・エラーメッセージ）を検索
+3. ヒットした `docs/next_connection/index/active/` 配下のファイルがあれば **必ず** 読む — 未解決問題・既知の罠・回避策が書かれている
+4. 作業終了時、新たな未解決事項・次セッションへの申し送りが発生したら `docs/next_connection/index/active/<category>/` に追記または新規ファイル作成、`目次.md` も更新
+
+引き継ぎ資料の追加・更新ルールは `docs/next_connection/README.md` を参照。
+
 ## Tech Stack
 
 - **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4
@@ -88,6 +99,7 @@ supabase/migrations/    → SQL migrations 001–013
 3. **LLM prompts** — Live in `src/application/`. Keep them version-controlled and testable.
 4. **Database changes** — Add a new numbered migration in `supabase/migrations/`. Never edit existing migration files.
 5. **Chat rethink** — Uses SSE streaming. The rethink endpoint regenerates a specific assistant message by its pair node ID.
+6. **引き継ぎ資料** — 作業中の未解決事項・次セッションへの注意点は `docs/next_connection/index/active/<category>/` に記録する。`目次.md` の更新も忘れない。永続ドキュメント（アーキ図・ビジネス資料）は `docs/` 直下のままにする。
 
 ## Environment Variables
 
