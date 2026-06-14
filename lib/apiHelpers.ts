@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ValidationError } from '@/core/errors/ValidationError';
 import { AuthError } from '@/core/errors/AuthError';
+import { AuthorizationError } from '@/core/errors/AuthorizationError';
 import { LLMError } from '@/core/errors/LLMError';
 import { InfrastructureError } from '@/core/errors/InfrastructureError';
 import { RateLimitError } from '@/core/errors/RateLimitError';
@@ -43,6 +44,9 @@ export function handleError(err: unknown): NextResponse {
   }
   if (err instanceof AuthError) {
     return NextResponse.json({ message: err.message }, { status: 401 });
+  }
+  if (err instanceof AuthorizationError) {
+    return NextResponse.json({ message: err.message }, { status: 403 });
   }
   if (err instanceof LLMError) {
     console.error('api:llm_error_502', {

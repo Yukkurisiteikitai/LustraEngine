@@ -1,16 +1,48 @@
 import type { Metadata, Viewport } from 'next';
-import { Outfit, Playfair_Display } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
 import Providers from './providers';
 
-const outfit = Outfit({
-  subsets: ['latin'],
+const outfit = localFont({
+  src: [
+    {
+      path: './fonts/Outfit-Regular.ttf',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: './fonts/Outfit-Medium.ttf',
+      weight: '500',
+      style: 'normal',
+    },
+    {
+      path: './fonts/Outfit-SemiBold.ttf',
+      weight: '600',
+      style: 'normal',
+    },
+    {
+      path: './fonts/Outfit-Bold.ttf',
+      weight: '700',
+      style: 'normal',
+    },
+  ],
   variable: '--font-outfit',
   display: 'swap',
 });
 
-const playfair = Playfair_Display({
-  subsets: ['latin'],
+const playfair = localFont({
+  src: [
+    {
+      path: './fonts/PlayfairDisplay-Regular.ttf',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: './fonts/PlayfairDisplay-Medium.ttf',
+      weight: '500',
+      style: 'normal',
+    },
+  ],
   variable: '--font-playfair',
   display: 'swap',
 });

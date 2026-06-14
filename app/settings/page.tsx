@@ -1,5 +1,6 @@
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import FontLicenseSection from './FontLicenseSection';
 import UserSettingsSection from './UserSettingsSection';
 import SettingsClient from './SettingsClient';
 import styles from './page.module.css';
@@ -13,6 +14,7 @@ export default function SettingsPage() {
       <Header />
       <main className={styles.main}>
         <div className={styles.stack}>
+          <FontLicenseSection />
           <UserSettingsSection />
           <SettingsClient
             isProduction={isProduction}
