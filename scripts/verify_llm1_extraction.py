@@ -214,6 +214,9 @@ def call_lmstudio(endpoint: str, model: str, messages: list[dict],
         "max_tokens": max_tokens,
         "temperature": temperature,
         "stream": False,
+        # Disable Qwen3 thinking — mirrors providerRegistry.ts:resolveFetchOptions.
+        # `/no_think` in the prompt was not honored by qwen3-swallow's chat template.
+        "chat_template_kwargs": {"enable_thinking": False},
     }
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(url, data=data, method="POST")

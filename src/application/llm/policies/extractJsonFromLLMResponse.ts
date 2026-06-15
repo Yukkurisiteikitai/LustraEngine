@@ -63,5 +63,29 @@ export function extractJsonFromLLMResponse(raw: string | null | undefined): unkn
       }
     }
   }
+
+  // depth > 0: JSON was truncated before closing }. Attempt repair.
+  if (depth > 0) {
+    const fragment = text.slice(start);
+    // Pattern A: last value is complete, just missing closing braces
+    for (let d = depth; d >= 1; d--) {
+      try {
+        const candidate = fragment + '}'.repeat(d);
+        const parsed = JSON.parse(candidate);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+      } catch { /* try next */ }
+    }
+    // Pattern B: truncated mid-key (e.g. ,"keyName... at end) — strip and close
+    const stripped = fragment.replace(/,\s*"[^"]*$/, '');
+    if (stripped !== fragment) {
+      for (let d = depth; d >= 1; d--) {
+        try {
+          const candidate = stripped + '}'.repeat(d);
+          const parsed = JSON.parse(candidate);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+        } catch { /* try next */ }
+      }
+    }
+  }
   return null;
 }

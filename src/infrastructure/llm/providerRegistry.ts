@@ -1,5 +1,6 @@
 import type { ILLMPort, LLMResult } from '@/application/ports/ILLMPort';
 import type { LMConfig, LLMProvider, LLMProviderType } from '@/types';
+import { logger } from '@/infrastructure/observability/logger';
 
 export type LLMMessage = {
   role: 'system' | 'user' | 'assistant';
@@ -196,6 +197,16 @@ export function resolveWorkerLLMConfigFromEnv(env: CloudflareEnv): ResolvedLLMCo
 }
 
 function resolveFetchOptions(input: LLMGenerateInput, config: ResolvedLLMConfig) {
+  // Disable Qwen3 (and similar reasoning models) thinking on LM Studio.
+  // Without this, qwen3-swallow consumed the entire max_tokens budget
+  // (1024/1024 reasoning_tokens observed) and emitted empty content.
+  // `/no_think` in the prompt was not honored by this build's chat template.
+  // Other servers behind custom_openai_compatible typically ignore unknown fields.
+  const chatTemplateKwargs =
+    config.provider === 'custom_openai_compatible'
+      ? { chat_template_kwargs: { enable_thinking: false } }
+      : {};
+
   return {
     model: config.model,
     messages: input.messages,
@@ -203,6 +214,7 @@ function resolveFetchOptions(input: LLMGenerateInput, config: ResolvedLLMConfig)
     max_tokens: input.maxTokens ?? config.maxTokens ?? 1024,
     response_format:
       input.responseFormat === 'json' ? { type: 'json_object' } : undefined,
+    ...chatTemplateKwargs,
   };
 }
 
@@ -234,11 +246,36 @@ export function createOpenAICompatibleClient(config: ResolvedLLMConfig, timeoutM
         }
 
         const data = await res.json() as {
-          choices?: Array<{ message?: { content?: string } }>;
+          choices?: Array<{ message?: { content?: string }; finish_reason?: string }>;
+          usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
         };
-        const text = data.choices?.[0]?.message?.content;
+        const choice = data.choices?.[0];
+        const text = choice?.message?.content;
+        const finishReason = choice?.finish_reason ?? 'unknown';
+
         if (!text) {
-          throw new Error('LLM response was empty');
+          logger.warn('llm:response_empty', {
+            layer: 'providerRegistry',
+            provider: config.provider,
+            model: config.model,
+            finishReason,
+            promptTokens: data.usage?.prompt_tokens,
+            completionTokens: data.usage?.completion_tokens,
+          });
+          throw new Error(`LLM response was empty (finish_reason: ${finishReason})`);
+        }
+
+        // finish_reason=length はコンテキストウィンドウ枯渇またはmax_tokens到達を示す
+        if (finishReason === 'length') {
+          logger.warn('llm:response_truncated', {
+            layer: 'providerRegistry',
+            provider: config.provider,
+            model: config.model,
+            finishReason,
+            promptTokens: data.usage?.prompt_tokens,
+            completionTokens: data.usage?.completion_tokens,
+            totalTokens: data.usage?.total_tokens,
+          });
         }
 
         return { text, raw: data };

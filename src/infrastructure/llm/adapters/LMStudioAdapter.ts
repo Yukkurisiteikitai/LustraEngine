@@ -32,6 +32,9 @@ export class LMStudioAdapter implements ILLMPort {
           { role: 'user', content: userMessage },
         ],
         stream: true,
+        // Disable Qwen3 thinking (see providerRegistry.ts:resolveFetchOptions
+        // for the rationale).
+        chat_template_kwargs: { enable_thinking: false },
       }),
     });
 
@@ -91,6 +94,8 @@ export class LMStudioAdapter implements ILLMPort {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMessage },
         ],
+        // Disable Qwen3 thinking (see providerRegistry.ts:resolveFetchOptions).
+        chat_template_kwargs: { enable_thinking: false },
       }),
     });
 

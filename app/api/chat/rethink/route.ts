@@ -26,20 +26,6 @@ export async function POST(req: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new AuthError('認証が必要です');
 
-    const rateLimiter = createChatRateLimiter();
-    const rateLimitStatus = await rateLimiter.check(user.id);
-    if (!rateLimitStatus.allowed) {
-      throw new RateLimitError(
-        `トークン制限に達しました。${rateLimitStatus.retryAfterSeconds}秒後に再試行してください。`,
-        {
-          userId: user.id,
-          usedTokens: rateLimitStatus.usedTokens,
-          maxTokens: rateLimitStatus.maxTokens,
-          retryAfterSeconds: rateLimitStatus.retryAfterSeconds,
-        },
-      );
-    }
-
     checkBodySize(req, 16 * 1024);
     let body: RethinkRequestBody;
     try {
@@ -59,6 +45,25 @@ export async function POST(req: Request) {
       llmSettings,
       process.env.LLM_SETTINGS_ENCRYPTION_KEY,
     );
+
+    // Rate limiting applies to Claude only — local LLM (LM Studio) is exempt.
+    // Same gate as /api/chat to avoid blocking non-Claude calls on a Claude budget.
+    const isClaude = resolvedLlmConfig.provider === 'anthropic';
+    const rateLimiter = isClaude ? createChatRateLimiter() : null;
+    if (rateLimiter) {
+      const rateLimitStatus = await rateLimiter.check(user.id);
+      if (!rateLimitStatus.allowed) {
+        throw new RateLimitError(
+          `トークン制限に達しました。${rateLimitStatus.retryAfterSeconds}秒後に再試行してください。`,
+          {
+            userId: user.id,
+            usedTokens: rateLimitStatus.usedTokens,
+            maxTokens: rateLimitStatus.maxTokens,
+            retryAfterSeconds: rateLimitStatus.retryAfterSeconds,
+          },
+        );
+      }
+    }
 
     // Run all independent DB queries in parallel after auth
     const historyUseCase = createGetThreadHistoryUseCase(supabase);
@@ -129,9 +134,12 @@ export async function POST(req: Request) {
             await rethinkUseCase.execute(pairNodeId, user.id, fullText);
           }
 
-          // Atomically check budget and record usage to prevent concurrent over-spend
-          const estimatedTokens = Math.ceil(fullText.length / 3);
-          await rateLimiter.checkAndRecord(user.id, estimatedTokens);
+          // Atomically check budget and record usage to prevent concurrent over-spend.
+          // Skipped for non-Claude providers (LM Studio etc.) — they don't share the Claude budget.
+          if (rateLimiter) {
+            const estimatedTokens = Math.ceil(fullText.length / 3);
+            await rateLimiter.checkAndRecord(user.id, estimatedTokens);
+          }
 
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
         } catch (err) {

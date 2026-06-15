@@ -10,12 +10,12 @@
 BEGIN;
 
 -- ---- action_result -----------------------------------------------------
+ALTER TABLE public.experiences
+  DROP CONSTRAINT IF EXISTS experiences_action_result_check;
+
 UPDATE public.experiences
    SET action_result = 'CONFRONTED_SUCCESS'
  WHERE action_result = 'CONFRONTED';
-
-ALTER TABLE public.experiences
-  DROP CONSTRAINT IF EXISTS experiences_action_result_check;
 
 ALTER TABLE public.experiences
   ADD CONSTRAINT experiences_action_result_check

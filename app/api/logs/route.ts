@@ -69,7 +69,15 @@ async function backgroundSave(
     const useCase = createLogExperienceUseCase(supabase);
     await useCase.execute(userId, { displayName }, body.obstacles, body.date);
   } catch (err) {
-    console.error('[logs:bg] Supabase書き込み失敗:', err);
+    // Supabase PostgrestError (message/code/details/hint) is wrapped in
+    // InfrastructureError.cause. Inspector collapses it to `[Object]` by
+    // default, so unwrap explicitly for diagnosability.
+    const cause = (err as { cause?: unknown })?.cause;
+    console.error('[logs:bg] Supabase書き込み失敗:', {
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+      cause,
+    });
     return; // INSERT失敗時はキャッシュを触らない
   }
 

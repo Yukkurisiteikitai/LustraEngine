@@ -3,13 +3,97 @@ title: LLM-1（自由テキスト日記 → 構造化抽出）導入後の検証
 category: llm
 status: active
 date: 2026-06-15
-tags: [llm-1, lm-studio, qwen, structured-extraction, diary, log-input, migration-039, verify]
+tags: [llm-1, lm-studio, qwen, structured-extraction, diary, log-input, migration-039, verify, pr-review, validation]
 related: [./2026-06-11_local-llm-setup.md]
 ---
 
 # LLM-1 導入後の検証タスク 引き継ぎ資料
 
 > 作成: 2026-06-15 / 対象: 指示書 `CLAUDE_CODE_INSTRUCTIONS.md` の Priority 1+2+3 実装後
+> 更新: 2026-06-15 / Copilot PR review 7件のコード修正を適用
+
+---
+
+## 【2026-06-15 追記2】Qwen3 thinking モードで max_tokens 枯渇 → `/no_think` 導入
+
+### 症状
+`POST /api/logs/extract` で `LLM response was empty (finish_reason: length)` 500エラー。
+
+LM Studio 側のレスポンスを直接確認すると:
+```
+"content": "",
+"reasoning_content": "We need to parse the user's diary... [長文]",
+"finish_reason": "length",
+"usage": {
+  "prompt_tokens": 924,
+  "completion_tokens": 800,
+  "completion_tokens_details": { "reasoning_tokens": 777 }
+}
+```
+
+→ qwen3-swallow-8b-rl-v0.2 は **thinking モデル**。`reasoning_tokens: 777/800` で max_tokens を思考に食い潰し、JSON 本体に到達できず `content` が空。
+
+### 対応（実施済み・2段階）
+
+**第1段: `/no_think` ディレクティブ追加（効かず）**
+1. `src/application/llm/structuredDiaryPrompt.ts` の `buildStructuredDiaryUserMessage` 末尾に `/no_think` を追加。
+2. `src/application/usecases/ExtractStructuredDiaryUseCase.ts` の `RESPONSE_MAX_TOKENS` を 800 → 1024 に増量。
+3. `scripts/llm1_prompt.py` の `build_messages` も同期。
+
+→ 再現結果: `reasoning_tokens: 1024/1024` で content 空のまま。`qwen3-swallow-8b-rl-v0.2` の chat template が `/no_think` を処理していない。
+
+**第2段: `chat_template_kwargs.enable_thinking=false` を payload で明示**
+1. `src/infrastructure/llm/providerRegistry.ts:resolveFetchOptions` で `config.provider === 'custom_openai_compatible'` のとき `chat_template_kwargs: { enable_thinking: false }` を payload に注入（extract / chat 非ストリーミング / DetectPatterns / InferTraits すべてに効く）。
+2. `src/infrastructure/llm/adapters/LMStudioAdapter.ts` の `generate()` / `generateStream()` 両方の payload にも同じキーを追加（rethink ストリーミング用）。
+3. `scripts/verify_llm1_extraction.py:call_lmstudio` も payload に追加。
+4. `/no_think` は prompt 末尾に残置（チャットテンプレート対応モデル用のフォールバック。他プロバイダでは無害な末尾テキスト）。
+
+### 次セッションでの確認ポイント
+- 実機で `POST /api/logs/extract` を再投げて `reasoning_tokens` がほぼ0、`content` に JSON が入ることを確認。
+- 駄目だった場合の追加手: LM Studio UI の "Reasoning Effort" 設定をオフ、または model を non-thinking variant (`qwen3-swallow-8b-sft-v0.2` 等) に差し替え。
+- `chat_template_kwargs` が他の OpenAI 互換サーバ（DeepSeek 等）でエラーを起こさないか要確認。今は `custom_openai_compatible` 限定で送っているので OpenAI proper / DeepSeek の通常経路には影響しないはず。
+
+---
+
+## 【2026-06-15 追記】Copilot PR review コメント修正
+
+PR レビュー (Copilot) で指摘された 7 件をすべて修正・対応済み。コミット前の状態。
+
+### 修正内容サマリー
+
+| # | ファイル | 修正内容 |
+|---|---|---|
+| 1 | `app/api/logs/route.ts` | `durationMinutes` に `Number.isInteger()` チェックを追加、エラーメッセージを「整数」に変更 |
+| 2 | `app/api/logs/route.ts` | `emotions[].label` の空文字チェック追加、`intensity` を整数チェックに変更 |
+| 3 | `src/application/mappers/ExperienceMapper.ts` | `parseEmotions()` で `label.trim()` 非空チェック + `Math.round(intensity)` + 整数範囲チェックに変更 |
+| 4 | `src/application/llm/policies/LLMResponseValidator.ts` | `context` が非文字列・欠落時に `return null`（プロンプト逸脱として検出） |
+| 5 | `src/application/llm/policies/LLMResponseValidator.ts` | `duration_minutes === undefined` を `null` 扱いせず `return null`（キー欠落 = 逸脱） |
+| 6 | `src/application/llm/policies/LLMResponseValidator.ts` | `emotions` キー欠落・非配列時に `return null`（必須フィールドとして扱う） |
+| 7 | `app/log/new/LogNewClient.tsx` | 確認ステップから「戻る」時に `extracted / draft / triggerAnswer / messageType / statusMessage` をすべてリセット（不整合状態防止） |
+
+### 追加ファイル
+
+- `__tests__/logsExtractRoute.test.ts` — 新規テストファイル（6ケース）
+  - 401: 未認証
+  - 400: `diaryText` 空文字
+  - 400: `lmConfig` 欠落
+  - 200: 正常レスポンス shape 検証（`rawText` が漏れないことも確認）
+  - 502: `LLMExtractionFailedError` → `{ code: 'LLM_EXTRACTION_FAILED' }`
+
+### 修正後のテスト結果
+
+```
+Test Suites: 58 passed（前: 57）
+Tests:       131 passed（前: 125）
+```
+
+### 注意点: `LLMResponseValidator` の `context` / `duration_minutes` / `emotions` を厳格化した影響
+
+実際の LM Studio (qwen/swallow 系) が返すレスポンスで、これらキーが欠落するケースがあると `validateStructuredDiaryResponse()` が `null` を返し `LLMExtractionFailedError` になる。
+
+**次セッションで LLM-1 プロンプト検証スクリプトを回す際は、`schema_invalid` の件数が増えていないか特に確認すること。** 増えていた場合はプロンプト側でこれらフィールドの必須性をより明示する必要がある（`scripts/llm1_prompt.py` + `structuredDiaryPrompt.ts` 両方を更新）。
+
+---
 
 ## 何をしたか（コミット前の作業ツリー）
 

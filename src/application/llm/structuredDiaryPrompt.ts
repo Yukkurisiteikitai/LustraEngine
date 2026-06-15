@@ -95,6 +95,12 @@ export function buildStructuredDiaryUserMessage(diaryText: string): string {
   lines.push('### 入力');
   lines.push(diaryText);
   lines.push('### 出力（JSONのみ）');
+  // /no_think: Qwen3 chat-template directive to skip the <think> block.
+  // Structured extraction does not benefit from chain-of-thought, and reasoning
+  // tokens were consuming the entire max_tokens budget (777/800 observed) on
+  // qwen3-swallow, leaving no room for the JSON itself.
+  // Other providers (OpenAI/Anthropic) treat this as harmless trailing text.
+  lines.push('/no_think');
   return lines.join('\n');
 }
 

@@ -109,5 +109,7 @@ def build_messages(diary_text: str) -> list[dict]:
     for user, assistant in FEW_SHOTS:
         messages.append({"role": "user", "content": user})
         messages.append({"role": "assistant", "content": assistant})
-    messages.append({"role": "user", "content": diary_text})
+    # /no_think: Qwen3 chat-template directive that skips the <think> block.
+    # Mirrors structuredDiaryPrompt.ts — see comment there for context.
+    messages.append({"role": "user", "content": f"{diary_text}\n/no_think"})
     return messages

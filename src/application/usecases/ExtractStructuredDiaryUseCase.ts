@@ -12,7 +12,7 @@ import { ValidationError } from '@/core/errors/ValidationError';
 
 const MIN_DIARY_LENGTH = 4;
 const MAX_DIARY_LENGTH = 2000;
-const RESPONSE_MAX_TOKENS = 800;
+const RESPONSE_MAX_TOKENS = 1024;
 
 export interface ExtractStructuredDiaryInput {
   diaryText: string;
