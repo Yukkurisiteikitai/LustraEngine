@@ -184,7 +184,14 @@ export default function LogNewClient({
         <ExtractedConfirmStep
           draft={draft}
           onChange={setDraft}
-          onBack={() => setStage('diary')}
+          onBack={() => {
+            setStage('diary');
+            setExtracted(null);
+            setDraft(null);
+            setTriggerAnswer('');
+            setMessageType('success');
+            setStatusMessage('');
+          }}
           onNext={() => setStage('trigger')}
           onSaveDirect={() => persist(null)}
           isSaving={saveMutation.isPending}

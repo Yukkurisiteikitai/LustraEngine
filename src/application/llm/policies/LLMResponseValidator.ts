@@ -246,8 +246,9 @@ export class LLMResponseValidator {
     const p = parsed as Record<string, unknown>;
 
     const description = typeof p.description === 'string' ? p.description.trim() : '';
-    const context = typeof p.context === 'string' ? p.context.trim() : '';
     if (!description) return null;
+    if (typeof p.context !== 'string') return null;
+    const context = p.context.trim();
 
     if (!TIME_OF_DAY_VALUES.includes(p.time_of_day as TimeOfDay)) return null;
     const timeOfDay = p.time_of_day as TimeOfDay;
@@ -256,7 +257,7 @@ export class LLMResponseValidator {
     const actionResult = p.action_result as ActionResult;
 
     let durationMinutes: number | null = null;
-    if (p.duration_minutes === null || p.duration_minutes === undefined) {
+    if (p.duration_minutes === null) {
       durationMinutes = null;
     } else if (typeof p.duration_minutes === 'number' && p.duration_minutes >= 0) {
       durationMinutes = Math.round(p.duration_minutes);
@@ -264,26 +265,25 @@ export class LLMResponseValidator {
       return null;
     }
 
+    if (!Array.isArray(p.emotions)) return null;
     const emotions: ExperienceEmotion[] = [];
-    if (Array.isArray(p.emotions)) {
-      for (const e of p.emotions) {
-        if (!e || typeof e !== 'object') continue;
-        const label = (e as { label?: unknown }).label;
-        const intensity = (e as { intensity?: unknown }).intensity;
-        if (
-          typeof label === 'string' &&
-          label.trim() !== '' &&
-          typeof intensity === 'number' &&
-          intensity >= STRUCTURED_DIARY_SCHEMA_META.intensityMin &&
-          intensity <= STRUCTURED_DIARY_SCHEMA_META.intensityMax
-        ) {
-          emotions.push({
-            label: label.trim(),
-            intensity: Math.round(intensity) as ExperienceEmotion['intensity'],
-          });
-        }
-        if (emotions.length >= STRUCTURED_DIARY_SCHEMA_META.maxEmotions) break;
+    for (const e of p.emotions) {
+      if (!e || typeof e !== 'object') continue;
+      const label = (e as { label?: unknown }).label;
+      const intensity = (e as { intensity?: unknown }).intensity;
+      if (
+        typeof label === 'string' &&
+        label.trim() !== '' &&
+        typeof intensity === 'number' &&
+        intensity >= STRUCTURED_DIARY_SCHEMA_META.intensityMin &&
+        intensity <= STRUCTURED_DIARY_SCHEMA_META.intensityMax
+      ) {
+        emotions.push({
+          label: label.trim(),
+          intensity: Math.round(intensity) as ExperienceEmotion['intensity'],
+        });
       }
+      if (emotions.length >= STRUCTURED_DIARY_SCHEMA_META.maxEmotions) break;
     }
 
     const trigger =

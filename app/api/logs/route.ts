@@ -156,9 +156,11 @@ export async function POST(request: Request) {
       }
       if (
         obs.durationMinutes !== undefined &&
-        (typeof obs.durationMinutes !== 'number' || obs.durationMinutes < 0)
+        (typeof obs.durationMinutes !== 'number' ||
+          !Number.isInteger(obs.durationMinutes) ||
+          obs.durationMinutes < 0)
       ) {
-        throw new ValidationError('durationMinutesは0以上の数値で指定してください');
+        throw new ValidationError('durationMinutesは0以上の整数で指定してください');
       }
       if (obs.emotions !== undefined) {
         if (!Array.isArray(obs.emotions)) {
@@ -168,12 +170,13 @@ export async function POST(request: Request) {
           if (!e || typeof e !== 'object') {
             throw new ValidationError('emotions[]の要素はオブジェクトで指定してください');
           }
-          if (typeof (e as { label?: unknown }).label !== 'string') {
-            throw new ValidationError('emotions[].labelは文字列で指定してください');
+          const label = (e as { label?: unknown }).label;
+          if (typeof label !== 'string' || label.trim() === '') {
+            throw new ValidationError('emotions[].labelは空でない文字列で指定してください');
           }
           const intensity = (e as { intensity?: unknown }).intensity;
-          if (typeof intensity !== 'number' || intensity < 1 || intensity > 5) {
-            throw new ValidationError('emotions[].intensityは1〜5の数値で指定してください');
+          if (!Number.isInteger(intensity) || (intensity as number) < 1 || (intensity as number) > 5) {
+            throw new ValidationError('emotions[].intensityは1〜5の整数で指定してください');
           }
         }
       }

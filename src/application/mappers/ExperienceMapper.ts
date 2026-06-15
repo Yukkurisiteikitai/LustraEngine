@@ -18,13 +18,15 @@ function parseEmotions(raw: unknown): ExperienceEmotion[] | undefined {
     if (!item || typeof item !== 'object') continue;
     const label = (item as { label?: unknown }).label;
     const intensity = (item as { intensity?: unknown }).intensity;
+    const trimmedLabel = typeof label === 'string' ? label.trim() : '';
+    const roundedIntensity = typeof intensity === 'number' ? Math.round(intensity) : NaN;
     if (
-      typeof label === 'string' &&
-      typeof intensity === 'number' &&
-      intensity >= 1 &&
-      intensity <= 5
+      trimmedLabel !== '' &&
+      Number.isInteger(roundedIntensity) &&
+      roundedIntensity >= 1 &&
+      roundedIntensity <= 5
     ) {
-      out.push({ label, intensity: intensity as ExperienceEmotion['intensity'] });
+      out.push({ label: trimmedLabel, intensity: roundedIntensity as ExperienceEmotion['intensity'] });
     }
   }
   return out.length > 0 ? out : undefined;
