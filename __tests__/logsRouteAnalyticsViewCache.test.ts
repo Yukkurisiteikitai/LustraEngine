@@ -18,6 +18,10 @@ jest.mock('@/lib/supabase/server', () => ({
   createSupabaseServerClient: jest.fn(),
 }));
 
+jest.mock('@/infrastructure/supabase/createAdminClient', () => ({
+  createAdminClient: jest.fn().mockReturnValue({}),
+}));
+
 jest.mock('@/container/createUseCases', () => ({
   createLogExperienceUseCase: jest.fn(),
   createBuildAnalyticsViewModelUseCase: jest.fn(),

@@ -37,9 +37,11 @@ describe('LLMResponseValidator.validateStructuredDiaryResponse', () => {
     expect(validator.validateStructuredDiaryResponse(JSON.stringify(bad))).toBeNull();
   });
 
-  it('rejects an invalid time_of_day enum', () => {
+  it('treats an invalid time_of_day enum as null (not a hard rejection)', () => {
     const bad = { ...VALID, time_of_day: 'midnight' };
-    expect(validator.validateStructuredDiaryResponse(JSON.stringify(bad))).toBeNull();
+    const res = validator.validateStructuredDiaryResponse(JSON.stringify(bad));
+    expect(res).not.toBeNull();
+    expect(res?.timeOfDay).toBeNull();
   });
 
   it('accepts null duration_minutes but rejects negative numbers', () => {

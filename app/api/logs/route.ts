@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/infrastructure/supabase/createAdminClient';
 import { createLogExperienceUseCase } from '@/container/createUseCases';
 import { refreshAnalyticsViewCache } from '@/container/loadAnalyticsViewModel';
 import {
@@ -65,8 +66,12 @@ async function backgroundSave(
   body: LogRequestBody,
 ): Promise<void> {
   // Step 1: Supabase への書き込み
+  // ctx.waitUntil 内では cookie-based JWT が失効する場合があるため
+  // service role key を持つ admin client でサーバー側書き込みを実行する。
+  // userId は呼び出し元で auth.getUser() により検証済み。
   try {
-    const useCase = createLogExperienceUseCase(supabase);
+    const adminClient = createAdminClient();
+    const useCase = createLogExperienceUseCase(adminClient);
     await useCase.execute(userId, { displayName }, body.obstacles, body.date);
   } catch (err) {
     // Supabase PostgrestError (message/code/details/hint) is wrapped in
@@ -234,8 +239,17 @@ export async function POST(request: Request) {
     }
 
     // ── ローカル next dev フォールバック（同期実行）──────────────────────────
-    const useCase = createLogExperienceUseCase(supabase);
-    await useCase.execute(user.id, { displayName }, obstacles, date);
+    try {
+      const useCase = createLogExperienceUseCase(createAdminClient());
+      await useCase.execute(user.id, { displayName }, obstacles, date);
+    } catch (err) {
+      const cause = (err as { cause?: unknown })?.cause;
+      console.error('[logs:sync] Supabase書き込み失敗:', {
+        message: err instanceof Error ? err.message : String(err),
+        cause,
+      });
+      throw err;
+    }
     try {
       const analyticsViewCache = await getAnalyticsViewCacheKV();
       await refreshAnalyticsViewCache(supabase, user.id, analyticsViewCache);
