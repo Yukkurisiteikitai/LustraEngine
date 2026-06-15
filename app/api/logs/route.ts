@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/infrastructure/supabase/createAdminClient';
 import { createLogExperienceUseCase } from '@/container/createUseCases';
 import { refreshAnalyticsViewCache } from '@/container/loadAnalyticsViewModel';
 import {
@@ -8,6 +9,7 @@ import {
   type AnalyticsViewCacheKV,
 } from '@/infrastructure/cache/AnalyticsViewCache';
 import { VALID_DOMAINS, type Domain } from '@/core/domains/domain/Domain';
+import { ACTION_RESULT_VALUES, TIME_OF_DAY_VALUES, type ActionResult, type TimeOfDay } from '@/types';
 import { ValidationError } from '@/core/errors/ValidationError';
 import { AuthError } from '@/core/errors/AuthError';
 import { handleError, checkBodySize } from '@/lib/apiHelpers';
@@ -64,11 +66,23 @@ async function backgroundSave(
   body: LogRequestBody,
 ): Promise<void> {
   // Step 1: Supabase への書き込み
+  // ctx.waitUntil 内では cookie-based JWT が失効する場合があるため
+  // service role key を持つ admin client でサーバー側書き込みを実行する。
+  // userId は呼び出し元で auth.getUser() により検証済み。
   try {
-    const useCase = createLogExperienceUseCase(supabase);
+    const adminClient = createAdminClient();
+    const useCase = createLogExperienceUseCase(adminClient);
     await useCase.execute(userId, { displayName }, body.obstacles, body.date);
   } catch (err) {
-    console.error('[logs:bg] Supabase書き込み失敗:', err);
+    // Supabase PostgrestError (message/code/details/hint) is wrapped in
+    // InfrastructureError.cause. Inspector collapses it to `[Object]` by
+    // default, so unwrap explicitly for diagnosability.
+    const cause = (err as { cause?: unknown })?.cause;
+    console.error('[logs:bg] Supabase書き込み失敗:', {
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+      cause,
+    });
     return; // INSERT失敗時はキャッシュを触らない
   }
 
@@ -140,8 +154,47 @@ export async function POST(request: Request) {
       if (obs.careful !== undefined && typeof obs.careful !== 'boolean') {
         throw new ValidationError('carefulはbooleanで指定してください');
       }
-      if (obs.actionResult !== 'AVOIDED' && obs.actionResult !== 'CONFRONTED') {
-        throw new ValidationError('actionResultはAVOIDEDまたはCONFRONTEDで指定してください');
+      if (!ACTION_RESULT_VALUES.includes(obs.actionResult as ActionResult)) {
+        throw new ValidationError(
+          `actionResultは ${ACTION_RESULT_VALUES.join(' / ')} のいずれかで指定してください`,
+        );
+      }
+      if (
+        obs.timeOfDay !== undefined &&
+        !TIME_OF_DAY_VALUES.includes(obs.timeOfDay as TimeOfDay)
+      ) {
+        throw new ValidationError(
+          `timeOfDayは ${TIME_OF_DAY_VALUES.join(' / ')} のいずれかで指定してください`,
+        );
+      }
+      if (
+        obs.durationMinutes !== undefined &&
+        (typeof obs.durationMinutes !== 'number' ||
+          !Number.isInteger(obs.durationMinutes) ||
+          obs.durationMinutes < 0)
+      ) {
+        throw new ValidationError('durationMinutesは0以上の整数で指定してください');
+      }
+      if (obs.emotions !== undefined) {
+        if (!Array.isArray(obs.emotions)) {
+          throw new ValidationError('emotionsは配列で指定してください');
+        }
+        for (const e of obs.emotions) {
+          if (!e || typeof e !== 'object') {
+            throw new ValidationError('emotions[]の要素はオブジェクトで指定してください');
+          }
+          const label = (e as { label?: unknown }).label;
+          if (typeof label !== 'string' || label.trim() === '') {
+            throw new ValidationError('emotions[].labelは空でない文字列で指定してください');
+          }
+          const intensity = (e as { intensity?: unknown }).intensity;
+          if (!Number.isInteger(intensity) || (intensity as number) < 1 || (intensity as number) > 5) {
+            throw new ValidationError('emotions[].intensityは1〜5の整数で指定してください');
+          }
+        }
+      }
+      if (obs.trigger !== undefined && typeof obs.trigger !== 'string') {
+        throw new ValidationError('triggerは文字列で指定してください');
       }
     }
 
@@ -186,8 +239,17 @@ export async function POST(request: Request) {
     }
 
     // ── ローカル next dev フォールバック（同期実行）──────────────────────────
-    const useCase = createLogExperienceUseCase(supabase);
-    await useCase.execute(user.id, { displayName }, obstacles, date);
+    try {
+      const useCase = createLogExperienceUseCase(createAdminClient());
+      await useCase.execute(user.id, { displayName }, obstacles, date);
+    } catch (err) {
+      const cause = (err as { cause?: unknown })?.cause;
+      console.error('[logs:sync] Supabase書き込み失敗:', {
+        message: err instanceof Error ? err.message : String(err),
+        cause,
+      });
+      throw err;
+    }
     try {
       const analyticsViewCache = await getAnalyticsViewCacheKV();
       await refreshAnalyticsViewCache(supabase, user.id, analyticsViewCache);

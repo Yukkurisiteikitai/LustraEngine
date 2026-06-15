@@ -26,7 +26,7 @@ const dashboardViewModel: DashboardViewModel = {
       domain: 'SELF',
       stressLevel: 1,
       createdAt: '2026-05-13',
-      actionResult: 'CONFRONTED',
+      actionResult: 'CONFRONTED_SUCCESS',
     },
   ],
 };

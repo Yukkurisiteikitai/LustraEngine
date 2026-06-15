@@ -1,0 +1,62 @@
+{
+  "_note": "実データ29件分が揃うまでの暫定サンプル。実DBから description+context+goal を結合した文字列を順次追加していく。各サンプルは expected_* を任意でつけておくと verify_llm1_extraction.py がスポット検証に使う（未指定でも動作する）。",
+  "samples": [
+    {
+      "id": "sample-success-1",
+      "diary": "スタバで2時間レポートやった。550円分は絶対回収してやるって気持ちで集中できた。国語のレポート2個終わって爽快だった。",
+      "expected_action_result": "CONFRONTED_SUCCESS",
+      "expected_time_of_day": "afternoon"
+    },
+    {
+      "id": "sample-avoided-1",
+      "diary": "夜ベッドで明日の発表の準備しようと思ってたけどYouTube見て寝ちゃった。最悪。",
+      "expected_action_result": "AVOIDED",
+      "expected_time_of_day": "night"
+    },
+    {
+      "id": "sample-partial-1",
+      "diary": "朝、英単語アプリ開いて30分やったけど途中で集中切れて、SNSに逃げてしまった。今日は半分くらい。",
+      "expected_action_result": "PARTIAL",
+      "expected_time_of_day": "morning"
+    },
+    {
+      "id": "sample-failed-1",
+      "diary": "昼、3時間かけてバグ追ってたけど原因わからず終わった。疲れた。情けない気持ち。",
+      "expected_action_result": "CONFRONTED_FAILED",
+      "expected_time_of_day": "afternoon"
+    },
+    {
+      "id": "sample-ambiguous-trigger",
+      "diary": "夕方ジムに行った。最近サボってたけど、なんとなく今日は行く気になった。45分くらい走って気持ち良かった。",
+      "expected_action_result": "CONFRONTED_SUCCESS",
+      "expected_time_of_day": "evening"
+    },
+    {
+      "id": "sample-anxiety-work",
+      "diary": "朝起きて9時から会議。先輩に指摘されて落ち込んだ。午後は手につかなかった。",
+      "expected_action_result": "PARTIAL",
+      "expected_time_of_day": "morning"
+    },
+    {
+      "id": "sample-relationship",
+      "diary": "夜、母親と電話した。30分くらい話した。久々で安心したけど、進路の話になって少し気まずかった。",
+      "expected_time_of_day": "night"
+    },
+    {
+      "id": "sample-health",
+      "diary": "深夜2時まで動画見てた。朝つらかった。これを変えたいけど毎晩同じことしてる。",
+      "expected_action_result": "AVOIDED",
+      "expected_time_of_day": "night"
+    },
+    {
+      "id": "sample-money",
+      "diary": "昼、家計簿の見直しをした。1時間半かかったけど来月の予算が立てられて安心した。",
+      "expected_action_result": "CONFRONTED_SUCCESS",
+      "expected_time_of_day": "afternoon"
+    },
+    {
+      "id": "sample-short-text",
+      "diary": "今日は何もしなかった。"
+    }
+  ]
+}

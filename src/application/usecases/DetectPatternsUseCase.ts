@@ -46,7 +46,7 @@ export class DetectPatternsUseCase {
         stressLevel: log.stressLevel,
         reportDifficulty: 3,
         careful: false,
-        actionResult: 'CONFRONTED',
+        actionResult: 'CONFRONTED_SUCCESS',
         visibility: 'analysis_allowed',
         domainKey: String(log.domain),
         date: log.loggedAt,

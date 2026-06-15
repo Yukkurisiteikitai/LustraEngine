@@ -1,5 +1,5 @@
 import styles from './ObstacleList.module.css';
-import type { ObstacleRecord } from '@/types';
+import type { ActionResult, ObstacleRecord } from '@/types';
 
 interface ObstacleListProps {
   items: ObstacleRecord[];
@@ -22,6 +22,21 @@ function domainLabel(domain: ObstacleRecord['domain']) {
   }
 }
 
+function actionLabel(actionResult: ActionResult): string {
+  switch (actionResult) {
+    case 'CONFRONTED_SUCCESS':
+      return '向き合えた';
+    case 'CONFRONTED_FAILED':
+      return '向き合ったが届かず';
+    case 'PARTIAL':
+      return '一部だけ進んだ';
+    case 'AVOIDED':
+      return '回避した';
+    default:
+      return '不明';
+  }
+}
+
 export default function ObstacleList({ items }: ObstacleListProps) {
   return (
     <section className={styles.wrapper} aria-label="最近の障害リスト">
@@ -32,7 +47,7 @@ export default function ObstacleList({ items }: ObstacleListProps) {
             <p className={styles.desc}>{item.description}</p>
             <p className={styles.meta}>
               {item.date} ・ {domainLabel(item.domain)} ・ ストレス {item.stressLevel} ・
-              {item.actionResult === 'CONFRONTED' ? '向き合った' : '回避した'}
+              {actionLabel(item.actionResult)}
             </p>
           </li>
         ))}

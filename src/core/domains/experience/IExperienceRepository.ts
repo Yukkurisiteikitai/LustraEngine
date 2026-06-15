@@ -1,5 +1,5 @@
 import type { ExperienceData } from './Experience';
-import type { EvidenceVisibility } from '@/types';
+import type { ActionResult, EvidenceVisibility, ExperienceEmotion, TimeOfDay } from '@/types';
 
 export interface ExperienceQueryOptions {
   visibility?: EvidenceVisibility | EvidenceVisibility[];
@@ -9,7 +9,7 @@ export interface CreateExperienceInput {
   description: string;
   stressLevel: number;
   domain: string;
-  actionResult: 'AVOIDED' | 'CONFRONTED';
+  actionResult: ActionResult;
   source?: string;
   visibility?: EvidenceVisibility;
   reportDifficulty?: number;
@@ -18,7 +18,11 @@ export interface CreateExperienceInput {
   goal?: string;
   action?: string;
   emotion?: string;
+  emotions?: ExperienceEmotion[];
   context?: string;
+  trigger?: string;
+  timeOfDay?: TimeOfDay;
+  durationMinutes?: number;
 }
 
 export interface IExperienceRepository {

@@ -1,0 +1,212 @@
+.section {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.35rem;
+}
+
+.helper {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-tertiary, var(--text-secondary));
+  line-height: 1.5;
+}
+
+.diaryArea {
+  width: 100%;
+  min-height: 180px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+  font-size: 1rem;
+  line-height: 1.6;
+  background: var(--surface-input);
+  color: var(--text-primary);
+  font-family: inherit;
+  resize: vertical;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.micButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.micButton[data-active='true'] {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+.micButton[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.inlineInput {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-input);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  background: var(--surface-input);
+  border: 1px solid var(--border-default);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.chipRemove {
+  background: transparent;
+  border: 0;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+}
+
+.dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0.4rem;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--border-default);
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.dotOn {
+  background: var(--accent-primary);
+}
+
+.actionGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+.actionButton {
+  padding: 0.7rem 0.5rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-input);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-align: center;
+}
+
+.actionButton[data-selected='true'] {
+  background: var(--accent-primary);
+  color: var(--text-on-accent);
+  border-color: var(--accent-primary);
+}
+
+.actionButton small {
+  display: block;
+  font-size: 0.75rem;
+  opacity: 0.75;
+  margin-top: 0.15rem;
+}
+
+.stressScale {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.stressSlider {
+  width: 100%;
+}
+
+.stressLegend {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.fieldRow {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: 0.6rem;
+  align-items: start;
+}
+
+.fieldKey {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  padding-top: 0.25rem;
+}
+
+.errorBox {
+  margin: 0;
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.triggerBox {
+  background: var(--surface-input);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.skipLink {
+  background: transparent;
+  border: 0;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: underline;
+}

@@ -25,7 +25,7 @@ describe('archive utils', () => {
           userId: 'user-1',
           description: 'older',
           stressLevel: 2,
-          actionResult: 'CONFRONTED',
+          actionResult: 'CONFRONTED_SUCCESS',
           visibility: 'private',
           reportDifficulty: 2,
           careful: false,

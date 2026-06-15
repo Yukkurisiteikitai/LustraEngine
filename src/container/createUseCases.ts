@@ -16,6 +16,7 @@ import { SaveChatMessageUseCase } from '@/application/usecases/SaveChatMessageUs
 import { RethinkMessageUseCase } from '@/application/usecases/RethinkMessageUseCase';
 import { ManageExperienceDispositionUseCase } from '@/application/usecases/ManageExperienceDispositionUseCase';
 import { ExportUserDataUseCase } from '@/application/usecases/ExportUserDataUseCase';
+import { ExtractStructuredDiaryUseCase } from '@/application/usecases/ExtractStructuredDiaryUseCase';
 import { createAdminClient } from '@/infrastructure/supabase/createAdminClient';
 import { CheckDbLimitsUseCase } from '@/application/usecases/CheckDbLimitsUseCase';
 import { SupabaseMonitoringRepository } from '@/infrastructure/repositories/SupabaseMonitoringRepository';
@@ -66,6 +67,10 @@ export function createInferTraitsUseCase(supabase: SupabaseClient, llm: ILLMPort
     new LLMResponseValidator(),
     userSettings,
   );
+}
+
+export function createExtractStructuredDiaryUseCase(llm: ILLMPort) {
+  return new ExtractStructuredDiaryUseCase(llm, new LLMResponseValidator());
 }
 
 export function createChatUseCase(supabase: SupabaseClient, llm: ILLMPort) {

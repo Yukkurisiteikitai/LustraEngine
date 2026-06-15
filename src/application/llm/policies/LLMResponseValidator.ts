@@ -1,5 +1,26 @@
-import type { ClusterAssignment, TraitName } from '@/types';
+import type {
+  ActionResult,
+  ClusterAssignment,
+  ExperienceEmotion,
+  TimeOfDay,
+  TraitName,
+} from '@/types';
+import { ACTION_RESULT_VALUES, TIME_OF_DAY_VALUES } from '@/types';
 import type { BigFiveDomain, ExperiencePsychologyAnalysis } from '@/core/entities/PsychologyProfile';
+import { extractJsonFromLLMResponse } from './extractJsonFromLLMResponse';
+import { STRUCTURED_DIARY_SCHEMA_META } from '@/application/llm/structuredDiaryPrompt';
+
+export interface StructuredDiaryResponse {
+  description: string;
+  context: string;
+  timeOfDay: TimeOfDay | null;
+  durationMinutes: number | null;
+  emotions: ExperienceEmotion[];
+  actionResult: ActionResult;
+  trigger: string | null;
+  needsTriggerQuestion: boolean;
+  triggerQuestion: string | null;
+}
 
 const BIG_FIVE_DOMAINS: BigFiveDomain[] = [
   'openness', 'conscientiousness', 'extraversion', 'agreeableness', 'neuroticism',
@@ -213,5 +234,78 @@ export class LLMResponseValidator {
     } catch {
       return null;
     }
+  }
+
+  // LLM-1 structured diary extraction. Uses the defensive JSON extractor so
+  // fenced / preamble-wrapped output from qwen3-swallow still parses.
+  // Returns null when the response is unrecoverable — callers MUST surface
+  // that as an explicit error (no silent template fallback).
+  validateStructuredDiaryResponse(raw: string): StructuredDiaryResponse | null {
+    const parsed = extractJsonFromLLMResponse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    const p = parsed as Record<string, unknown>;
+
+    const description = typeof p.description === 'string' ? p.description.trim() : '';
+    if (!description) return null;
+    if (typeof p.context !== 'string') return null;
+    const context = p.context.trim();
+
+    const timeOfDay: TimeOfDay | null = TIME_OF_DAY_VALUES.includes(p.time_of_day as TimeOfDay)
+      ? (p.time_of_day as TimeOfDay)
+      : null;
+
+    if (!ACTION_RESULT_VALUES.includes(p.action_result as ActionResult)) return null;
+    const actionResult = p.action_result as ActionResult;
+
+    let durationMinutes: number | null = null;
+    if (p.duration_minutes === null) {
+      durationMinutes = null;
+    } else if (typeof p.duration_minutes === 'number' && p.duration_minutes >= 0) {
+      durationMinutes = Math.round(p.duration_minutes);
+    } else {
+      return null;
+    }
+
+    if (!Array.isArray(p.emotions)) return null;
+    const emotions: ExperienceEmotion[] = [];
+    for (const e of p.emotions) {
+      if (!e || typeof e !== 'object') continue;
+      const label = (e as { label?: unknown }).label;
+      const intensity = (e as { intensity?: unknown }).intensity;
+      if (
+        typeof label === 'string' &&
+        label.trim() !== '' &&
+        typeof intensity === 'number' &&
+        intensity >= STRUCTURED_DIARY_SCHEMA_META.intensityMin &&
+        intensity <= STRUCTURED_DIARY_SCHEMA_META.intensityMax
+      ) {
+        emotions.push({
+          label: label.trim(),
+          intensity: Math.round(intensity) as ExperienceEmotion['intensity'],
+        });
+      }
+      if (emotions.length >= STRUCTURED_DIARY_SCHEMA_META.maxEmotions) break;
+    }
+
+    const trigger =
+      typeof p.trigger === 'string' && p.trigger.trim() !== '' ? p.trigger.trim() : null;
+    const needsTriggerQuestion =
+      typeof p.needs_trigger_question === 'boolean' ? p.needs_trigger_question : trigger === null;
+    const triggerQuestion =
+      typeof p.trigger_question === 'string' && p.trigger_question.trim() !== ''
+        ? p.trigger_question.trim()
+        : null;
+
+    return {
+      description,
+      context,
+      timeOfDay,
+      durationMinutes,
+      emotions,
+      actionResult,
+      trigger,
+      needsTriggerQuestion,
+      triggerQuestion,
+    };
   }
 }

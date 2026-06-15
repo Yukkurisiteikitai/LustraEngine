@@ -23,7 +23,7 @@ describe('ExportUserDataUseCase', () => {
           userId: 'user-1',
           description: '記録は残すが推論には使わない',
           stressLevel: 2,
-          actionResult: 'CONFRONTED',
+          actionResult: 'CONFRONTED_SUCCESS',
           source: 'manual',
           visibility: 'excluded',
           reportDifficulty: 2,
