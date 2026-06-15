@@ -148,3 +148,33 @@ npm run dev
 - `src/application/usecases/LogExperienceUseCase.ts` — domainMap 構築
 - `src/application/llm/policies/LLMResponseValidator.ts` — 4値・enum バリデーション
 - `supabase/migrations/039_experience_structured_extraction.sql` — CHECK 制約定義
+
+---
+
+## 解決（2026-06-15 第3セッション）
+
+**解決日**: 2026-06-15  
+**解決方法**: 以下の2点を実施して INSERT 成功を確認。
+
+### 原因（確定）
+
+`PGRST204: Could not find the 'careful' column of 'experiences' in the schema cache`
+
+- `careful` 列は migration `034_user_settings_permissions.sql` で追加済み（DB 上は存在する）
+- しかし **Supabase PostgREST の schema cache がスタール**になっており、この列を認識していなかった
+- INSERT で `careful` を明示指定すると PostgREST がキャッシュ参照に失敗 → PGRST204 → InfrastructureError
+
+### 対応内容
+
+1. **`supabase/migrations/040_ensure_experiences_columns.sql` 新規作成**  
+   migration 034 / 039 の列を `IF NOT EXISTS` で再保証（no-op）し、`supabase db push` 経由で PostgREST schema cache をリロード。
+
+2. **`app/api/logs/route.ts` の backgroundSave を admin client に切り替え**  
+   `ctx.waitUntil` 内では cookie-based JWT が失効して `42501` になる可能性があるため、`createAdminClient()`（service role key）を使用。userId は `auth.getUser()` で検証済みなので安全。
+
+3. **`[logs:sync]` 診断ログを同期パス（npm run dev）にも追加**  
+   `InfrastructureError.cause`（PostgrestError の詳細）がローカル開発でも見えるように。
+
+4. **テスト修正**
+   - `__tests__/logsRouteAnalyticsViewCache.test.ts`: `createAdminClient` モック追加
+   - `__tests__/LLMResponseValidator.structuredDiary.test.ts`: `time_of_day` nullable 対応（commit 166b182 の仕様変更に合わせる）

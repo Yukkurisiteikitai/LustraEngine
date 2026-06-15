@@ -44,7 +44,7 @@ related: [./2026-06-11_local-llm-setup.md]
 | `src/infrastructure/llm/providerRegistry.ts` | `response_empty` / `response_truncated` ログに `reasoningTokens` / `reasoningContentHead` を追加（thinking 経路の診断用） |
 
 ### 未確認事項
-- 抽出が通るようになったが、その後の **`POST /api/logs` の INSERT 成否はまだ未確認**（下記 bug doc 参照）。
+- ~~`POST /api/logs` の INSERT 成否はまだ未確認~~ → **2026-06-15 第3セッションで解決済み**（PGRST204 schema cache 問題、migration 040 + admin client 切り替えで対処）
 - Qwen3 thinking 対策（max_tokens=4096 + chat_template_kwargs）が実機で機能しているか未確認。
   - `llm:response_empty` ログに `reasoningTokens` が出るようにしたので次回確認可能。
 
