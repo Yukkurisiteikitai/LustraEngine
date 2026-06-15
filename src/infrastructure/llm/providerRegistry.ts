@@ -246,12 +246,22 @@ export function createOpenAICompatibleClient(config: ResolvedLLMConfig, timeoutM
         }
 
         const data = await res.json() as {
-          choices?: Array<{ message?: { content?: string }; finish_reason?: string }>;
-          usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+          choices?: Array<{
+            message?: { content?: string; reasoning_content?: string };
+            finish_reason?: string;
+          }>;
+          usage?: {
+            prompt_tokens?: number;
+            completion_tokens?: number;
+            total_tokens?: number;
+            completion_tokens_details?: { reasoning_tokens?: number };
+          };
         };
         const choice = data.choices?.[0];
         const text = choice?.message?.content;
         const finishReason = choice?.finish_reason ?? 'unknown';
+        const reasoningContent = choice?.message?.reasoning_content;
+        const reasoningTokens = data.usage?.completion_tokens_details?.reasoning_tokens;
 
         if (!text) {
           logger.warn('llm:response_empty', {
@@ -261,6 +271,11 @@ export function createOpenAICompatibleClient(config: ResolvedLLMConfig, timeoutM
             finishReason,
             promptTokens: data.usage?.prompt_tokens,
             completionTokens: data.usage?.completion_tokens,
+            reasoningTokens,
+            // thinking モデルが reasoning に全 token を吸われたケースの判別用。
+            // 長さ制限のため先頭 200 文字だけ残す。
+            reasoningContentHead:
+              typeof reasoningContent === 'string' ? reasoningContent.slice(0, 200) : undefined,
           });
           throw new Error(`LLM response was empty (finish_reason: ${finishReason})`);
         }
@@ -274,6 +289,7 @@ export function createOpenAICompatibleClient(config: ResolvedLLMConfig, timeoutM
             finishReason,
             promptTokens: data.usage?.prompt_tokens,
             completionTokens: data.usage?.completion_tokens,
+            reasoningTokens,
             totalTokens: data.usage?.total_tokens,
           });
         }

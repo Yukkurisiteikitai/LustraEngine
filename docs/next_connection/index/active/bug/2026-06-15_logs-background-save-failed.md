@@ -33,6 +33,20 @@ POST /api/logs 202 in 367ms
 
 `InfrastructureError.cause` に PostgrestError が入っているはずだが、Node.js inspector の既定深度で `[Object]` に潰されていて、 `code` / `details` / `hint` が見えなかった。
 
+## コミット履歴レビュー結果（2026-06-15 追記）
+
+ユーザの「Copilot 修正あたりから変になった」仮説をコミット履歴で検証。
+
+| commit | 日付 | save パスへの影響 |
+|---|---|---|
+| `f3eae46 fix: copilot` | 2026-05-21 | 無関係（Trait hypothesis のみ） |
+| `f6718f4 fix: copilot` | 2026-05-22 | 無関係（GET 側 `findById` の join 化のみ） |
+| **`0e3a491 feat: recrod daily organize colum`** | 2026-06-15 06:50 | **★最有力**。`SupabaseExperienceRepository.save` に `emotions / trigger / time_of_day / duration_minutes` を一括追加し、migration 039（`action_result` 4 値化）を新規導入。INSERT 列増と制約変更が同時に入った起点。 |
+| `8ae5a37 fix:reveiew` | 2026-06-15 09:40 | 弱い。Copilot review を受けて validator を厳格化（`context` / `emotions` 必須化など）。エラーは 202 (validator 通過) 後に発生しているため、INSERT 失敗の犯人ではない。ただし extract が「形は通るが中身スカスカで null 返却」になる副作用は別途要観察。 |
+| `5e32c3a feat: limit rate provider` | 2026-06-15 11:49 | 修正側。migration 039 の `DROP CONSTRAINT` を `UPDATE` より先に移動、`[logs:bg]` の cause 展開。 |
+
+→ 5月の `fix: copilot` 2件は INSERT パス無関係。**真犯人は `0e3a491` の LLM-1 全面導入**で導入された 4 列 + `action_result` 4 値化のどこか。`8ae5a37` のレビュー修正は INSERT エラーとは独立。
+
 ## 今セッションで実施したこと
 
 ### ログ詳細化（実施済み）

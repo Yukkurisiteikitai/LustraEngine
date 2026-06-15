@@ -13,7 +13,7 @@ import { STRUCTURED_DIARY_SCHEMA_META } from '@/application/llm/structuredDiaryP
 export interface StructuredDiaryResponse {
   description: string;
   context: string;
-  timeOfDay: TimeOfDay;
+  timeOfDay: TimeOfDay | null;
   durationMinutes: number | null;
   emotions: ExperienceEmotion[];
   actionResult: ActionResult;
@@ -250,8 +250,9 @@ export class LLMResponseValidator {
     if (typeof p.context !== 'string') return null;
     const context = p.context.trim();
 
-    if (!TIME_OF_DAY_VALUES.includes(p.time_of_day as TimeOfDay)) return null;
-    const timeOfDay = p.time_of_day as TimeOfDay;
+    const timeOfDay: TimeOfDay | null = TIME_OF_DAY_VALUES.includes(p.time_of_day as TimeOfDay)
+      ? (p.time_of_day as TimeOfDay)
+      : null;
 
     if (!ACTION_RESULT_VALUES.includes(p.action_result as ActionResult)) return null;
     const actionResult = p.action_result as ActionResult;

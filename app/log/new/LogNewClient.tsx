@@ -113,7 +113,7 @@ export default function LogNewClient({
             emotions: draft.emotions,
             context: draft.context || undefined,
             trigger: finalTrigger || extracted.trigger || undefined,
-            timeOfDay: draft.timeOfDay,
+            timeOfDay: draft.timeOfDay ?? undefined,
             durationMinutes: draft.durationMinutes ?? undefined,
             ...(activeSource === 'chat_fallback' ? { source: 'chat_fallback' } : {}),
           },

@@ -17,7 +17,7 @@ export interface ConfirmDraft {
   domain: Domain | '';
   emotions: ExperienceEmotion[];
   actionResult: ActionResult;
-  timeOfDay: TimeOfDay;
+  timeOfDay: TimeOfDay | null;
   durationMinutes: number | null;
   stressLevel: number;
 }
@@ -111,9 +111,12 @@ export default function ExtractedConfirmStep({
         <span className={styles.fieldKey}>時間帯</span>
         <select
           className={styles.inlineInput}
-          value={draft.timeOfDay}
-          onChange={(e) => patch('timeOfDay', e.target.value as TimeOfDay)}
+          value={draft.timeOfDay ?? ''}
+          onChange={(e) =>
+            patch('timeOfDay', (e.target.value as TimeOfDay) || null)
+          }
         >
+          <option value="">不明</option>
           <option value="morning">朝 (5-11)</option>
           <option value="afternoon">昼 (11-17)</option>
           <option value="evening">夕 (17-21)</option>

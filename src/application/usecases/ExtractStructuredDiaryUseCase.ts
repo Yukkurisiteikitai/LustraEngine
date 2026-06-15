@@ -12,7 +12,10 @@ import { ValidationError } from '@/core/errors/ValidationError';
 
 const MIN_DIARY_LENGTH = 4;
 const MAX_DIARY_LENGTH = 2000;
-const RESPONSE_MAX_TOKENS = 1024;
+// 応急: Qwen3 thinking が止まらない環境向けに余裕を持たせる。
+// LM Studio の chat_template_kwargs.enable_thinking=false が効かないモデル/版
+// では reasoning_content が消費するため、JSON 本体を出し切るには 1024 では足りない。
+const RESPONSE_MAX_TOKENS = 4096;
 
 export interface ExtractStructuredDiaryInput {
   diaryText: string;
