@@ -14,6 +14,42 @@ related: [./2026-06-11_local-llm-setup.md]
 
 ---
 
+## 【2026-06-15 追記3】time_of_day: null を validator が弾く問題 → 修正済み（commit 166b182）
+
+### 症状
+`POST /api/logs/extract` が 502 `LLMExtractionFailedError` で返る。rawText は正しい JSON だが validator が null 返却。
+
+実際の LLM レスポンス（rawText）:
+```json
+{"description":"YourselfLMの音声入力テストで書き込みがリセットされる仕様に嫌だった",
+ "context":"自宅","time_of_day":null,"duration_minutes":null,
+ "emotions":[{"label":"嫌悪","intensity":4},{"label":"苛立ち","intensity":3}],
+ "action_result":"CONFRONTED_FAILED","trigger":"書き込みがリセットされる仕様",
+ "needs_trigger_question":false,"trigger_question":null}
+```
+
+`time_of_day: null` が `TIME_OF_DAY_VALUES.includes(null)` で弾かれ即 `return null`。
+
+### 原因
+`8ae5a37 fix:reveiew`（Copilot review 反映）で `time_of_day` を厳格チェックに変えたが、
+「LLM が時間帯を判断できない場合は null を返す」ケースを想定していなかった。
+
+### 修正内容（commit 166b182 `fix: valitation`）
+| ファイル | 変更 |
+|---|---|
+| `src/application/llm/policies/LLMResponseValidator.ts` | `StructuredDiaryResponse.timeOfDay: TimeOfDay | null`。time_of_day が null/不正値なら null を許容（弾かずに null で続行） |
+| `components/log/ExtractedConfirmStep.tsx` | `ConfirmDraft.timeOfDay: TimeOfDay | null`。`<select>` に「不明」オプション追加（value=""、null 扱い） |
+| `app/log/new/LogNewClient.tsx` | `persist()` で `draft.timeOfDay ?? undefined` に変換（route validator は undefined を無視するので DB に null が入る） |
+| `src/application/usecases/ExtractStructuredDiaryUseCase.ts` | `RESPONSE_MAX_TOKENS` 1024 → 4096（Qwen3 thinking が止まらない環境向け応急措置） |
+| `src/infrastructure/llm/providerRegistry.ts` | `response_empty` / `response_truncated` ログに `reasoningTokens` / `reasoningContentHead` を追加（thinking 経路の診断用） |
+
+### 未確認事項
+- 抽出が通るようになったが、その後の **`POST /api/logs` の INSERT 成否はまだ未確認**（下記 bug doc 参照）。
+- Qwen3 thinking 対策（max_tokens=4096 + chat_template_kwargs）が実機で機能しているか未確認。
+  - `llm:response_empty` ログに `reasoningTokens` が出るようにしたので次回確認可能。
+
+---
+
 ## 【2026-06-15 追記2】Qwen3 thinking モードで max_tokens 枯渇 → `/no_think` 導入
 
 ### 症状

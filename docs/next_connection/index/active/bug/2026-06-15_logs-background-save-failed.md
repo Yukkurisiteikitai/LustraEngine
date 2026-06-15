@@ -106,23 +106,40 @@ LLM extract → ExtractStructuredDiaryUseCase
 
 validator で弾かれているなら 400 が返るはず。202 が返っているので validator は通過 → INSERT 時に CHECK / NOT NULL / enum 違反のいずれか。
 
+## 進捗更新（2026-06-15 第2セッション）
+
+### Extract 段階のブロッカーが解消（commit 166b182）
+
+`POST /api/logs/extract` が 502 で落ちており、INSERT 段階に到達できていなかった。原因は validator が `time_of_day: null` を拒否していたこと（詳細は llm doc 追記3 参照）。
+
+`time_of_day` を nullable に修正したことで、抽出ステップは通過するようになった。**ただし INSERT の成否はまだ未確認**。次セッションで保存まで通してログを確認する必要がある。
+
+### `time_of_day` enum 大文字問題 → 別途解消
+
+以前の候補「`"Morning"` 等の大文字混入 → code `22P02`」については、LLM が `null` を返す場合は validator の nullable 対応で解消された。ただし LLM が `"Morning"` 等の不正文字列を返した場合も nullable 対応後は null 扱いになる（DB に null が入る = ユーザは confirm 画面で「不明」表示を手動変更できる）。
+
 ## 次のセッションで最初にやること
 
-### 1. `npm run dev` を再起動して同じ手順を再現
+### 1. 保存まで通してログを取る（最優先）
 
-ターミナル出力で `[logs:bg] Supabase書き込み失敗:` の `cause.code` / `cause.message` / `cause.details` / `cause.hint` を確認。
+```
+npm run dev
+→ /log/new → 日記入力 → AI 抽出（Step2）→ 領域選択 → 「保存する」
+→ ターミナルで [logs:bg] の行を確認
+```
 
-### 2. code に応じて切り分け
+**成功した場合**: Supabase で INSERT 確認、bug doc を Resolved に移動。
+**失敗した場合**: `cause.code` / `cause.message` / `cause.details` / `cause.hint` を読み、下表で切り分け。
 
-上記表に従って原因仮説を1つに絞る。
+### 2. cause.code 対応表（`42703` は除外済み）
 
-### 3. 最有力候補 — `time_of_day` enum 大文字
-
-`/no_think` 効かなかったため `chat_template_kwargs: { enable_thinking: false }` を入れたが、それでも LLM が `"Morning"` や `"MORNING"` を返す可能性。`structuredDiaryPrompt.ts` ではプロンプトで小文字を要求しているが、validator は `TIME_OF_DAY_VALUES` 完全一致でチェックしていたか要再確認。
-
-### 4. 別有力候補 — `action_result` の旧値
-
-migration 039 で `CONFRONTED` → `CONFRONTED_SUCCESS` 変換は済んでいるが、LLM が新たに `CONFRONTED` を返したら 23514（check constraint）が出る。few-shot に旧値が混入していないか、`scripts/llm1_prompt.py` の `FEW_SHOTS` を再確認。
+| code | 意味 | 想定原因 | 対応 |
+|---|---|---|---|
+| `23514` | check constraint violation | `action_result` が4値外 / `intensity` 範囲外 / `duration_minutes < 0` | `scripts/llm1_prompt.py:FEW_SHOTS` で旧値 `CONFRONTED` が混入していないか確認 |
+| `22P02` | invalid input syntax for type | `time_of_day` enum に不正値（null 以外、例: 空文字列） | `SupabaseExperienceRepository.save:77` で `o.timeOfDay?.toLowerCase()` 正規化 |
+| `23502` | not null violation | `domain_id` が null（domainMap miss） / `stress_level` null | `ensureDefaultDomains` の返却 key と frontend の domain 値が一致しているか確認 |
+| `23503` | FK violation | `domain_id` が他ユーザの domain を指す | `ensureDefaultDomains` の戻り値再確認 |
+| `42501` | insufficient_privilege | RLS / service role が背景タスクで失効 | `ctx.waitUntil` 内で `createSupabaseServerClient` を再生成 |
 
 ## 関連ファイル
 
