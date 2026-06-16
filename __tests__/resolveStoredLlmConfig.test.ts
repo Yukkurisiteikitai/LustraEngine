@@ -13,7 +13,8 @@ describe('resolveStoredLlmConfig', () => {
   const originalEnv = process.env.APP_ENV;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
+    mockResolveLlmSettingsEncryptionKey.mockReturnValue('fallback-secret');
     process.env.APP_ENV = 'development';
   });
 
@@ -44,9 +45,55 @@ describe('resolveStoredLlmConfig', () => {
       repository as never,
     );
 
+    expect(mockResolveLlmSettingsEncryptionKey).not.toHaveBeenCalled();
     expect(mockDecryptApiKey).not.toHaveBeenCalled();
     expect(resolved.provider).toBe('custom_openai_compatible');
     expect(resolved.apiKey).toBe('lm-studio');
+  });
+
+  it('does not resolve encryption key when encryptedApiKey is null (no-key provider in production)', async () => {
+    const repository = {
+      getActiveByUser: jest.fn().mockResolvedValue({
+        userId: 'user-1',
+        encryptedApiKey: null,
+        hasApiKey: false,
+        provider: 'custom_openai_compatible',
+        type: 'gpt',
+        model: 'local-model',
+        baseUrl: 'http://localhost:1234/v1',
+      }),
+    };
+    // Simulate production: resolveLlmSettingsEncryptionKey would throw if called without the env var
+    mockResolveLlmSettingsEncryptionKey.mockImplementation(() => {
+      throw new Error('LLM_SETTINGS_ENCRYPTION_KEY is missing');
+    });
+
+    await expect(
+      resolveStoredLlmConfig(
+        'user-1',
+        {
+          provider: 'lmstudio',
+          lmstudioEndpoint: 'http://localhost:1234/v1',
+          lmstudioModel: 'local-model',
+        } as never,
+        repository as never,
+      ),
+    ).resolves.toBeDefined();
+
+    expect(mockResolveLlmSettingsEncryptionKey).not.toHaveBeenCalled();
+  });
+
+  it('throws ValidationError when no active setting exists and no config is provided', async () => {
+    const repository = {
+      getActiveByUser: jest.fn().mockResolvedValue(null),
+    };
+
+    await expect(
+      resolveStoredLlmConfig('user-1', null, repository as never),
+    ).rejects.toThrow('LLM設定が見つかりません。設定ページで設定してください。');
+
+    expect(mockResolveLlmSettingsEncryptionKey).not.toHaveBeenCalled();
+    expect(mockDecryptApiKey).not.toHaveBeenCalled();
   });
 
   it('throws when hasApiKey=true but storedApiKey is empty (decryption failure / key mismatch)', async () => {

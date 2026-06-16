@@ -6,7 +6,7 @@ import SettingsClient from './SettingsClient';
 import styles from './page.module.css';
 
 const isProduction = process.env.APP_ENV === 'production';
-const llmSettingsEnabled = !isProduction;
+const llmSettingsEnabled = true;
 
 export default function SettingsPage() {
   return (

@@ -36,10 +36,6 @@ export async function POST(req: Request) {
     if (typeof diaryText !== 'string' || diaryText.trim() === '') {
       throw new ValidationError('diaryTextは必須です');
     }
-    if (!lmConfig) {
-      throw new ValidationError('LLM設定が必要です');
-    }
-
     const { llmSettings } = createRepositories(supabase);
     const resolvedLlmConfig = await resolveStoredLlmConfig(
       user.id,

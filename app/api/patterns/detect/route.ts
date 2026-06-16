@@ -11,7 +11,7 @@ import { resolveStoredLlmConfig } from '@/infrastructure/llm/resolveStoredLlmCon
 import type { LMConfig } from '@/types';
 
 interface DetectRequestBody {
-  lmConfig: LMConfig;
+  lmConfig?: LMConfig;
 }
 
 export async function POST(req: Request) {
