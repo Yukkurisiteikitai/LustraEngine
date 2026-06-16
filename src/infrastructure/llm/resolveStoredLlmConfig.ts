@@ -16,9 +16,8 @@ export async function resolveStoredLlmConfig(
     return validateLLMConfig(config);
   }
 
-  const resolvedEncryptionKey = encryptionKey ?? resolveLlmSettingsEncryptionKey();
   const storedApiKey = activeSetting.encryptedApiKey
-    ? await decryptApiKey(activeSetting.encryptedApiKey, resolvedEncryptionKey)
+    ? await decryptApiKey(activeSetting.encryptedApiKey, encryptionKey ?? resolveLlmSettingsEncryptionKey())
     : '';
 
   if (!storedApiKey) {
