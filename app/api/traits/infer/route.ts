@@ -10,7 +10,7 @@ import { resolveStoredLlmConfig } from '@/infrastructure/llm/resolveStoredLlmCon
 import type { LMConfig } from '@/types';
 
 interface InferRequestBody {
-  lmConfig: LMConfig;
+  lmConfig?: LMConfig;
 }
 
 export async function POST(req: Request) {

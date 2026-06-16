@@ -51,10 +51,6 @@ export async function POST(req: Request) {
     if (!message || typeof message !== 'string' || message.trim() === '') {
       throw new ValidationError('メッセージが空です');
     }
-    if (!lmConfig) {
-      throw new ValidationError('LLM設定が必要です');
-    }
-
     const { llmSettings, userSettings } = createRepositories(supabase);
     const resolvedLlmConfig = await resolveStoredLlmConfig(
       user.id,

@@ -75,13 +75,10 @@ export function useExtractDiaryMutation() {
   return useMutation({
     mutationFn: async (diaryText: string): Promise<ExtractedDiaryFields> => {
       const cfg = loadLMConfig();
-      if (!cfg) {
-        throw new Error('LM設定が見つかりません。設定ページでLMプロバイダーを設定してください。');
-      }
       const response = await fetch('/api/logs/extract', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ diaryText, lmConfig: cfg }),
+        body: JSON.stringify({ diaryText, ...(cfg ? { lmConfig: cfg } : {}) }),
       });
       const json = await response.json();
       if (!response.ok) {
@@ -119,12 +116,10 @@ export function usePatternDetection() {
   return useMutation({
     mutationFn: async () => {
       const cfg = loadLMConfig();
-      if (!cfg) throw new Error('LM設定が見つかりません。設定ページでLMプロバイダーを設定してください。');
-
       const response = await fetch('/api/patterns/detect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lmConfig: cfg }),
+        body: JSON.stringify(cfg ? { lmConfig: cfg } : {}),
       });
 
       const json = await response.json();
@@ -146,12 +141,10 @@ export function useTraitInferenceMutation() {
   return useMutation({
     mutationFn: async () => {
       const cfg = loadLMConfig();
-      if (!cfg) throw new Error('LM設定が見つかりません。設定ページでLMプロバイダーを設定してください。');
-
       const response = await fetch('/api/traits/infer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lmConfig: cfg }),
+        body: JSON.stringify(cfg ? { lmConfig: cfg } : {}),
       });
 
       const json = await response.json();
@@ -180,11 +173,10 @@ export function useChatMutation() {
       threadId?: string;
     }) => {
       const cfg = loadLMConfig();
-      if (!cfg) throw new Error('LM設定が見つかりません。設定ページで設定してください。');
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, history, lmConfig: cfg, threadId }),
+        body: JSON.stringify({ message, history, ...(cfg ? { lmConfig: cfg } : {}), threadId }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error((json as { message?: string }).message ?? 'チャットに失敗しました');

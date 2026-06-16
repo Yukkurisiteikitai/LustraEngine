@@ -25,11 +25,6 @@ type LlmSettingsResponse = {
   } | null;
 };
 
-type ErrorResponse = {
-  ok: false;
-  error: string;
-};
-
 function toResponse(setting: {
   provider: string;
   type: string;
@@ -62,13 +57,6 @@ export async function GET() {
     if (authError || !user) console.error('[DEBUG] getUser result:', { user: !!user, authError });
     if (!user) throw new AuthError('認証が必要です');
 
-    // In production, user-managed LLM settings are disabled.
-    // Return null to prevent exposing stored settings.
-    const appEnv = process.env.APP_ENV;
-    if (appEnv === 'production') {
-      return NextResponse.json({ setting: null } satisfies LlmSettingsResponse);
-    }
-
     const { llmSettings } = createRepositories(supabase);
     const setting = await llmSettings.getActiveByUser(user.id);
     return NextResponse.json({ setting: setting ? toResponse(setting) : null } satisfies LlmSettingsResponse);
@@ -86,18 +74,6 @@ export async function POST(req: Request) {
     } = await supabase.auth.getUser();
     if (authError || !user) console.error('[DEBUG] getUser result:', { user: !!user, authError });
     if (!user) throw new AuthError('認証が必要です');
-
-    // In production, reject user-managed LLM settings storage.
-    const appEnv = process.env.APP_ENV;
-    if (appEnv === 'production') {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: 'User-managed LLM settings are disabled in production',
-        } satisfies ErrorResponse,
-        { status: 403 },
-      );
-    }
 
     let body: Partial<LMConfig>;
     try {
