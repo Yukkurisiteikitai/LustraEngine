@@ -220,6 +220,45 @@ export class LLMResponseValidator {
     }
   }
 
+  validateRevisionResponse(raw: string): {
+    hypothesisText: string;
+    hypothesisLabel: string;
+    confidence: number;
+    uncertainty: number;
+  } | null {
+    try {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      if (typeof parsed.hypothesisText !== 'string' || !parsed.hypothesisText.trim()) return null;
+      if (typeof parsed.hypothesisLabel !== 'string' || !parsed.hypothesisLabel.trim()) return null;
+
+      const clamp = (v: unknown) =>
+        typeof v === 'number' ? Math.max(0, Math.min(1, v)) : null;
+      const confidence = clamp(parsed.confidence);
+      const uncertainty = clamp(parsed.uncertainty);
+      if (confidence === null || uncertainty === null) return null;
+
+      // Simple pathology-label screen — reject outputs that include forbidden terms
+      const FORBIDDEN_PATTERNS = [
+        '認知の歪み', '低自尊心', '抑うつ状態', 'うつ病', 'うつ症状',
+        'foreclosure', '精神疾患', '病理的', 'disorder', 'distortion',
+        'catastrophiz', 'cognitive distortion',
+      ];
+      const text = parsed.hypothesisText as string;
+      for (const pattern of FORBIDDEN_PATTERNS) {
+        if (text.toLowerCase().includes(pattern.toLowerCase())) return null;
+      }
+
+      return {
+        hypothesisText: text.trim(),
+        hypothesisLabel: (parsed.hypothesisLabel as string).trim(),
+        confidence,
+        uncertainty,
+      };
+    } catch {
+      return null;
+    }
+  }
+
   validateTraitResponse(raw: string): Record<TraitName, number> | null {
     try {
       const parsed = JSON.parse(raw) as { traits?: Record<string, number> };

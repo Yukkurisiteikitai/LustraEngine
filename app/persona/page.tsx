@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import TraitInferButton from './TraitInferButton';
+import HypothesisMirror from '@/components/HypothesisMirror';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createRepositories } from '@/container/createRepositories';
 import styles from './page.module.css';
@@ -109,6 +110,8 @@ export default async function PersonaPage() {
               </div>
             )}
           </section>
+
+          <HypothesisMirror />
 
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>モデル要約</h2>

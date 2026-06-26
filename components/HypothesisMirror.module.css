@@ -1,0 +1,328 @@
+.section {
+  margin-bottom: 2rem;
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-card);
+}
+
+.sectionTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 1.25rem;
+}
+
+.empty {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.loading {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.errorBox {
+  background-color: var(--semantic-error-subtle);
+  border: 1px solid var(--semantic-error);
+  border-radius: 0.5rem;
+  padding: 0.875rem 1rem;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.cardList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.card {
+  border: 1px solid var(--border-default);
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  background-color: var(--surface-input-box);
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.card:hover {
+  border-color: var(--accent-primary);
+}
+
+.cardSelected {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px var(--accent-primary-subtle);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  gap: 0.5rem;
+}
+
+.traitLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.confidenceDots {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background-color: var(--border-strong);
+}
+
+.dotFilled {
+  background-color: var(--accent-primary);
+}
+
+.confidenceText {
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  margin-left: 0.25rem;
+}
+
+.hypothesisText {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--text-primary);
+  margin: 0 0 0.75rem;
+}
+
+.verifiedBadge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--accent-primary);
+  background-color: var(--accent-primary-subtle);
+  border-radius: 0.25rem;
+  padding: 0.15rem 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.holdBadge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background-color: var(--surface-input);
+  border-radius: 0.25rem;
+  padding: 0.15rem 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.actionRow {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+}
+
+.btnConfirm {
+  padding: 0.4rem 0.875rem;
+  background-color: var(--accent-primary-subtle);
+  color: var(--accent-primary);
+  border: 1px solid var(--accent-primary);
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btnConfirm:hover:not(:disabled) {
+  opacity: 0.8;
+}
+
+.btnRevise {
+  padding: 0.4rem 0.875rem;
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.btnRevise:hover:not(:disabled) {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+.btnHold {
+  padding: 0.4rem 0.875rem;
+  background-color: transparent;
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btnHold:hover:not(:disabled) {
+  opacity: 0.7;
+}
+
+.btnConfirm:disabled,
+.btnRevise:disabled,
+.btnHold:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.revisePanel {
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 0.75rem;
+}
+
+.reviseLabel {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.4rem;
+}
+
+.reviseTextarea {
+  width: 100%;
+  min-height: 5rem;
+  padding: 0.6rem 0.75rem;
+  background-color: var(--surface-input);
+  border: 1px solid var(--border-default);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  resize: vertical;
+  box-sizing: border-box;
+  font-family: var(--font-sans);
+}
+
+.reviseTextarea:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.reviseActions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.btnSubmit {
+  padding: 0.4rem 0.875rem;
+  background-color: var(--accent-primary);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btnSubmit:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.btnSubmit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnCancel {
+  padding: 0.4rem 0.875rem;
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.btnCancel:hover {
+  opacity: 0.7;
+}
+
+.mutationError {
+  font-size: 0.8rem;
+  color: var(--semantic-error);
+  margin-top: 0.4rem;
+}
+
+.historyPanel {
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 1.25rem;
+}
+
+.historyTitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0 0 0.875rem;
+}
+
+.historyList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.historyEntry {
+  font-size: 0.8rem;
+  padding: 0.75rem;
+  background-color: var(--surface-input-box);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.5rem;
+}
+
+.historyMeta {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+
+.historyStatus {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  background-color: var(--surface-input);
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.25rem;
+}
+
+.historyDate {
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+}
+
+.historyText {
+  color: var(--text-primary);
+  line-height: 1.5;
+  margin: 0 0 0.3rem;
+}
+
+.historyCorrection {
+  color: var(--text-secondary);
+  font-style: italic;
+  margin: 0;
+}
