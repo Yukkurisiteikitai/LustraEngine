@@ -67,6 +67,22 @@ npx supabase db push
 - HypothesisMirror の各ボタン（近い・今は答えにくい・違う・精緻化）: ユーザが手動で確認し動作 OK
 - revise（LLM 呼び出し）: LM Studio `https://llm.yourselflm.org/v1/` が起動している状態で確認
 
+## 2026-07-01 セッション2 更新（Copilot PR レビュー対応）
+
+### 修正済み
+
+| # | ファイル | 内容 |
+|---|---|---|
+| Sec-1 | `supabase/migrations/043_secure_revise_hypothesis_atomic.sql` | `auth.uid()` ≠ `p_user_id` のとき即エラー（SECURITY DEFINER の RLS バイパス対策）。PUBLIC から REVOKE、authenticated にのみ GRANT。 |
+| Acc-1 | `components/HypothesisMirror.tsx` | `role="button"` 要素に Space キー対応と `preventDefault()` を追加 |
+| Infra-1 | `.gitignore` | `supabase/.temp` を追加（Supabase CLI 生成ファイルを誤コミットしないよう除外） |
+| Test-1 | `__tests__/SupabaseTraitHypothesisRepository.new-methods.test.ts` | `findLiveByUser` / `findHistoryByTraitKey` / `confirm` / `hold` / `reviseAtomic` のテスト追加（14 件全 pass） |
+| Test-2 | `__tests__/VerifyTraitHypothesisUseCase.test.ts` | `confirm` / `hold` / `revise`（成功・仮説不在・LLM 全失敗・2回目成功・LLM 例外）テスト追加 |
+
+### Copilot レビューで誤検知だったもの
+
+- `/api/hypotheses/[id]/history/route.ts` が存在しないという指摘 → 実際には存在していた。
+
 ## 未解決・次セッションへの注意事項
 
 ### 1. spec doc と plan doc の関係

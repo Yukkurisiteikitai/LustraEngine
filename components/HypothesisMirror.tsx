@@ -111,7 +111,7 @@ function HypothesisCard({
       onClick={onSelect}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => e.key === 'Enter' && onSelect()}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(); } }}
     >
       <div className={styles.cardHeader}>
         <span className={styles.traitLabel}>{label}</span>

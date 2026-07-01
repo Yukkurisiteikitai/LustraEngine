@@ -46,5 +46,8 @@ history
 .claude
 
 
+# Supabase CLI temp files (env-specific, should not be committed)
+supabase/.temp
+
 # FVM Version Cache
 .fvm/A
