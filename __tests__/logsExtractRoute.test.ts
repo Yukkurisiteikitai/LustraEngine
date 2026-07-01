@@ -9,6 +9,7 @@ import { createExtractStructuredDiaryUseCase } from '@/container/createUseCases'
 import { resolveStoredLlmConfig } from '@/infrastructure/llm/resolveStoredLlmConfig';
 import { createLLM } from '@/infrastructure/llm/createLLM';
 import { LLMExtractionFailedError } from '@/core/errors/LLMExtractionFailedError';
+import { ValidationError } from '@/core/errors/ValidationError';
 
 jest.mock('@/lib/supabase/server', () => ({
   createSupabaseServerClient: jest.fn(),
@@ -89,8 +90,9 @@ describe('/api/logs/extract', () => {
     expect(json.message).toMatch(/diaryText/);
   });
 
-  it('returns 400 when lmConfig is missing', async () => {
+  it('returns 400 when lmConfig is missing and no stored config exists', async () => {
     setupAuth({ id: 'user-1' });
+    mockResolveStoredLlmConfig.mockRejectedValue(new ValidationError('LLM設定が見つかりません'));
     const response = await POST(makeRequest({ diaryText: '今日は疲れた' }));
     expect(response.status).toBe(400);
     const json = await response.json() as { message: string };

@@ -39,6 +39,34 @@ metadata:
 - コード自体にバグなし（findLiveByUser / confirm / hold / reviseAtomic すべて確認済み）
 - `/persona` の動作確認（HypothesisMirror の各ボタン）は **未実施**。次セッションで確認すること
 
+## 2026-07-01 セッション更新
+
+### 修正済みバグ（commit 予定）
+
+| # | ファイル | 内容 |
+|---|---|---|
+| Bug 1 | `src/application/llm/policies/LLMResponseValidator.ts` | `validateRevisionResponse` で `JSON.parse` → `extractJsonFromLLMResponse` に変更。コードフェンス付き JSON を返すローカルLLMで revise が必ず失敗していた |
+| Bug 2 | `supabase/migrations/042_fix_revise_hypothesis_atomic.sql` | `revise_hypothesis_atomic` の WHERE 条件を `status IN ('active', 'needs_review')` に変更。hold → revise の連続操作が 500 になるバグを修正。migration 適用済み |
+| Bug 3 | `src/application/usecases/VerifyTraitHypothesisUseCase.ts` | `modelVersion: resultModelName` → `modelVersion: 'mirror_v001'` |
+| Test  | `__tests__/logsExtractRoute.test.ts` | `lmConfig` 欠如テストのモック修正（既存の 500 バグ → 正しく 400 を期待するよう修正） |
+
+### Supabase プロジェクト ref 修正
+
+正しい ref: `qgvuprwftsrrzjryhbdt`（旧: `archksbnwonqkmzbbahj` は誤り）
+
+```bash
+npx supabase link --project-ref qgvuprwftsrrzjryhbdt
+npx supabase db push
+```
+
+- 初回リンク時に 000〜041 の migration repair が必要だった（migration history が未記録のため）
+- 次回以降は `npx supabase db push` だけで OK
+
+### 動作確認状況
+
+- HypothesisMirror の各ボタン（近い・今は答えにくい・違う・精緻化）: ユーザが手動で確認し動作 OK
+- revise（LLM 呼び出し）: LM Studio `https://llm.yourselflm.org/v1/` が起動している状態で確認
+
 ## 未解決・次セッションへの注意事項
 
 ### 1. spec doc と plan doc の関係
@@ -86,7 +114,7 @@ migration 001〜041 を以下のコマンドで一括適用済み：
 
 ```bash
 npx supabase login
-npx supabase link --project-ref archksbnwonqkmzbbahj
+npx supabase link --project-ref qgvuprwftsrrzjryhbdt
 npx supabase db push
 ```
 
@@ -95,7 +123,7 @@ npx supabase db push
 - Supabase Studio の SQL エディタに migration を直接貼り付けてはいけない。
   前提となる migration（例: 031 が作る `trait_hypothesis_history` テーブル）が
   未適用だと `42P01 relation does not exist` で失敗する
-- `supabase link` 時のプロジェクト ref: `archksbnwonqkmzbbahj`
+- `supabase link` 時のプロジェクト ref: `qgvuprwftsrrzjryhbdt`
 
 ### 6. テストは未作成
 

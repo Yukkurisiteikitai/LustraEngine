@@ -227,7 +227,9 @@ export class LLMResponseValidator {
     uncertainty: number;
   } | null {
     try {
-      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const extracted = extractJsonFromLLMResponse(raw);
+      if (!extracted || typeof extracted !== 'object' || Array.isArray(extracted)) return null;
+      const parsed = extracted as Record<string, unknown>;
       if (typeof parsed.hypothesisText !== 'string' || !parsed.hypothesisText.trim()) return null;
       if (typeof parsed.hypothesisLabel !== 'string' || !parsed.hypothesisLabel.trim()) return null;
 

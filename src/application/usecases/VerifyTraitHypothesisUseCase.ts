@@ -68,7 +68,7 @@ export class VerifyTraitHypothesisUseCase {
       evidenceIds: target.evidenceIds,
       sourcePatternIds: target.sourcePatternIds,
       modelName: resultModelName,
-      modelVersion: resultModelName,
+      modelVersion: 'mirror_v001',
       promptVersion: 'mirror_v001',
       status: 'active',
       source: 'user_revision',
