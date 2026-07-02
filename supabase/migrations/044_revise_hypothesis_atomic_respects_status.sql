@@ -1,7 +1,6 @@
--- Harden revise_hypothesis_atomic:
--- 1. Verify caller is authenticated and matches p_user_id (RLS bypass prevention)
--- 2. Restrict EXECUTE to authenticated role only
--- 3. Fix search_path to '' so caller cannot redirect object resolution via a rogue search_path
+-- Make revise_hypothesis_atomic preserve an explicitly supplied new-row status.
+-- The use case currently sends "active", but the RPC should not silently ignore
+-- p_new_row->>'status' if another caller supplies a valid status later.
 create or replace function revise_hypothesis_atomic(
   p_user_id uuid,
   p_prev_id uuid,
@@ -33,7 +32,7 @@ begin
     coalesce(p_new_row->'evidence_ids', '[]'::jsonb),
     coalesce(p_new_row->'source_pattern_ids', '[]'::jsonb),
     p_new_row->>'model_name', p_new_row->>'model_version', p_new_row->>'prompt_version',
-    'active', p_prev_id, p_prev_id,
+    coalesce(p_new_row->>'status', 'active'), p_prev_id, p_prev_id,
     coalesce(p_new_row->>'source', 'user_revision'),
     p_new_row->>'user_correction',
     nullif(p_new_row->>'analysis_job_id','')::uuid

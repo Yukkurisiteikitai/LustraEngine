@@ -70,8 +70,12 @@ export function createInferTraitsUseCase(supabase: SupabaseClient, llm: ILLMPort
   );
 }
 
-export function createVerifyTraitHypothesisUseCase(supabase: SupabaseClient, llm: ILLMPort) {
-  const { traitHypothesis } = createRepositories(supabase);
+export function createVerifyTraitHypothesisUseCase(
+  supabase: SupabaseClient,
+  llm: ILLMPort | null,
+  repositories: ReturnType<typeof createRepositories> = createRepositories(supabase),
+) {
+  const { traitHypothesis } = repositories;
   return new VerifyTraitHypothesisUseCase(
     traitHypothesis,
     llm,

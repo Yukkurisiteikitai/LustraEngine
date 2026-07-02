@@ -89,7 +89,13 @@ function HypothesisCard({
   const isPending = verify.isPending;
 
   function handleAction(action: 'confirm' | 'hold') {
+    verify.reset();
     verify.mutate({ id: hypothesis.id, action });
+  }
+
+  function handleReviseToggle() {
+    verify.reset();
+    setShowRevise((v) => !v);
   }
 
   function handleReviseSubmit() {
@@ -111,14 +117,17 @@ function HypothesisCard({
       onClick={onSelect}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(); } }}
+      onKeyDown={(e) => {
+        if (e.currentTarget !== e.target) return;
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(); }
+      }}
     >
       <div className={styles.cardHeader}>
         <span className={styles.traitLabel}>{label}</span>
         <ConfidenceDots confidence={hypothesis.confidence} />
       </div>
 
-      {hypothesis.verifiedAt && (
+      {hypothesis.verifiedAt && hypothesis.status !== 'needs_review' && (
         <span className={styles.verifiedBadge}>確認済み</span>
       )}
       {hypothesis.status === 'needs_review' && (
@@ -138,7 +147,7 @@ function HypothesisCard({
         <button
           className={styles.btnRevise}
           disabled={isPending}
-          onClick={() => setShowRevise((v) => !v)}
+          onClick={handleReviseToggle}
         >
           違う・精緻化
         </button>

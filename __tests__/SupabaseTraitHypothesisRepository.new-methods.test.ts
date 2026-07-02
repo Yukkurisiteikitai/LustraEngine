@@ -52,6 +52,9 @@ describe('SupabaseTraitHypothesisRepository — findLiveByUser', () => {
     expect(result.find((r) => r.traitKey === 'introversion')?.id).toBe('h-1');
     expect(result.find((r) => r.traitKey === 'discipline')?.id).toBe('h-3');
     expect(query.not).toHaveBeenCalledWith('status', 'in', expect.stringContaining('revised'));
+    expect(query.not).toHaveBeenCalledWith('status', 'in', expect.stringContaining('stale_due_to_evidence_deletion'));
+    expect(query.order).toHaveBeenCalledWith('created_at', { ascending: false });
+    expect(query.order).toHaveBeenCalledWith('id', { ascending: false });
     expect(query.eq).toHaveBeenCalledWith('user_id', 'user-1');
   });
 
@@ -101,6 +104,7 @@ describe('SupabaseTraitHypothesisRepository — confirm', () => {
     const query = {
       update: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
+      not: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
       single: jest.fn().mockResolvedValue({ data: updatedRow, error: null }),
     };
@@ -116,6 +120,8 @@ describe('SupabaseTraitHypothesisRepository — confirm', () => {
     );
     expect(query.eq).toHaveBeenCalledWith('id', 'h-1');
     expect(query.eq).toHaveBeenCalledWith('user_id', 'user-1');
+    expect(query.not).toHaveBeenCalledWith('status', 'in', expect.stringContaining('revised'));
+    expect(query.not).toHaveBeenCalledWith('status', 'in', expect.stringContaining('stale_due_to_evidence_deletion'));
   });
 });
 
@@ -140,6 +146,7 @@ describe('SupabaseTraitHypothesisRepository — hold', () => {
       expect.objectContaining({ status: 'needs_review' }),
     );
     expect(query.not).toHaveBeenCalledWith('status', 'in', expect.stringContaining('revised'));
+    expect(query.not).toHaveBeenCalledWith('status', 'in', expect.stringContaining('stale_due_to_evidence_deletion'));
   });
 });
 

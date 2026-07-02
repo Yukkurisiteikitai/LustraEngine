@@ -231,7 +231,7 @@ export class LLMResponseValidator {
       if (!extracted || typeof extracted !== 'object' || Array.isArray(extracted)) return null;
       const parsed = extracted as Record<string, unknown>;
       if (typeof parsed.hypothesisText !== 'string' || !parsed.hypothesisText.trim()) return null;
-      if (typeof parsed.hypothesisLabel !== 'string' || !parsed.hypothesisLabel.trim()) return null;
+      if (!['high', 'medium', 'low'].includes((parsed.hypothesisLabel as string | undefined)?.trim() ?? '')) return null;
 
       const clamp = (v: unknown) =>
         typeof v === 'number' ? Math.max(0, Math.min(1, v)) : null;

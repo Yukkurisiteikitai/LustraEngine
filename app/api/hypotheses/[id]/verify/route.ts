@@ -7,7 +7,23 @@ import { resolveStoredLlmConfig } from '@/infrastructure/llm/resolveStoredLlmCon
 import { AuthError } from '@/core/errors/AuthError';
 import { ValidationError } from '@/core/errors/ValidationError';
 import { handleError, checkBodySize } from '@/lib/apiHelpers';
+import type { TraitHypothesisRecord } from '@/core/domains/trait/TraitHypothesis';
 import type { LMConfig } from '@/types';
+
+function toDto(h: TraitHypothesisRecord) {
+  return {
+    id: h.id,
+    traitKey: h.traitKey,
+    hypothesisLabel: h.hypothesisLabel,
+    hypothesisText: h.hypothesisText,
+    confidence: h.confidence,
+    uncertainty: h.uncertainty,
+    status: h.status,
+    source: h.source ?? 'model',
+    verifiedAt: h.verifiedAt ?? null,
+    createdAt: h.createdAt,
+  };
+}
 
 interface VerifyRequestBody {
   action: 'confirm' | 'revise' | 'hold';
@@ -40,37 +56,37 @@ export async function POST(
       throw new ValidationError('actionはconfirm、revise、holdのいずれかで指定してください');
     }
 
+    const repositories = createRepositories(supabase);
+
     if (action === 'revise') {
       if (!correction || correction.trim() === '') {
         throw new ValidationError('reviseアクションにはcorrectionテキストが必要です');
       }
 
-      const { llmSettings } = createRepositories(supabase);
       const resolvedLlmConfig = await resolveStoredLlmConfig(
         user.id,
         lmConfig,
-        llmSettings,
+        repositories.llmSettings,
         process.env.LLM_SETTINGS_ENCRYPTION_KEY,
       );
 
       const useCase = createVerifyTraitHypothesisUseCase(
         supabase,
         createLLM(resolvedLlmConfig, { waitForSlot: false, endpoint: 'hypotheses-verify' }),
+        repositories,
       );
       const result = await useCase.revise(user.id, id, correction.trim());
-      return NextResponse.json({ hypothesis: result });
+      return NextResponse.json({ hypothesis: toDto(result) });
     }
 
-    // confirm and hold don't need LLM — create use case without LLM
-    const { traitHypothesis } = createRepositories(supabase);
+    const useCase = createVerifyTraitHypothesisUseCase(supabase, null, repositories);
     if (action === 'confirm') {
-      const result = await traitHypothesis.confirm(id, user.id);
-      return NextResponse.json({ hypothesis: result });
+      const result = await useCase.confirm(user.id, id);
+      return NextResponse.json({ hypothesis: toDto(result) });
     }
 
-    // hold
-    const result = await traitHypothesis.hold(id, user.id);
-    return NextResponse.json({ hypothesis: result });
+    const result = await useCase.hold(user.id, id);
+    return NextResponse.json({ hypothesis: toDto(result) });
   } catch (err) {
     return handleError(err);
   }

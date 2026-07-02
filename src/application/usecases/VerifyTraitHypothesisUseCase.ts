@@ -11,7 +11,7 @@ import { LLMExtractionFailedError } from '@/core/errors/LLMExtractionFailedError
 export class VerifyTraitHypothesisUseCase {
   constructor(
     private readonly traitHypothesisRepo: ITraitHypothesisRepository,
-    private readonly llm: ILLMPort,
+    private readonly llm: ILLMPort | null,
     private readonly logger: ILoggerPort,
     private readonly retry: LLMRetryPolicy,
     private readonly validator: LLMResponseValidator,
@@ -30,6 +30,11 @@ export class VerifyTraitHypothesisUseCase {
     hypothesisId: string,
     correctionText: string,
   ): Promise<TraitHypothesisRecord> {
+    if (!this.llm) {
+      throw new ValidationError('reviseアクションにはLLMが必要です');
+    }
+    const llm = this.llm;
+
     const liveHypotheses = await this.traitHypothesisRepo.findLiveByUser(userId);
     const target = liveHypotheses.find((h) => h.id === hypothesisId);
     if (!target) {
@@ -43,7 +48,7 @@ export class VerifyTraitHypothesisUseCase {
 
     for (let attempt = 0; attempt < 2; attempt++) {
       const { text, modelName } = await this.retry.execute(() =>
-        this.llm.generate(STRUCTURAL_MIRROR_SYSTEM_PROMPT, userMessage, 512),
+        llm.generate(STRUCTURAL_MIRROR_SYSTEM_PROMPT, userMessage, 512),
       );
       resultModelName = modelName;
       validated = this.validator.validateRevisionResponse(text);

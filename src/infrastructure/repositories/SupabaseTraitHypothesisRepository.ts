@@ -7,6 +7,13 @@ import type {
 import { InfrastructureError } from '@/core/errors/InfrastructureError';
 
 const PAGE_SIZE = 1000;
+const DEAD_STATUSES: TraitHypothesisRecord['status'][] = [
+  'revised',
+  'rejected',
+  'archived',
+  'stale_due_to_evidence_deletion',
+];
+const DEAD_STATUS_FILTER = `(${DEAD_STATUSES.join(',')})`;
 
 function toStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
@@ -138,7 +145,6 @@ export class SupabaseTraitHypothesisRepository implements ITraitHypothesisReposi
   }
 
   async findLiveByUser(userId: string): Promise<TraitHypothesisRecord[]> {
-    const DEAD_STATUSES = ['revised', 'rejected', 'archived'];
     const records: TraitHypothesisRecord[] = [];
 
     for (let from = 0; ; from += PAGE_SIZE) {
@@ -146,8 +152,9 @@ export class SupabaseTraitHypothesisRepository implements ITraitHypothesisReposi
         .from('trait_hypothesis_history')
         .select('*')
         .eq('user_id', userId)
-        .not('status', 'in', `(${DEAD_STATUSES.join(',')})`)
+        .not('status', 'in', DEAD_STATUS_FILTER)
         .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
         .range(from, from + PAGE_SIZE - 1);
 
       if (error) throw new InfrastructureError('traitHypothesis:findLiveByUser failed', error);
@@ -211,6 +218,7 @@ export class SupabaseTraitHypothesisRepository implements ITraitHypothesisReposi
       })
       .eq('id', id)
       .eq('user_id', userId)
+      .not('status', 'in', DEAD_STATUS_FILTER)
       .select()
       .single();
 
@@ -227,7 +235,7 @@ export class SupabaseTraitHypothesisRepository implements ITraitHypothesisReposi
       })
       .eq('id', id)
       .eq('user_id', userId)
-      .not('status', 'in', '(revised,rejected,archived)')
+      .not('status', 'in', DEAD_STATUS_FILTER)
       .select()
       .single();
 
