@@ -26,6 +26,10 @@ export interface TraitHypothesisRecord {
   supersedesHypothesisId?: string | null;
   supersededByHypothesisId?: string | null;
   analysisJobId?: string | null;
+  source?: 'model' | 'user_revision' | 'user_confirm';
+  revisedFromId?: string | null;
+  userCorrection?: string | null;
+  verifiedAt?: string | null;
   createdAt: string;
 }
 

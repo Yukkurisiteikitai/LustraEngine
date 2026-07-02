@@ -17,6 +17,7 @@ import { RethinkMessageUseCase } from '@/application/usecases/RethinkMessageUseC
 import { ManageExperienceDispositionUseCase } from '@/application/usecases/ManageExperienceDispositionUseCase';
 import { ExportUserDataUseCase } from '@/application/usecases/ExportUserDataUseCase';
 import { ExtractStructuredDiaryUseCase } from '@/application/usecases/ExtractStructuredDiaryUseCase';
+import { VerifyTraitHypothesisUseCase } from '@/application/usecases/VerifyTraitHypothesisUseCase';
 import { createAdminClient } from '@/infrastructure/supabase/createAdminClient';
 import { CheckDbLimitsUseCase } from '@/application/usecases/CheckDbLimitsUseCase';
 import { SupabaseMonitoringRepository } from '@/infrastructure/repositories/SupabaseMonitoringRepository';
@@ -66,6 +67,21 @@ export function createInferTraitsUseCase(supabase: SupabaseClient, llm: ILLMPort
     new LLMRetryPolicy(),
     new LLMResponseValidator(),
     userSettings,
+  );
+}
+
+export function createVerifyTraitHypothesisUseCase(
+  supabase: SupabaseClient,
+  llm: ILLMPort | null,
+  repositories: ReturnType<typeof createRepositories> = createRepositories(supabase),
+) {
+  const { traitHypothesis } = repositories;
+  return new VerifyTraitHypothesisUseCase(
+    traitHypothesis,
+    llm,
+    logger,
+    new LLMRetryPolicy(),
+    new LLMResponseValidator(),
   );
 }
 

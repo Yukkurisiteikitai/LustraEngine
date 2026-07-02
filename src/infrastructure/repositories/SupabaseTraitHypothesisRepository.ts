@@ -7,6 +7,13 @@ import type {
 import { InfrastructureError } from '@/core/errors/InfrastructureError';
 
 const PAGE_SIZE = 1000;
+const DEAD_STATUSES: TraitHypothesisRecord['status'][] = [
+  'revised',
+  'rejected',
+  'archived',
+  'stale_due_to_evidence_deletion',
+];
+const DEAD_STATUS_FILTER = `(${DEAD_STATUSES.join(',')})`;
 
 function toStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
@@ -31,6 +38,10 @@ function fromRow(row: Record<string, unknown>): TraitHypothesisRecord {
     supersedesHypothesisId: (row.supersedes_hypothesis_id as string | null) ?? null,
     supersededByHypothesisId: (row.superseded_by_hypothesis_id as string | null) ?? null,
     analysisJobId: (row.analysis_job_id as string | null) ?? null,
+    source: (row.source as 'model' | 'user_revision' | 'user_confirm' | undefined) ?? 'model',
+    revisedFromId: (row.revised_from_id as string | null) ?? null,
+    userCorrection: (row.user_correction as string | null) ?? null,
+    verifiedAt: (row.verified_at as string | null) ?? null,
     createdAt: row.created_at as string,
   };
 }
@@ -54,6 +65,10 @@ function toRow(record: TraitHypothesisInsert) {
     supersedes_hypothesis_id: record.supersedesHypothesisId ?? null,
     superseded_by_hypothesis_id: record.supersededByHypothesisId ?? null,
     analysis_job_id: record.analysisJobId ?? null,
+    source: record.source ?? 'model',
+    revised_from_id: record.revisedFromId ?? null,
+    user_correction: record.userCorrection ?? null,
+    verified_at: record.verifiedAt ?? null,
     ...(record.createdAt ? { created_at: record.createdAt } : {}),
   };
 }
@@ -127,6 +142,105 @@ export class SupabaseTraitHypothesisRepository implements ITraitHypothesisReposi
 
   async findActiveByUser(userId: string): Promise<TraitHypothesisRecord[]> {
     return this.fetchAllByUser(userId, 'active');
+  }
+
+  async findLiveByUser(userId: string): Promise<TraitHypothesisRecord[]> {
+    const records: TraitHypothesisRecord[] = [];
+
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const { data, error } = await this.supabase
+        .from('trait_hypothesis_history')
+        .select('*')
+        .eq('user_id', userId)
+        .not('status', 'in', DEAD_STATUS_FILTER)
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (error) throw new InfrastructureError('traitHypothesis:findLiveByUser failed', error);
+
+      const page = data ?? [];
+      records.push(...page.map((row) => fromRow(row as Record<string, unknown>)));
+      if (page.length < PAGE_SIZE) break;
+    }
+
+    // Per trait_key, keep only the most recent live hypothesis
+    const byTraitKey = new Map<string, TraitHypothesisRecord>();
+    for (const r of records) {
+      if (!byTraitKey.has(r.traitKey)) {
+        byTraitKey.set(r.traitKey, r);
+      }
+    }
+
+    return [...byTraitKey.values()];
+  }
+
+  async findHistoryByTraitKey(userId: string, traitKey: string): Promise<TraitHypothesisRecord[]> {
+    const records: TraitHypothesisRecord[] = [];
+
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const { data, error } = await this.supabase
+        .from('trait_hypothesis_history')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('trait_key', traitKey)
+        .order('created_at', { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (error) throw new InfrastructureError('traitHypothesis:findHistoryByTraitKey failed', error);
+
+      const page = data ?? [];
+      records.push(...page.map((row) => fromRow(row as Record<string, unknown>)));
+      if (page.length < PAGE_SIZE) break;
+    }
+
+    return records;
+  }
+
+  async reviseAtomic(prevId: string, userId: string, next: TraitHypothesisInsert): Promise<TraitHypothesisRecord> {
+    const { data, error } = await this.supabase.rpc('revise_hypothesis_atomic', {
+      p_user_id: userId,
+      p_prev_id: prevId,
+      p_new_row: toRow(next),
+    });
+
+    if (error) throw new InfrastructureError('traitHypothesis:reviseAtomic failed', error);
+    return fromRow(data as Record<string, unknown>);
+  }
+
+  async confirm(id: string, userId: string): Promise<TraitHypothesisRecord> {
+    const { data, error } = await this.supabase
+      .from('trait_hypothesis_history')
+      .update({
+        verified_at: new Date().toISOString(),
+        source: 'user_confirm',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('user_id', userId)
+      .not('status', 'in', DEAD_STATUS_FILTER)
+      .select()
+      .single();
+
+    if (error) throw new InfrastructureError('traitHypothesis:confirm failed', error);
+    return fromRow(data as Record<string, unknown>);
+  }
+
+  async hold(id: string, userId: string): Promise<TraitHypothesisRecord> {
+    const { data, error } = await this.supabase
+      .from('trait_hypothesis_history')
+      .update({
+        status: 'needs_review',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('user_id', userId)
+      .not('status', 'in', DEAD_STATUS_FILTER)
+      .select()
+      .single();
+
+    if (error) throw new InfrastructureError('traitHypothesis:hold failed', error);
+    return fromRow(data as Record<string, unknown>);
   }
 
   async markRevised(ids: string[], supersededById: string | null = null): Promise<void> {
